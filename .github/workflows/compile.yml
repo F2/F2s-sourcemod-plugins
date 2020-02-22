@@ -24,3 +24,10 @@ jobs:
         spcomp afk.sp -i "../includes" -w217 
     - name: Final script
       run: echo All done
+    - name: Upload artifact
+      uses: actions/upload-artifact@v1.0.0
+      with:
+        # Artifact name
+        name: plugins-binaries
+        # Directory containing files to upload
+        path: afk.smx
