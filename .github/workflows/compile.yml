@@ -15,10 +15,12 @@ jobs:
       run: |
         echo Add other actions to build,
         echo test, and deploy your project.
+        ls
     - name: Setup SourcePawn Compiler
       uses: rumblefrog/setup-sp@v1.0.0
     - name: Test compiler
       run: |
-        spcomp 
+        cd AFK
+        spcomp afk.sp -i "../includes" -w217 
     - name: Final script
       run: echo All done
