@@ -21,7 +21,10 @@ jobs:
     - name: Test compiler
       run: |
         cd AFK
-        spcomp afk.sp -i "../includes" -w217 
+        spcomp afk.sp -i "../includes" -w217
+        cd ..
+        mkdir dist
+        cp AFK/afk.smx dist/
     - name: Final script
       run: echo All done
     - name: Upload artifact
@@ -30,4 +33,4 @@ jobs:
         # Artifact name
         name: plugins-binaries
         # Directory containing files to upload
-        path: afk.smx
+        path: dist/
