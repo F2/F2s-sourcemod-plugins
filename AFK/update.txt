@@ -1,0 +1,20 @@
+"Updater"
+{
+	"Information"
+	{
+		"Version"
+		{
+			"Latest"	"1.1.0"
+		}
+		
+		"Notes"	"Changes in 1.1.0:"
+		"Notes"	"- Fixed blinking text"
+		"Notes"	"- AFK time is more fine-grained"
+		"Notes"	"- Support for new ready-up behaviour"
+	}
+	
+	"Files"
+	{
+		"Plugin"	"Path_SM/plugins/afk.smx"
+	}
+}

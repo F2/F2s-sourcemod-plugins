@@ -1,0 +1,19 @@
+"Updater"
+{
+	"Information"
+	{
+		"Version"
+		{
+			"Latest"	"1.1.0"
+		}
+		
+		"Notes"	"Changes in 1.1.0:"
+		"Notes"	"- Automatically sets tv_delaymapchange_protect to 0... If you want to use tv_delaymapchange_protect, then remove this plugin."
+		"Notes"	"- Support for new ready-up behaviour"
+	}
+	
+	"Files"
+	{
+		"Plugin"	"Path_SM/plugins/waitforstv.smx"
+	}
+}

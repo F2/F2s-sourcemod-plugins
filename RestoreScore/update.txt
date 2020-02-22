@@ -1,0 +1,19 @@
+"Updater"
+{
+	"Information"
+	{
+		"Version"
+		{
+			"Latest"	"1.1.2"
+		}
+		
+		"Notes"	"Changes in 1.1.2:"
+		"Notes"	"- Fixed a minor error when the server is closing"
+		"Notes"	"- Fixed SteamIDs sometimes being wrong in the logs"
+	}
+	
+	"Files"
+	{
+		"Plugin"	"Path_SM/plugins/restorescore.smx"
+	}
+}

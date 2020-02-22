@@ -1,0 +1,18 @@
+"Updater"
+{
+	"Information"
+	{
+		"Version"
+		{
+			"Latest"	"1.0.1"
+		}
+		
+		"Notes"	"Changes in 1.0.1:"
+		"Notes"	"- Changes the map on server start"
+	}
+	
+	"Files"
+	{
+		"Plugin"	"Path_SM/plugins/fixstvslot.smx"
+	}
+}

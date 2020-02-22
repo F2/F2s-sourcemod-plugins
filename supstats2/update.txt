@@ -1,0 +1,19 @@
+"Updater"
+{
+	"Information"
+	{
+		"Version"
+		{
+			"Latest"	"2.3.1"
+		}
+		
+		"Notes"	"Changes in 2.3.1:"
+		"Notes"	"- Do not crash if the healer/patient is reported as 0"
+		"Notes"	"- Do not log self-heal"
+	}
+	
+	"Files"
+	{
+		"Plugin"	"Path_SM/plugins/supstats2.smx"
+	}
+}

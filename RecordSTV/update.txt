@@ -1,0 +1,18 @@
+"Updater"
+{
+	"Information"
+	{
+		"Version"
+		{
+			"Latest"	"1.1.1"
+		}
+		
+		"Notes"	"Changes in 1.1.1:"
+		"Notes"	"- Support for new ready-up behaviour"
+	}
+	
+	"Files"
+	{
+		"Plugin"	"Path_SM/plugins/recordstv.smx"
+	}
+}

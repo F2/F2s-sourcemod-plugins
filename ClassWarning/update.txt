@@ -1,0 +1,19 @@
+"Updater"
+{
+	"Information"
+	{
+		"Version"
+		{
+			"Latest"	"1.1.0"
+		}
+		
+		"Notes"	"Changes in 1.1.0:"
+		"Notes"	"- Now also works when configs are in /custom/ folder"
+		"Notes"	"- Support for new ready-up behaviour"
+	}
+	
+	"Files"
+	{
+		"Plugin"	"Path_SM/plugins/classwarning.smx"
+	}
+}

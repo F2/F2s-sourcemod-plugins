@@ -1,0 +1,20 @@
+"Updater"
+{
+	"Information"
+	{
+		"Version"
+		{
+			"Latest"	"2.3.0"
+		}
+		
+		"Notes"	"Changes in 2.3.0:"
+		"Notes"	"- Added support for SteamTools as an alternative for cURL"
+		"Notes"	"- Better error handling"
+		"Notes"	"- Support for new ready-up behaviour"
+	}
+	
+	"Files"
+	{
+		"Plugin"	"Path_SM/plugins/logstf.smx"
+	}
+}
