@@ -10,24 +10,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
-    - name: Run a one-line script
-      run: echo Hello, world!
-    - name: Run a multi-line script
-      run: |
-        echo Add other actions to build,
-        echo test, and deploy your project.
-        ls
     - name: Setup SourcePawn Compiler
       uses: rumblefrog/setup-sp@v1.0.0
-    - name: Test compiler
-      run: |
-        cd AFK
-        spcomp afk.sp -i "../includes" -w217
-        cd ..
-        mkdir dist
-        cp AFK/afk.smx dist/
-    - name: Final script
-      run: echo All done
     - name: Prepare publish
       run: |
         pwsh prepare-publish.ps1
