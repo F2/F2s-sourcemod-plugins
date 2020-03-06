@@ -1,4 +1,7 @@
 sourcemod-binaries
 *.smx
 DIST
+private-*
+
 *.ps1
+!prepare-publish.ps1
