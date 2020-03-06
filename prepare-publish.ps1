@@ -19,6 +19,7 @@ $plugins = @("waitforstv", "medicstats", "supstats2", "logstf", "restorescore", 
 
 foreach ($p in $plugins) {
     Write-Host "Compiling $p..."
+    Write-Host "Command: & spcomp $p/$p.sp -i $PSScriptRoot\includes -w217"
     & "spcomp" "$p/$p.sp" "-i" "$PSScriptRoot\includes" "-w217"
 
     if ($LASTEXITCODE -ne 0) {
