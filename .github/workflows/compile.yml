@@ -8,7 +8,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
     - name: Run a one-line script
       run: echo Hello, world!
     - name: Run a multi-line script
@@ -27,6 +28,9 @@ jobs:
         cp AFK/afk.smx dist/
     - name: Final script
       run: echo All done
+    - name: Test Powershell
+      run: |
+        pwsh -command 'for ($i = 0; $i -lt 10; $i++) { Write-Host test $i }'
     - name: Upload artifact
       uses: actions/upload-artifact@v1.0.0
       with:
