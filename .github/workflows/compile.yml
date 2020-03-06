@@ -30,7 +30,7 @@ jobs:
       run: echo All done
     - name: Test Powershell
       run: |
-        pwsh '-command "for ($i = 0; $i -lt 10; $i++) { Write-Host test $i }"'
+        pwsh -command 'for ($i = 0; $i -lt 10; $i++) { Write-Host test $i }'
     - name: Upload artifact
       uses: actions/upload-artifact@v1.0.0
       with:
