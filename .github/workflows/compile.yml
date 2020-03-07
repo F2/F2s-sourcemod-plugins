@@ -4,9 +4,7 @@ on: [push]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -22,3 +20,18 @@ jobs:
         name: ftp-files
         # Directory containing files to upload
         path: dist/ftp/
+  
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download files
+        uses: actions/download-artifact@v1.0.0
+        with:
+          # Artifact name
+          name: ftp-files
+          # Destination path
+          path: ftp/
+      - name: Upload to FTP
+        run: |
+          echo Test: ${{ secrets.MY_SECRET } :)
