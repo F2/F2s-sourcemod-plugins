@@ -34,4 +34,4 @@ jobs:
           path: ftp/
       - name: Upload to FTP
         run: |
-          echo "Test: [${{ secrets.MY_SECRET }}] :)"
+          find ftp -type f -exec echo "Found: {}" ';'
