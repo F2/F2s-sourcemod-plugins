@@ -2,8 +2,6 @@ name: CI
 
 on:
   push:
-    branches:
-      - 'master'
     paths: 
       - '**/*.sp'
       - '**/*.inc'
@@ -30,6 +28,7 @@ jobs:
         path: dist/ftp/
   
   publish:
+    if: github.ref == 'refs/heads/master'
     needs: build
     runs-on: ubuntu-latest
     steps:
