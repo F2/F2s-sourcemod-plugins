@@ -457,7 +457,7 @@ public Action:Command_say(client, args) {
 
 public QueryConVar_DisableHtmlMotd(QueryCookie:cookie, client, ConVarQueryResult:result, const String:cvarName[], const String:cvarValue[]) {
 	if (!IsClientValid(client))
-		return; // test
+		return asdasd error
 	
 	if (result == ConVarQuery_Okay) {
 		if (StringToInt(cvarValue) != 0) {
