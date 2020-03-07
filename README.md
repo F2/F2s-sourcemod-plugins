@@ -3,6 +3,8 @@
 
 F2's SourceMod plugins for competitive Team Fortress 2.
 
+Download all plugins in a zip file here: <a href="http://sourcemod.krus.dk/f2-sourcemod-plugins.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
+
 ### Medic Stats <a href="http://sourcemod.krus.dk/medicstats.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
 - Logs buff heals (~95% accurate)
 - Logs average time to build über
