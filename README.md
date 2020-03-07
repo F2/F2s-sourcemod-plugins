@@ -31,8 +31,8 @@ F2's SourceMod plugins for competitive Team Fortress 2.
 - **Note:** Requires either [cURL](https://code.google.com/archive/p/sourcemod-curl-extension/downloads) or [SteamTools](https://forums.alliedmods.net/showthread.php?t=170630) extension
 - Set cvar logstf_apikey to your Logs.tf API Key
 - Automatically uploads logs to logs.tf
-- You can see the logs in-game by typing .ss
-- Uploads logs after each round (the log will be updated on logs.tf after each round), so you can use .ss after each round
+- You can see the logs in-game by typing `!logs` or `.ss`
+- Uploads logs after each round (the log will be updated on logs.tf after each round), so you can use `!logs`/`.ss` after each round
 - Fixes several bugs seen in other plugins (including the last round missing, and stats being wrong when you play two matches on the same map)
 
 ### Pause <a href="http://sourcemod.krus.dk/pause.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
