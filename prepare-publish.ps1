@@ -1,4 +1,5 @@
 $ErrorActionPreference = "Stop"
+Set-Location $PSScriptRoot
 
 function ZipFiles($zipfilename, $sourcedir)
 {
@@ -33,7 +34,7 @@ $plugins = @("waitforstv", "medicstats", "supstats2", "logstf", "restorescore", 
 
 foreach ($p in $plugins) {
     Write-Host "Compiling $p..."
-    & "spcomp" (Join-Path $p "$p.sp") "-i" (Join-Path $PSScriptRoot includes) "-w217"
+    & "spcomp" "$p.sp" "-i" (Join-Path ".." "includes") "-D" $p "-w217"
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Failed compilation of $p"
