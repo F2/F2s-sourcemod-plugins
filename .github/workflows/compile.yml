@@ -1,6 +1,14 @@
 name: CI
 
-on: [push]
+on:
+  push:
+    branches:
+      - 'master'
+    paths: 
+      - '**/*.sp'
+      - '**/*.inc'
+      - '**/update.txt'
+      - '**/compile.yml'
 
 jobs:
   build:
