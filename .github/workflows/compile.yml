@@ -33,7 +33,6 @@ jobs:
           # Destination path
           path: ftp/
       - name: Upload to FTP
+        working-directory: ftp
         run: |
-          cd ftp
-          find . -type f -exec curl -u krus.dk:${{ secrets.FTP_KRUSDK_PASSWORD }} --ftp-create-dirs -T {} ftp://krus.dk/sourcemod/test2/{} \;
-          cd ..
+          find . -type f -exec curl -u krus.dk:${{ secrets.FTP_KRUSDK_PASSWORD }} --ftp-create-dirs -T {} ftp://krus.dk/sourcemod/{} \;
