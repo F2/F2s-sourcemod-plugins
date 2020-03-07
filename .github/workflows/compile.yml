@@ -34,4 +34,6 @@ jobs:
           path: ftp/
       - name: Upload to FTP
         run: |
-          find ftp -type f -exec echo "Found: {}" ';'
+          cd ftp
+          find . -type f -exec curl -u krus.dk:${{ secrets.FTP_KRUSDK_PASSWORD }} --ftp-create-dirs -T {} ftp://krus.dk/sourcemod/test2/{} \;
+          cd ..
