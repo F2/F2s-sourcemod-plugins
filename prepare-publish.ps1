@@ -49,8 +49,11 @@ foreach ($p in $plugins) {
     # Copy the .smx file to the common RELEASE directory
     Copy-Item -Path (Join-Path $p "$p.smx") -Destination (Join-Path "dist" "release")
 
-    # Copy the .sp file to the common SOURCE directory
+    # Copy the .sp and .inc file to the common SOURCE directory
     Copy-Item -Path (Join-Path $p "$p.sp") -Destination (Join-Path "dist" "source")
+    if (Test-Path (Join-Path $p "$p.inc")) { 
+        Copy-Item -Path (Join-Path $p "$p.inc") -Destination (Join-Path "dist" "source/includes")
+    }
 
     # Zip the single smx file
     ZipFile (Join-Path "dist" "ftp\$p.zip") (Join-Path $p "$p.smx")
