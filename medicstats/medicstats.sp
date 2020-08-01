@@ -44,6 +44,10 @@ Release notes:
 - Do not crash if the healer/patient is reported as 0
 
 
+---- 1.3.5 (01/08/2020) ----
+- Fixed wrong empty_uber logs when there are healing events not related to medics (e.g. engineer's dispenser)
+
+
 
 TODO:
 - The log lines should include which medigun is wielded
@@ -225,12 +229,17 @@ public Action:Event_player_spawn(Handle:event, const String:name[], bool:dontBro
 	if (!IsInMatch || IsBonusRoundTime)
 		return Plugin_Continue;
 	
-	if (!IsRealPlayer(client) || TF2_GetPlayerClass(client) != TFClass_Medic)
+	if (!IsRealPlayer(client))
 		return Plugin_Continue;
 	
 	for (new TFTeam:team = TFTeam_Red; team <= TFTeam_Blue; team++) {
 		if (medic[team][MedicClient] != client)
 			continue;
+		
+		if (TF2_GetClientTeam(client) != team || TF2_GetPlayerClass(client) != TFClass_Medic) {
+			ResetMedic(team);
+			continue;
+		}
 		
 		new Float:uberPct = TF2_GetPlayerUberLevel(client, medic[team][MedicMedigun]);
 		if (uberPct > 0.0)
@@ -313,11 +322,20 @@ public Action:Event_player_healed(Handle:event, const String:name[], bool:dontBr
 	new patient = GetClientOfUserId(patientId);
 	new healer = GetClientOfUserId(healerId);
 	//new amount = GetEventInt(event, "amount");
-	if (healer == 0 || patient == 0) {
+	if (healer == 0 && patient == 0) {
+		// Caused by medpacks
+		return Plugin_Continue;
+	} else if (healer == 0 || patient == 0) {
 		// This has been observed to happen by http://www.teamfortress.tv/post/631052/medicstats-sourcemod-plugin
 		LogMessage("Wrong player-healed event detected: patient=%i/%i, healer=%i/%i", patientId, patient, healerId, healer);
 		return Plugin_Continue;
 	}
+	
+	if (TF2_GetPlayerClass(healer) != TFClass_Medic) {
+		// This will ignore other heal events, like an Engineer's dispenser
+		return Plugin_Continue;
+	}
+	
 	new TFTeam:healerTeam = TFTeam:GetClientTeam(healer);
 	
 	// ==== Buffs ====
