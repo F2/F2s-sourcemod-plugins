@@ -1,0 +1,13 @@
+name: CI
+
+on: workflow_dispatch
+    
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Powershell version
+      run: |
+        pwsh -Command Get-Host
+        
