@@ -9,5 +9,5 @@ jobs:
     steps:
     - name: Powershell version
       run: |
-        pwsh -Command -Get-Host
+        pwsh -Command Get-Host
         
