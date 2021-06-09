@@ -1,6 +1,6 @@
 sourcemod-binaries
 *.smx
-DIST
+dist*
 private-*
 
 *.ps1

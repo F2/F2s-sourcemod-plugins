@@ -1,3 +1,5 @@
+#Requires -Version 7.0
+
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
@@ -6,6 +8,17 @@ function ZipFiles($zipfilename, $sourcedir)
    Add-Type -Assembly System.IO.Compression.FileSystem
    $compressionLevel = [System.IO.Compression.CompressionLevel]::Optimal
    [System.IO.Compression.ZipFile]::CreateFromDirectory($sourcedir, $zipfilename, $compressionLevel, $false)
+   MarkFilesInZipAsReadableOnLinux $zipfilename
+}
+
+function MarkFilesInZipAsReadableOnLinux($zipfilename)
+{
+    $zip = [System.IO.Compression.ZipFile]::Open($zipfilename, [System.IO.Compression.ZipArchiveMode]::Update)
+    foreach ($entry in $zip.Entries) 
+    {
+        $entry.ExternalAttributes = $entry.ExternalAttributes -bor ([Convert]::ToInt32("444", 8) -shl 16)
+    }
+    $zip.Dispose();
 }
 
 function ZipFile($zipfilename, $sourcefile)
@@ -28,7 +41,6 @@ New-Item -ItemType directory -Path (Join-Path "dist" "release")
 New-Item -ItemType directory -Path (Join-Path "dist" "source")
 New-Item -ItemType directory -Path (Join-Path "dist" "ftp")
 Copy-Item -Path "includes" -Destination (Join-Path "dist" "source") -Recurse
-
 
 $plugins = @("waitforstv", "medicstats", "supstats2", "logstf", "restorescore", "countdown", "fixstvslot", "pause", "recordstv", "classwarning", "afk");
 
@@ -56,13 +68,13 @@ foreach ($p in $plugins) {
     }
 
     # Zip the single smx file
-    ZipFile (Join-Path "dist" "ftp\$p.zip") (Join-Path $p "$p.smx")
+    ZipFile (Join-Path $PSScriptRoot "dist" "ftp\$p.zip") (Join-Path $PSScriptRoot $p "$p.smx")
 }
 
 # Zip the common RELEASE directory
-ZipFiles (Join-Path "dist" "ftp\f2-sourcemod-plugins.zip") (Join-Path "dist" "release")
+ZipFiles (Join-Path $PSScriptRoot "dist" "ftp\f2-sourcemod-plugins.zip") (Join-Path $PSScriptRoot "dist" "release")
 
 # Zip the common SOURCE directory
-ZipFiles (Join-Path "dist" "ftp\f2-sourcemod-plugins-src.zip") (Join-Path "dist" "source")
+ZipFiles (Join-Path $PSScriptRoot "dist" "ftp\f2-sourcemod-plugins-src.zip") (Join-Path $PSScriptRoot "dist" "source")
 
 Write-Host "Finished successfully"
