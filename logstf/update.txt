@@ -4,13 +4,12 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.3.0"
+			"Latest"	"2.3.1"
 		}
 		
-		"Notes"	"Changes in 2.3.0:"
-		"Notes"	"- Added support for SteamTools as an alternative for cURL"
-		"Notes"	"- Better error handling"
-		"Notes"	"- Support for new ready-up behaviour"
+		"Notes"	"Changes in 2.3.1:"
+		"Notes"	"- Added support for SteamWorks extension"
+		"Notes"	"- Fixed log upload not working on bball_tf_v2"
 	}
 	
 	"Files"

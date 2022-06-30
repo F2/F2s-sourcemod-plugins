@@ -36,13 +36,14 @@ TODO:
 #undef REQUIRE_EXTENSIONS
 #include <cURL>
 #include <steamtools>
+#include <SteamWorks>
 #if defined ANYHTTP_REQUIRE_EXTENSIONS
 	#define REQUIRE_EXTENSIONS
 #endif
 
 #include <kvizzle>
 
-#define ANYHTTP_VERSION		"1.0.0"
+#define ANYHTTP_VERSION		"1.1.0"
 
 #pragma dynamic 20971520 // Make sure we can allocate enough space for uploading files. Here's 20MB.
 
@@ -50,11 +51,12 @@ enum AnyHttp_Extension {
 	AnyHttpUnknown,
 	UseCURL,
 	UseSteamTools,
+	UseSteamWorks,
 };
 
 
 //typedef AnyHttp_Result = function void (bool success, const char[] contents);
-typedef AnyHttp_Result = function void (bool success, const char[] contents, int metadata);
+typedef AnyHttp_Result = function void (bool success, const char[] contents, int httpCode, int metadata);
 
 
 methodmap AnyHttpForm < Handle {
@@ -124,7 +126,9 @@ stock bool AnyHttp_Initialize() {
 	}
 	
 	if (AnyHttp_CurrentExtension == AnyHttpUnknown) {
-		if (GetFeatureStatus(FeatureType_Native, "curl_easy_init") == FeatureStatus_Available) {
+		if (LibraryExists("SteamWorks")) {
+			AnyHttp_CurrentExtension = UseSteamWorks;
+		} else if (GetFeatureStatus(FeatureType_Native, "curl_easy_init") == FeatureStatus_Available) {
 			AnyHttp_CurrentExtension = UseCURL;
 		} else if (LibraryExists("SteamTools")) {
 			AnyHttp_CurrentExtension = UseSteamTools;
@@ -144,7 +148,9 @@ stock bool AnyHttp_Get(const char[] url, AnyHttp_Result:callback, int metadata =
 	if (!AnyHttp_Initialize())
 		return false;
 	
-	if (AnyHttp_CurrentExtension == UseCURL) {
+	if (AnyHttp_CurrentExtension == UseSteamWorks) {
+		return AnyHttp_SteamWorks_Get(url, callback, metadata);
+	} else if (AnyHttp_CurrentExtension == UseCURL) {
 		return AnyHttp_cURL_Get(url, callback, metadata);
 	} else if (AnyHttp_CurrentExtension == UseSteamTools) {
 		return AnyHttp_SteamTools_Get(url, callback, metadata);
@@ -158,7 +164,9 @@ stock AnyHttpForm AnyHttp_CreatePostForm(const char[] url) {
 	if (!AnyHttp_Initialize())
 		return null;
 	
-	if (AnyHttp_CurrentExtension == UseCURL) {
+	if (AnyHttp_CurrentExtension == UseSteamWorks) {
+		return view_as<AnyHttpForm>(AnyHttp_SteamWorks_CreatePostForm(url));
+	} else if (AnyHttp_CurrentExtension == UseCURL) {
 		return view_as<AnyHttpForm>(AnyHttp_cURL_CreatePostForm(url));
 	} else if (AnyHttp_CurrentExtension == UseSteamTools) {
 		return view_as<AnyHttpForm>(AnyHttp_SteamTools_CreatePostForm(url));
@@ -192,7 +200,9 @@ stock bool AnyHttp_SendPostForm(AnyHttpForm handle, AnyHttp_Result callback) {
 	if (handle == null)
 		ThrowError("Invalid handle");
 	
-	if (AnyHttp_CurrentExtension == UseCURL) {
+	if (AnyHttp_CurrentExtension == UseSteamWorks) {
+		return AnyHttp_SteamWorks_SendPostForm(handle, callback);
+	} else if (AnyHttp_CurrentExtension == UseCURL) {
 		return AnyHttp_cURL_SendPostForm(handle, callback);
 	} else if (AnyHttp_CurrentExtension == UseSteamTools) {
 		return AnyHttp_SteamTools_SendPostForm(handle, callback);
@@ -216,10 +226,12 @@ stock void AnyHttp_CleanUp(Handle handle) {
 		CloseHandle(view_as<File>(filehandle_num));
 	}
 	KvizDelete(AnyHttp_kvData, "%i", _:handle);
-	if (AnyHttp_CurrentExtension == UseSteamTools)
-		Steam_ReleaseHTTPRequest(view_as<HTTPRequestHandle>(handle));
-	else
+	if (AnyHttp_CurrentExtension == UseSteamWorks)
 		CloseHandle(handle);
+	else if (AnyHttp_CurrentExtension == UseCURL)
+		CloseHandle(handle);
+	else if (AnyHttp_CurrentExtension == UseSteamTools)
+		Steam_ReleaseHTTPRequest(view_as<HTTPRequestHandle>(handle));
 }
 
 
@@ -345,6 +357,122 @@ stock void AnyHttp_GenerateUniqueFilename(char[] filename, int maxsize) {
 
 
 
+
+
+// =========== SteamWorks ============
+
+stock bool AnyHttp_SteamWorks_Get(const String:url[], AnyHttp_Result callback, int metadata = 0) {
+	Handle handle = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, url);
+	
+	KvizSetNum(AnyHttp_kvData, AnyHttp_StoreCallback(callback), "%i.callback", _:handle);
+	KvizSetNum(AnyHttp_kvData, metadata, "%i.metadata", _:handle);
+	
+	if (!SteamWorks_SetHTTPCallbacks(handle, AnyHttp_SteamWorks_Done) || !SteamWorks_SendHTTPRequest(handle)) {
+		CloseHandle(handle);
+		return false;
+	}
+
+	return true;
+}
+
+
+stock Handle AnyHttp_SteamWorks_CreatePostForm(const char[] url) {
+	return SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, url);
+}
+
+stock bool AnyHttp_SteamWorks_SendPostForm(Handle handle, AnyHttp_Result callback) {
+	KvizSetNum(AnyHttp_kvData, AnyHttp_StoreCallback(callback), "%i.callback", _:handle);
+	
+	int length = AnyHttp_SteamWorks_SendPostForm_Internal(handle, 0);
+	if (length < 0 || AnyHttp_SteamWorks_SendPostForm_Internal(handle, length) < 0) { 
+		AnyHttp_CleanUp(handle);
+		return false;
+	}
+	return true;
+}
+
+stock int AnyHttp_SteamWorks_SendPostForm_Internal(Handle handle, int bufferSize) {
+	char type[64];
+	
+	char[] buffer = new char[bufferSize];
+	
+	int bufferPos = 0;
+	
+	for (int i = 1; KvizGetStringExact(AnyHttp_kvData, type, sizeof(type), "%i.fields:nth-child(%i).type", _:handle, i); i++) {
+		if (StrEqual(type, "string")) {
+			char name[1024];
+			KvizGetStringExact(AnyHttp_kvData, name, sizeof(name), "%i.fields:nth-child(%i).name", _:handle, i);
+			char contents[1024];
+			KvizGetStringExact(AnyHttp_kvData, contents, sizeof(contents), "%i.fields:nth-child(%i).value", _:handle, i);
+			AnyHttp_AppendMultipartString(buffer, bufferPos, bufferSize, name, contents, bufferSize == 0);
+		} else if (StrEqual(type, "file")) {
+			char name[1024];
+			KvizGetStringExact(AnyHttp_kvData, name, sizeof(name), "%i.fields:nth-child(%i).name", _:handle, i);
+			char filepath[1024];
+			KvizGetStringExact(AnyHttp_kvData, filepath, sizeof(filepath), "%i.fields:nth-child(%i).value", _:handle, i);
+			if (!AnyHttp_AppendMultipartFile(buffer, bufferPos, bufferSize, name, filepath, bufferSize == 0))
+				return -1;
+		} else {
+			ThrowError("Unknown type");
+		}
+	}
+	AppendMultipartEnd(buffer, bufferPos, bufferSize, bufferSize == 0);
+	
+	if (bufferSize == 0) {
+		return bufferPos;
+	}
+	
+	char contentType[256] = "multipart/form-data; boundary=";
+	StrCat(contentType, sizeof(contentType), AnyHttp_MultiPartBoundary);
+	
+	SteamWorks_SetHTTPRequestRawPostBody(handle, contentType, buffer, bufferPos);
+	
+	if (!SteamWorks_SetHTTPCallbacks(handle, AnyHttp_SteamWorks_Done) || !SteamWorks_SendHTTPRequest(handle)) {
+		return -1;
+	}
+	
+	return bufferPos;
+}
+
+public void AnyHttp_SteamWorks_Done(Handle HTTPRequest, bool bFailure, bool requestSuccessful, EHTTPStatusCode statusCode) {
+	int callbackID = KvizGetNum(AnyHttp_kvData, -1, "%i.callback", _:HTTPRequest);
+	if (callbackID == -1)
+		return; // The call was cancelled.
+	int metadata = KvizGetNum(AnyHttp_kvData, 0, "%i.metadata", _:HTTPRequest);
+	AnyHttp_Result callback = AnyHttp_RetrieveCallback(callbackID);
+	KvizDelete(AnyHttp_kvData, "%i", _:HTTPRequest);
+	
+	int size = 0;
+	if (requestSuccessful)
+		SteamWorks_GetHTTPResponseBodySize(HTTPRequest, size);
+	
+	PrintToChatAll("Body size: %i", size);
+	
+	char[] buffer = new char[size];
+	
+	Call_StartFunction(null, callback);
+	Call_PushCell(_:requestSuccessful);
+	
+	if (requestSuccessful) {
+		SteamWorks_GetHTTPResponseBodyData(HTTPRequest, buffer, size);
+		PrintToChatAll("Body: %s", buffer);
+		Call_PushString(buffer);
+	} else {
+		Call_PushString("");
+	}
+
+	Call_PushCell(statusCode);
+	Call_PushCell(metadata);
+	CloseHandle(HTTPRequest);
+	Call_Finish();
+}
+
+
+
+
+
+
+
 // =========== SteamTools ============
 
 stock bool AnyHttp_SteamTools_Get(const String:url[], AnyHttp_Result callback, int metadata = 0) {
@@ -392,7 +520,6 @@ stock int AnyHttp_SteamTools_SendPostForm_Internal(HTTPRequestHandle handle, int
 			char contents[1024];
 			KvizGetStringExact(AnyHttp_kvData, contents, sizeof(contents), "%i.fields:nth-child(%i).value", _:handle, i);
 			AnyHttp_AppendMultipartString(buffer, bufferPos, bufferSize, name, contents, bufferSize == 0);
-			//PrintToServer("Adding string to form: %s = %s", name, contents);
 		} else if (StrEqual(type, "file")) {
 			char name[1024];
 			KvizGetStringExact(AnyHttp_kvData, name, sizeof(name), "%i.fields:nth-child(%i).name", _:handle, i);
@@ -400,7 +527,6 @@ stock int AnyHttp_SteamTools_SendPostForm_Internal(HTTPRequestHandle handle, int
 			KvizGetStringExact(AnyHttp_kvData, filepath, sizeof(filepath), "%i.fields:nth-child(%i).value", _:handle, i);
 			if (!AnyHttp_AppendMultipartFile(buffer, bufferPos, bufferSize, name, filepath, bufferSize == 0))
 				return -1;
-			//PrintToServer("Adding file to form: %s = %s", name, filepath);
 		} else {
 			ThrowError("Unknown type");
 		}
@@ -436,22 +562,21 @@ public AnyHttp_SteamTools_Done(HTTPRequestHandle HTTPRequest, bool requestSucces
 	if (requestSuccessful)
 		size = Steam_GetHTTPResponseBodySize(HTTPRequest);
 	
-	char[] buffer = new char[size + 1];
+	char[] buffer = new char[size];
 	
 	Call_StartFunction(null, callback);
 	Call_PushCell(_:requestSuccessful);
 	
 	if (requestSuccessful) {
-		Steam_GetHTTPResponseBodyData(HTTPRequest, buffer, size + 1);
+		Steam_GetHTTPResponseBodyData(HTTPRequest, buffer, size);
 		Call_PushString(buffer);
 	} else {
 		Call_PushString("");
 	}
 	
+	Call_PushCell(statusCode);
 	Call_PushCell(metadata);
-	
 	Steam_ReleaseHTTPRequest(HTTPRequest);
-	
 	Call_Finish();
 }
 
@@ -502,7 +627,7 @@ stock bool AnyHttp_cURL_Get(const char[] url, AnyHttp_Result callback, int metad
 		return false;
 	}
 	KvizSetNum(AnyHttp_kvData, _:filehandle, "%i.filehandle", _:curl);
-	if (!curl_easy_setopt_string(curl, CURLOPT_URL, view_as<any>(url))) {
+	if (!curl_easy_setopt_string(curl, CURLOPT_URL, url)) {
 		AnyHttp_CleanUp(curl);
 		return false;
 	}
@@ -545,7 +670,6 @@ stock bool AnyHttp_cURL_SendPostForm(Handle handle, AnyHttp_Result callback) {
 				AnyHttp_CleanUp(handle);
 				return false;
 			}
-			//PrintToServer("Adding string to form: %s = %s", name, contents);
 		} else if (StrEqual(type, "file")) {
 			char name[1024];
 			KvizGetStringExact(AnyHttp_kvData, name, sizeof(name), "%i.fields:nth-child(%i).name", _:handle, i);
@@ -555,7 +679,6 @@ stock bool AnyHttp_cURL_SendPostForm(Handle handle, AnyHttp_Result callback) {
 				AnyHttp_CleanUp(handle);
 				return false;
 			}
-			//PrintToServer("Adding file to form: %s = %s", name, filepath);
 		} else {
 			ThrowError("Unknown type");
 		}
@@ -596,6 +719,7 @@ public AnyHttp_cURL_Done(Handle hndl, CURLcode code) {
 	KvizGetString(AnyHttp_kvData, filename, sizeof(filename), "", "%i.filename", _:hndl);
 	KvizDelete(AnyHttp_kvData, "%i", _:hndl);
 	
+	int responseCode = 0;
 	bool success;
 	int size = 0;
 	if (code != CURLE_OK) {
@@ -608,7 +732,9 @@ public AnyHttp_cURL_Done(Handle hndl, CURLcode code) {
 		success = false;
  	} else {
 		CloseHandle(filehandle); // Must be closed so it is flushed.
-		
+
+		curl_easy_getinfo_int(hndl, CURLINFO_RESPONSE_CODE, responseCode);
+
 		success = true;
 		size = FileSize(filename);
 	}
@@ -633,8 +759,8 @@ public AnyHttp_cURL_Done(Handle hndl, CURLcode code) {
 	}
 	DeleteFile(filename);
 	
+	Call_PushCell(responseCode);
 	Call_PushCell(metadata);
-	
 	Call_Finish();
 }
 
