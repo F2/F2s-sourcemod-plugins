@@ -31,17 +31,18 @@ Download all plugins in a zip file here: <a href="http://sourcemod.krus.dk/f2-so
 
 ### LogsTF <a href="http://sourcemod.krus.dk/logstf.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
 - **Note:** Requires either [SteamWorks](http://users.alliedmods.net/~kyles/builds/SteamWorks/) ([mirror](https://github.com/hexa-core-eu/SteamWorks/releases)) or [cURL](https://code.google.com/archive/p/sourcemod-curl-extension/downloads) extension
-- Set cvar logstf_apikey to your Logs.tf API Key
 - Automatically uploads logs to logs.tf
+- Set cvar **logstf_apikey** to your Logs.tf API Key
 - You can see the logs in-game by typing `!logs` or `.ss`
 - Uploads logs after each round (the log will be updated on logs.tf after each round), so you can use `!logs`/`.ss` after each round
 - Fixes several bugs seen in other plugins (including the last round missing, and stats being wrong when you play two matches on the same map)
 
 ### Pause <a href="http://sourcemod.krus.dk/pause.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
-- Allows everyone to chat as much as they want during the pause
-- Adds a 5 second countdown when unpausing
-- Unpause protection (if two people write pause at the same time, it doesn't accidentally unpause)
 - Shows pause information in chat (see [screenshot](http://sourcemod.krus.dk/pause.jpg) and [screenshot](http://sourcemod.krus.dk/pause-time.jpg))
+- Use **repause** command to quickly unpause and pause (when someone is trying to rejoin during a pause)
+- Adds a 5 second countdown when unpausing
+- Allows everyone to chat as much as they want during the pause
+- Unpause protection (if two people write pause at the same time, it doesn't accidentally unpause)
 
 ### ClassWarning <a href="http://sourcemod.krus.dk/classwarning.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
 - In ETF2L, class limits are not enforced by the server. This plugin warns players in chat if they are breaking the class limit (see [screenshot](http://sourcemod.krus.dk/classwarning.jpg)).
@@ -49,7 +50,7 @@ Download all plugins in a zip file here: <a href="http://sourcemod.krus.dk/f2-so
 ### RecordSTV <a href="http://sourcemod.krus.dk/recordstv.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
 - When a match starts, it starts recording a STV demo
 - When the match ends, it stops the recording
-- Set up the path and the filenames of the demos with cvars: recordstv_path and recordstv_filename
+- Set up the path and the filenames of the demos with cvars: **recordstv_path** and **recordstv_filename**
 - In both cvars you can use several placeholders. See the description of recordstv_filename for the full list of placeholders.
 
 ### WaitForSTV <a href="http://sourcemod.krus.dk/waitforstv.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
@@ -67,7 +68,9 @@ Download all plugins in a zip file here: <a href="http://sourcemod.krus.dk/f2-so
 ### FixStvSlot <a href="http://sourcemod.krus.dk/fixstvslot.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
 - Changes the map on server start to avoid a crash related to STV slot
 
-------
+
+## Automatic updates
+These plugins can automatically be updated by using <a href="https://forums.alliedmods.net/showthread.php?t=169095">Updater</a> by GoD-Tony.
 
 ## Thanks to...
 **Lange** for making `soap_tf2dm` and mgemod, from which I borrowed code\
