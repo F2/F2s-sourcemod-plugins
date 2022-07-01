@@ -4,10 +4,10 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.3.1"
+			"Latest"	"2.3.2"
 		}
 		
-		"Notes"	"Changes in 2.3.1:"
+		"Notes"	"Changes in 2.3.2:"
 		"Notes"	"- Added support for SteamWorks extension"
 		"Notes"	"- Fixed log upload not working on bball_tf_v2"
 	}

@@ -446,8 +446,6 @@ public void AnyHttp_SteamWorks_Done(Handle HTTPRequest, bool bFailure, bool requ
 	if (requestSuccessful)
 		SteamWorks_GetHTTPResponseBodySize(HTTPRequest, size);
 	
-	PrintToChatAll("Body size: %i", size);
-	
 	char[] buffer = new char[size];
 	
 	Call_StartFunction(null, callback);
@@ -455,7 +453,6 @@ public void AnyHttp_SteamWorks_Done(Handle HTTPRequest, bool bFailure, bool requ
 	
 	if (requestSuccessful) {
 		SteamWorks_GetHTTPResponseBodyData(HTTPRequest, buffer, size);
-		PrintToChatAll("Body: %s", buffer);
 		Call_PushString(buffer);
 	} else {
 		Call_PushString("");

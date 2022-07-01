@@ -73,7 +73,7 @@ Release notes:
 - Support for new ready-up behaviour
 
 
----- 2.3.1 (30/06/2022) ----
+---- 2.3.2 (30/06/2022) ----
 - Added support for SteamWorks extension
 - Fixed log upload not working on bball_tf_v2
 
@@ -100,7 +100,7 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION "2.3.1"
+#define PLUGIN_VERSION "2.3.2"
 #define UPDATE_URL		"http://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
