@@ -17,8 +17,7 @@
  * @param buffer		String buffer array
  * @param size			Size of string buffer
  */
-stock void File_GetBaseName(const char[] path, char[] buffer, int size)
-{
+stock void File_GetBaseName(const char[] path, char[] buffer, int size) {
 	if (path[0] == '\0') {
 		buffer[0] = '\0';
 		return;
@@ -46,8 +45,7 @@ stock void File_GetBaseName(const char[] path, char[] buffer, int size)
  * @param buffer		String buffer array
  * @param size			Size of string buffer
  */
-stock void File_GetDirName(const char[] path, char[] buffer, int size)
-{
+stock void File_GetDirName(const char[] path, char[] buffer, int size) {
 	if (path[0] == '\0') {
 		buffer[0] = '\0';
 		return;
@@ -77,8 +75,7 @@ stock void File_GetDirName(const char[] path, char[] buffer, int size)
  * @param buffer		String buffer array
  * @param size			Size of string buffer
  */
-stock void File_GetFileName(const char[] path, char[] buffer, int size)
-{
+stock void File_GetFileName(const char[] path, char[] buffer, int size) {
 	if (path[0] == '\0') {
 		buffer[0] = '\0';
 		return;
@@ -103,8 +100,7 @@ stock void File_GetFileName(const char[] path, char[] buffer, int size)
  * @param buffer		String buffer array
  * @param size			Max length of string buffer
  */
-stock void File_GetExtension(const char[] path, char[] buffer, int size)
-{
+stock void File_GetExtension(const char[] path, char[] buffer, int size) {
 	int extpos = FindCharInString(path, '.', true);
 
 	if (extpos == -1) {
@@ -132,8 +128,7 @@ stock void File_GetExtension(const char[] path, char[] buffer, int size)
 
 // Damn you SourcePawn :( I didn't want to
 char _smlib_empty_twodimstring_array[][] = { { '\0' } };
-stock void File_AddToDownloadsTable(const char[] path, bool recursive=true, const char[][] ignoreExts=_smlib_empty_twodimstring_array, int size=0)
-{
+stock void File_AddToDownloadsTable(const char[] path, bool recursive = true, const char[][] ignoreExts = _smlib_empty_twodimstring_array, int size = 0) {
 	if (path[0] == '\0') {
 		return;
 	}
@@ -215,8 +210,7 @@ stock void File_AddToDownloadsTable(const char[] path, bool recursive=true, cons
  *
  * @param path			Path to the .txt file.
  */
-stock void File_ReadDownloadList(const char[] path)
-{
+stock void File_ReadDownloadList(const char[] path) {
 	File file = OpenFile(path, "r");
 
 	if (file  == INVALID_HANDLE) {
@@ -263,8 +257,7 @@ stock void File_ReadDownloadList(const char[] path)
  * @param setFailState	If true, it sets the failstate if the translations file doesn't exist
  * @return				True on success, false otherwise (only if setFailState is set to false)
  */
-stock bool File_LoadTranslations(const char[] file, bool setFailState=true)
-{
+stock bool File_LoadTranslations(const char[] file, bool setFailState = true) {
 	char path[PLATFORM_MAX_PATH];
 
 	BuildPath(Path_SM, path, sizeof(path), "translations/%s", file);
@@ -298,8 +291,7 @@ stock bool File_LoadTranslations(const char[] file, bool setFailState=true)
  * @param size		If -1, reads until a null terminator is encountered in the file.  Otherwise, read_count bytes are read into the buffer provided.  In this case the buffer is not explicitly null terminated, and the buffer will contain any null terminators read from the file.
  * @return			Number of characters written to the buffer, or -1 if an error was encountered.
  */
-stock int File_ToString(const char[] path, char[] buffer, int size)
-{
+stock int File_ToString(const char[] path, char[] buffer, int size) {
 	File file = OpenFile(path, "rb");
 
 	if (file == INVALID_HANDLE) {
@@ -320,8 +312,7 @@ stock int File_ToString(const char[] path, char[] buffer, int size)
  * @param str		String to write
  * @return			True on success, false otherwise
  */
-stock bool File_StringToFile(const char[] path, char[] str)
-{
+stock bool File_StringToFile(const char[] path, char[] str) {
 	File file = OpenFile(path, "wb");
 
 	if (file == INVALID_HANDLE) {
@@ -337,14 +328,13 @@ stock bool File_StringToFile(const char[] path, char[] str)
 /*
  * Copies file source to destination
  * Based on code of javalia:
- * http://forums.alliedmods.net/showthread.php?t=159895
+ * http://forums.alliedmods.net/showthread.php?t = 159895
  *
  * @param source		Input file
  * @param destination	Output file
  * @return				True on success, false otherwise
  */
-stock bool File_Copy(const char[] source, const char[] destination)
-{
+stock bool File_Copy(const char[] source, const char[] destination) {
 	File file_source = OpenFile(source, "rb");
 
 	if (file_source == INVALID_HANDLE) {
@@ -385,8 +375,7 @@ stock bool File_Copy(const char[] source, const char[] destination)
  * @param dirMode		Optional: File mode for directories that will be created (Default = 0755), don't forget to convert FROM octal
  * @return				True on success, false otherwise
  */
-stock bool File_CopyRecursive(const char[] path, const char[] destination, bool stop_on_error=false, int dirMode=493)
-{
+stock bool File_CopyRecursive(const char[] path, const char[] destination, bool stop_on_error = false, int dirMode = 493) {
 	if (FileExists(path)) {
 		return File_Copy(path, destination);
 	}
@@ -398,8 +387,7 @@ stock bool File_CopyRecursive(const char[] path, const char[] destination, bool 
 	}
 }
 
-static stock bool Sub_File_CopyRecursive(const char[] path, const char[] destination, bool stop_on_error=false, FileType fileType, int dirMode)
-{
+static stock bool Sub_File_CopyRecursive(const char[] path, const char[] destination, bool stop_on_error = false, FileType fileType, int dirMode) {
 	if (fileType == FileType_File) {
 		return File_Copy(path, destination);
 	}

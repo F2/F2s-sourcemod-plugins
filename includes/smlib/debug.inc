@@ -11,8 +11,7 @@
  * @param array		Static Float-Array.
  * @param size		Size of the Array.
  */
-stock void Debug_FloatArray(const float[] array, int size=3)
-{
+stock void Debug_FloatArray(const float[] array, int size=3) {
 	char output[64] = "";
 
 	for (int i=0; i < size; ++i) {

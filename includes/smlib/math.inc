@@ -14,8 +14,7 @@
 #define FEET_TO_METERS		0.3048
 #define KILOMETERS_TO_MILES	0.62137
 
-enum VecAngle
-{
+enum VecAngle {
 	ANG_ALPHA,
 	ANG_BETA,
 	ANG_GAMMA
@@ -29,8 +28,7 @@ enum VecAngle
  * @param number		A number that can be positive or negative.
  * @return				Positive number.
  */
-stock int Math_Abs(int value)
-{
+stock int Math_Abs(int value) {
 	return (value ^ (value >> 31)) - (value >> 31);
 }
 
@@ -43,8 +41,7 @@ stock int Math_Abs(int value)
  * @param tolerance 	If you want to check that those vectors are somewhat even. 0.0 means they are 100% even if this function returns true.
  * @return				True if vectors are equal, false otherwise.
  */
-stock bool Math_VectorsEqual(float vec1[3], float vec2[3], float tolerance=0.0)
-{
+stock bool Math_VectorsEqual(float vec1[3], float vec2[3], float tolerance = 0.0) {
 	float distance = GetVectorDistance(vec1, vec2, true);
 
 	return distance <= (tolerance * tolerance);
@@ -59,8 +56,7 @@ stock bool Math_VectorsEqual(float vec1[3], float vec2[3], float tolerance=0.0)
  * @param min			Min Value used as lower border
  * @return				Correct value not lower than min
  */
-stock any Math_Min(any value, any min)
-{
+stock any Math_Min(any value, any min) {
 	if (value < min) {
 		value = min;
 	}
@@ -77,8 +73,7 @@ stock any Math_Min(any value, any min)
  * @param max			Max Value used as upper border
  * @return				Correct value not upper than max
  */
-stock any Math_Max(any value, any max)
-{
+stock any Math_Max(any value, any max) {
 	if (value > max) {
 		value = max;
 	}
@@ -99,8 +94,7 @@ stock any Math_Max(any value, any max)
  * @param max			Max value used as upper border
  * @return				Correct value not lower than min and not greater than max.
  */
-stock any Math_Clamp(any value, any min, any max)
-{
+stock any Math_Clamp(any value, any min, any max) {
 	value = Math_Min(value, min);
 	value = Math_Max(value, max);
 
@@ -116,8 +110,7 @@ stock any Math_Clamp(any value, any min, any max)
  * @param max		The upper border.
  * @return			True if the value is within bounds (bigger or equal min / smaller or equal max), false otherwise.
  */
-stock bool Math_IsInBounds(any value, any min, any max)
-{
+stock bool Math_IsInBounds(any value, any min, any max) {
 	if (value < min || value > max) {
 		return false;
 	}
@@ -136,8 +129,7 @@ stock bool Math_IsInBounds(any value, any min, any max)
  * @param max			Max value used as upper border
  * @return				Overflowed number
  */
-stock any Math_Overflow(any value, any min, any max)
-{
+stock any Math_Overflow(any value, any min, any max) {
 	return (value % max) + min;
 }
 
@@ -151,8 +143,7 @@ stock any Math_Overflow(any value, any min, any max)
  * @param max			Max value used as upper border
  * @return				Random Integer number between min and max
  */
-stock int Math_GetRandomInt(int min, int max)
-{
+stock int Math_GetRandomInt(int min, int max) {
 	int random = GetURandomInt();
 
 	if (random == 0) {
@@ -171,8 +162,7 @@ stock int Math_GetRandomInt(int min, int max)
  * @param max			Max value used as upper border
  * @return				Random Float number between min and max
  */
-stock float Math_GetRandomFloat(float min, float max)
-{
+stock float Math_GetRandomFloat(float min, float max) {
 	return (GetURandomFloat() * (max  - min)) + min;
 }
 
@@ -212,8 +202,7 @@ stock float Math_GetPercentageFloat(float value, float all) {
  * @param scale			The position on the line 0.0 is the start 1.0 is the end.
  * @param output		Output vector
  */
-stock void Math_MoveVector(const float start[3], const float end[3], float scale, float output[3])
-{
+stock void Math_MoveVector(const float start[3], const float end[3], float scale, float output[3]) {
 	SubtractVectors(end,start,output);
 	ScaleVector(output,scale);
 	AddVectors(start,output,output);
@@ -227,8 +216,7 @@ stock void Math_MoveVector(const float start[3], const float end[3], float scale
  * @param z				Float value.
  * @param result		Output vector.
  */
-stock void Math_MakeVector(float x, float y, float z, float result[3])
-{
+stock void Math_MakeVector(float x, float y, float z, float result[3]) {
 	result[0] = x;
 	result[1] = y;
 	result[2] = z;
@@ -246,8 +234,7 @@ stock void Math_MakeVector(float x, float y, float z, float result[3])
  * @param angles 		How to rotate the vector.
  * @param result		Output vector.
  */
-stock void Math_RotateVector(const float vec[3], const float angles[3], float result[3])
-{
+stock void Math_RotateVector(const float vec[3], const float angles[3], float result[3]) {
 	// First the angle/radiant calculations
 	float rad[3];
 	// I don't really know why, but the alpha, beta, gamma order of the angles are messed up...
@@ -296,8 +283,7 @@ stock void Math_RotateVector(const float vec[3], const float angles[3], float re
  * @param units			Float value
  * @return				Meters as Float value.
  */
-stock float Math_UnitsToMeters(float units)
-{
+stock float Math_UnitsToMeters(float units) {
 	return (units * GAMEUNITS_TO_METERS);
 }
 
@@ -307,8 +293,7 @@ stock float Math_UnitsToMeters(float units)
  * @param units			Float value
  * @return				Feet as Float value.
  */
-stock float Math_UnitsToFeet(float units)
-{
+stock float Math_UnitsToFeet(float units) {
 	return (Math_UnitsToMeters(units) * METERS_TO_FEET);
 }
 
@@ -318,8 +303,7 @@ stock float Math_UnitsToFeet(float units)
  * @param units			Float value
  * @return				Centimeters as Float value.
  */
-stock float Math_UnitsToCentimeters(float units)
-{
+stock float Math_UnitsToCentimeters(float units) {
 	return (Math_UnitsToMeters(units) * 100.0);
 }
 
@@ -329,8 +313,7 @@ stock float Math_UnitsToCentimeters(float units)
  * @param units			Float value
  * @return				Kilometers as Float value.
  */
-stock float Math_UnitsToKilometers(float units)
-{
+stock float Math_UnitsToKilometers(float units) {
 	return (Math_UnitsToMeters(units) / 1000.0);
 }
 
@@ -340,7 +323,6 @@ stock float Math_UnitsToKilometers(float units)
  * @param units			Float value
  * @return				Miles as Float value.
  */
-stock float Math_UnitsToMiles(float units)
-{
+stock float Math_UnitsToMiles(float units) {
 	return (Math_UnitsToKilometers(units) * KILOMETERS_TO_MILES);
 }

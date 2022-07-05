@@ -12,8 +12,7 @@
  *
  * @return				True on success, false otherwise
  */
-stock bool Game_End()
-{
+stock bool Game_End() {
 	int game_end = FindEntityByClassname(-1, "game_end");
 
 	if (game_end == -1) {
@@ -37,8 +36,7 @@ stock bool Game_End()
  * @param switchTeams	If to switch the teams when the game is going to be reset.
  * @return				True on success, false otherwise
  */
-stock bool Game_EndRound(int team=0, bool forceMapReset=false, bool switchTeams=false)
-{
+stock bool Game_EndRound(int team = 0, bool forceMapReset = false, bool switchTeams = false) {
 	int game_round_win = FindEntityByClassname(-1, "game_round_win");
 
 	if (game_round_win == -1) {

@@ -15,8 +15,7 @@
 
 
 // Entity Dissolve types
-enum DissolveType
-{
+enum DissolveType {
 	DISSOLVE_NORMAL = 0,
 	DISSOLVE_ELECTRICAL,
 	DISSOLVE_ELECTRICAL_LIGHT,
@@ -31,8 +30,7 @@ enum DissolveType
  * @param magnitude		How strongly to push away from the center.
  * @return				True on success, otherwise false.
  */
-stock bool Effect_DissolveEntity(int entity, DissolveType dissolveType=DISSOLVE_NORMAL, int magnitude=1)
-{
+stock bool Effect_DissolveEntity(int entity, DissolveType dissolveType = DISSOLVE_NORMAL, int magnitude = 1) {
 	int env_entity_dissolver = CreateEntityByName("env_entity_dissolver");
 
 	if (env_entity_dissolver == -1) {
@@ -55,8 +53,7 @@ stock bool Effect_DissolveEntity(int entity, DissolveType dissolveType=DISSOLVE_
  * @param dissolveType	Dissolve Type, use the DissolveType enum.
  * @return				True on success, otherwise false.
  */
-stock bool Effect_DissolvePlayerRagDoll(int client, DissolveType dissolveType=DISSOLVE_NORMAL)
-{
+stock bool Effect_DissolvePlayerRagDoll(int client, DissolveType dissolveType = DISSOLVE_NORMAL) {
 	int m_hRagdoll = GetEntPropEnt(client, Prop_Send, "m_hRagdoll");
 
 	if (m_hRagdoll == -1) {
@@ -83,8 +80,7 @@ typedef EffectCallback = function void(int entity, any data);
  * @param callback		Optional: You can specify a callback Function that will get called when the fade is finished.
  * @param data			Optional: You can pass any data to the callback.
  */
-stock void Effect_Fade(int entity, bool fadeOut=true, bool kill=false, bool fast=true, EffectCallback callback=INVALID_FUNCTION, any data=0)
-{
+stock void Effect_Fade(int entity, bool fadeOut = true, bool kill = false, bool fast = true, EffectCallback callback = INVALID_FUNCTION, any data = 0) {
 	float timerTime = 0.0;
 
 	if (fast) {
@@ -131,8 +127,7 @@ stock void Effect_Fade(int entity, bool fadeOut=true, bool kill=false, bool fast
  * @param callback		Optional: You can specify a callback Function that will get called when the fade is finished.
  * @param data			Optional: You can pass any data to the callback.
  */
-stock void Effect_FadeIn(int entity, bool fast=true, EffectCallback callback=INVALID_FUNCTION, any data=0)
-{
+stock void Effect_FadeIn(int entity, bool fast = true, EffectCallback callback = INVALID_FUNCTION, any data = 0) {
 	Effect_Fade(entity, false, false, fast, callback, data);
 }
 
@@ -147,13 +142,11 @@ stock void Effect_FadeIn(int entity, bool fast=true, EffectCallback callback=INV
  * @param callback		Optional: You can specify a callback Function that will get called when the fade is finished.
  * @param data			Optional: You can pass any data to the callback.
  */
-stock void Effect_FadeOut(int entity, bool kill=false, bool fast=true, EffectCallback callback=INVALID_FUNCTION, any data=0)
-{
+stock void Effect_FadeOut(int entity, bool kill = false, bool fast = true, EffectCallback callback = INVALID_FUNCTION, any data = 0) {
 	Effect_Fade(entity, true, kill, fast, callback, data);
 }
 
-public Action _smlib_Timer_Effect_Fade(Handle Timer, DataPack dataPack)
-{
+public Action _smlib_Timer_Effect_Fade(Handle Timer, DataPack dataPack) {
 	int entity = ReadPackCell(dataPack);
 	int kill = ReadPackCell(dataPack);
 	Function callback = ReadPackFunction(dataPack);
@@ -199,15 +192,15 @@ stock void Effect_DrawBeamBoxToClient(
 	const float upperCorner[3],
 	int modelIndex,
 	int haloIndex,
-	int startFrame=0,
-	int frameRate=30,
-	float life=5.0,
-	float width=5.0,
-	float endWidth=5.0,
-	int fadeLength=2,
-	float amplitude=1.0,
-	const int color[4]={ 255, 0, 0, 255 },
-	int speed=0
+	int startFrame = 0,
+	int frameRate = 30,
+	float life = 5.0,
+	float width = 5.0,
+	float endWidth = 5.0,
+	int fadeLength = 2,
+	float amplitude = 1.0,
+	const int color[4] = { 255, 0, 0, 255 },
+	int speed = 0
 ) {
     int clients[1];
     clients[0] = client;
@@ -238,17 +231,16 @@ stock void Effect_DrawBeamBoxToAll(
 	const float upperCorner[3],
 	int modelIndex,
 	int haloIndex,
-	int startFrame=0,
-	int frameRate=30,
-	float life=5.0,
-	float width=5.0,
-	float endWidth=5.0,
-	int fadeLength=2,
-	float amplitude=1.0,
-	const int color[4]={ 255, 0, 0, 255 },
-	int speed=0
-)
-{
+	int startFrame = 0,
+	int frameRate = 30,
+	float life = 5.0,
+	float width = 5.0,
+	float endWidth = 5.0,
+	int fadeLength = 2,
+	float amplitude = 1.0,
+	const int color[4] = { 255, 0, 0, 255 },
+	int speed = 0
+) {
 	int[] clients = new int[MaxClients];
 	int numClients = Client_Get(clients, CLIENTFILTER_INGAME);
 
@@ -283,20 +275,20 @@ stock void Effect_DrawBeamBox(
 	const float upperCorner[3],
 	int modelIndex,
 	int haloIndex,
-	int startFrame=0,
-	int frameRate=30,
-	float life=5.0,
-	float width=5.0,
-	float endWidth=5.0,
-	int fadeLength=2,
-	float amplitude=1.0,
-	const int color[4]={ 255, 0, 0, 255 },
-	int speed=0
+	int startFrame = 0,
+	int frameRate = 30,
+	float life = 5.0,
+	float width = 5.0,
+	float endWidth = 5.0,
+	int fadeLength = 2,
+	float amplitude = 1.0,
+	const int color[4] = { 255, 0, 0, 255 },
+	int speed = 0
 ) {
 	// Create the additional corners of the box
 	float corners[8][3];
 
-	for (int i=0; i < 4; i++) {
+	for (int i = 0; i < 4; i++) {
 		Array_Copy(bottomCorner,	corners[i],		3);
 		Array_Copy(upperCorner,		corners[i+4],	3);
 	}
@@ -314,21 +306,21 @@ stock void Effect_DrawBeamBox(
 
 	// Horizontal Lines
 	// Bottom
-	for (int i=0; i < 4; i++) {
+	for (int i = 0; i < 4; i++) {
 		int j = ( i == 3 ? 0 : i+1 );
 		TE_SetupBeamPoints(corners[i], corners[j], modelIndex, haloIndex, startFrame, frameRate, life, width, endWidth, fadeLength, amplitude, color, speed);
 		TE_Send(clients, numClients);
 	}
 
 	// Top
-	for (int i=4; i < 8; i++) {
+	for (int i = 4; i < 8; i++) {
 		int j = ( i == 7 ? 4 : i+1 );
 		TE_SetupBeamPoints(corners[i], corners[j], modelIndex, haloIndex, startFrame, frameRate, life, width, endWidth, fadeLength, amplitude, color, speed);
 		TE_Send(clients, numClients);
 	}
 
 	// All Vertical Lines
-	for (int i=0; i < 4; i++) {
+	for (int i = 0; i < 4; i++) {
 		TE_SetupBeamPoints(corners[i], corners[i+4], modelIndex, haloIndex, startFrame, frameRate, life, width, endWidth, fadeLength, amplitude, color, speed);
 		TE_Send(clients, numClients);
 	}
@@ -365,15 +357,15 @@ stock void Effect_DrawBeamBoxRotatableToClient(
 	const float angles[3],
 	int modelIndex,
 	int haloIndex,
-	int startFrame=0,
-	int frameRate=30,
-	float life=5.0,
-	float width=5.0,
-	float endWidth=5.0,
-	int fadeLength=2,
-	float amplitude=1.0,
-	const int color[4]={ 255, 0, 0, 255 },
-	int speed=0
+	int startFrame = 0,
+	int frameRate = 30,
+	float life = 5.0,
+	float width = 5.0,
+	float endWidth = 5.0,
+	int fadeLength = 2,
+	float amplitude = 1.0,
+	const int color[4] = { 255, 0, 0, 255 },
+	int speed = 0
 ) {
     int clients[1];
     clients[0] = client;
@@ -410,17 +402,16 @@ stock void Effect_DrawBeamBoxRotatableToAll(
 	const float angles[3],
 	int modelIndex,
 	int haloIndex,
-	int startFrame=0,
-	int frameRate=30,
-	float life=5.0,
-	float width=5.0,
-	float endWidth=5.0,
-	int fadeLength=2,
-	float amplitude=1.0,
-	const int color[4]={ 255, 0, 0, 255 },
-	int speed=0
-)
-{
+	int startFrame = 0,
+	int frameRate = 30,
+	float life = 5.0,
+	float width = 5.0,
+	float endWidth = 5.0,
+	int fadeLength = 2,
+	float amplitude = 1.0,
+	const int color[4] = { 255, 0, 0, 255 },
+	int speed = 0
+) {
 	int[] clients = new int[MaxClients];
 	int numClients = Client_Get(clients, CLIENTFILTER_INGAME);
 
@@ -459,15 +450,15 @@ stock void Effect_DrawBeamBoxRotatable(
 	const float angles[3],
 	int modelIndex,
 	int haloIndex,
-	int startFrame=0,
-	int frameRate=30,
-	float life=5.0,
-	float width=5.0,
-	float endWidth=5.0,
-	int fadeLength=2,
-	float amplitude=1.0,
-	const int color[4]={ 255, 0, 0, 255 },
-	int speed=0
+	int startFrame = 0,
+	int frameRate = 30,
+	float life = 5.0,
+	float width = 5.0,
+	float endWidth = 5.0,
+	int fadeLength = 2,
+	float amplitude = 1.0,
+	const int color[4] = { 255, 0, 0, 255 },
+	int speed = 0
 ) {
 	// Create the additional corners of the box
 	float corners[8][3];
@@ -481,33 +472,33 @@ stock void Effect_DrawBeamBoxRotatable(
 	Math_MakeVector(mins[0], maxs[1], maxs[2], corners[7]);
 
 	// Rotate all edges
-	for (int i=0; i < sizeof(corners); i++) {
+	for (int i = 0; i < sizeof(corners); i++) {
 		Math_RotateVector(corners[i], angles, corners[i]);
 	}
 
 	// Apply world offset (after rotation)
-	for (int i=0; i < sizeof(corners); i++) {
+	for (int i = 0; i < sizeof(corners); i++) {
 		AddVectors(origin, corners[i], corners[i]);
 	}
 
     // Draw all the edges
 	// Horizontal Lines
 	// Bottom
-	for (int i=0; i < 4; i++) {
+	for (int i = 0; i < 4; i++) {
 		int j = ( i == 3 ? 0 : i+1 );
 		TE_SetupBeamPoints(corners[i], corners[j], modelIndex, haloIndex, startFrame, frameRate, life, width, endWidth, fadeLength, amplitude, color, speed);
 		TE_Send(clients, numClients);
 	}
 
 	// Top
-	for (int i=4; i < 8; i++) {
+	for (int i = 4; i < 8; i++) {
 		int j = ( i == 7 ? 4 : i+1 );
 		TE_SetupBeamPoints(corners[i], corners[j], modelIndex, haloIndex, startFrame, frameRate, life, width, endWidth, fadeLength, amplitude, color, speed);
 		TE_Send(clients, numClients);
 	}
 
 	// All Vertical Lines
-	for (int i=0; i < 4; i++) {
+	for (int i = 0; i < 4; i++) {
 		TE_SetupBeamPoints(corners[i], corners[i+4], modelIndex, haloIndex, startFrame, frameRate, life, width, endWidth, fadeLength, amplitude, color, speed);
 		TE_Send(clients, numClients);
 	}
@@ -539,14 +530,14 @@ stock void Effect_DrawAxisOfRotationToClient(
 	const float length[3],
 	int modelIndex,
 	int haloIndex,
-	int startFrame=0,
-	int frameRate=30,
-	float life=5.0,
-	float width=5.0,
-	float endWidth=5.0,
-	int fadeLength=2,
-	float amplitude=1.0,
-	int speed=0
+	int startFrame = 0,
+	int frameRate = 30,
+	float life = 5.0,
+	float width = 5.0,
+	float endWidth = 5.0,
+	int fadeLength = 2,
+	float amplitude = 1.0,
+	int speed = 0
 ) {
     int clients[1];
     clients[0] = client;
@@ -577,16 +568,15 @@ stock void Effect_DrawAxisOfRotationToAll(
 	const float length[3],
 	int modelIndex,
 	int haloIndex,
-	int startFrame=0,
-	int frameRate=30,
-	float life=5.0,
-	float width=5.0,
-	float endWidth=5.0,
-	int fadeLength=2,
-	float amplitude=1.0,
-	int speed=0
-)
-{
+	int startFrame = 0,
+	int frameRate = 30,
+	float life = 5.0,
+	float width = 5.0,
+	float endWidth = 5.0,
+	int fadeLength = 2,
+	float amplitude = 1.0,
+	int speed = 0
+) {
 	int[] clients = new int[MaxClients];
 	int numClients = Client_Get(clients, CLIENTFILTER_INGAME);
 
@@ -621,14 +611,14 @@ stock void Effect_DrawAxisOfRotation(
 	const float length[3],
 	int modelIndex,
 	int haloIndex,
-	int startFrame=0,
-	int frameRate=30,
-	float life=5.0,
-	float width=5.0,
-	float endWidth=5.0,
-	int fadeLength=2,
-	float amplitude=1.0,
-	int speed=0
+	int startFrame = 0,
+	int frameRate = 30,
+	float life = 5.0,
+	float width = 5.0,
+	float endWidth = 5.0,
+	int fadeLength = 2,
+	float amplitude = 1.0,
+	int speed = 0
 ) {
 	// Create the additional corners of the box
 	float xAxis[3], yAxis[3], zAxis[3];
@@ -679,14 +669,14 @@ stock int Effect_EnvSprite(
 	const float origin[3],
 	int modelIndex,
 	const int color[4]={255, 255, 255, 255},
-	float scale=0.25,
+	float scale = 0.25,
 	const char targetName[MAX_NAME_LENGTH]="",
-	int parent=-1,
-	RenderMode renderMode=RENDER_WORLDGLOW,
-	RenderFx renderFx=RENDERFX_NONE,
-	float glowProxySize=2.0,
-	float framerate=10.0,
-	float hdrColorScale=1.0,
+	int parent = -1,
+	RenderMode renderMode = RENDER_WORLDGLOW,
+	RenderFx renderFx = RENDERFX_NONE,
+	float glowProxySize = 2.0,
+	float framerate = 10.0,
+	float hdrColorScale = 1.0,
 	bool receiveShadows = true
 ) {
 	int entity = Entity_Create("env_sprite");

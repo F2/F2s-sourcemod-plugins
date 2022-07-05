@@ -17,18 +17,17 @@
  * @param public		Set to true to retrieve the server's public/external IP, false otherwise.
  * @return				Long IP or 0 if the IP couldn't be retrieved.
  */
-stock int Server_GetIP(bool public_=true)
-{
+stock int Server_GetIP(bool public_ = true) {
 	int ip = 0;
 
 	static ConVar cvHostip = null;
 
-	if (cvHostip == INVALID_HANDLE) {
+	if (cvHostip == null) {
 		cvHostip = FindConVar("hostip");
 		MarkNativeAsOptional("Steam_GetPublicIP");
 	}
 
-	if (cvHostip != INVALID_HANDLE) {
+	if (cvHostip != null) {
 		ip = cvHostip.IntValue;
 	}
 
@@ -67,15 +66,13 @@ stock int Server_GetIP(bool public_=true)
  * If the public IP couldn't be found, an empty String is returned.
  * If the server is not behind NAT, the public IP is the same as the private IP.
  *
- * @param buffer		String buffer (size=16)
+ * @param buffer		String buffer (size = 16)
  * @param size			String buffer size.
  * @param public		Set to true to retrieve the server's public/external IP, false otherwise.
  * @return				True on success, false otherwise.
  */
-stock bool Server_GetIPString(char[] buffer, int size, bool public_=true)
-{
+stock bool Server_GetIPString(char[] buffer, int size, bool public_ = true) {
 	int ip;
-
 	if ((ip = Server_GetIP(public_)) == 0) {
 		buffer[0] = '\0';
 		return false;
@@ -92,15 +89,14 @@ stock bool Server_GetIPString(char[] buffer, int size, bool public_=true)
  * @noparam
  * @return			The server's port, 0 if there is no port.
  */
-stock int Server_GetPort()
-{
+stock int Server_GetPort() {
 	static ConVar cvHostport = null;
 
-	if (cvHostport == INVALID_HANDLE) {
+	if (cvHostport == null) {
 		cvHostport = FindConVar("hostport");
 	}
 
-	if (cvHostport == INVALID_HANDLE) {
+	if (cvHostport == null) {
 		return 0;
 	}
 
@@ -116,15 +112,14 @@ stock int Server_GetPort()
  * @param size			String buffer size
  * @return				True on success, false otherwise.
  */
-stock bool Server_GetHostName(char[] buffer, int size)
-{
+stock bool Server_GetHostName(char[] buffer, int size) {
 	static ConVar cvHostname = null;
 
-	if (cvHostname == INVALID_HANDLE) {
+	if (cvHostname == null) {
 		cvHostname = FindConVar("hostname");
 	}
 
-	if (cvHostname == INVALID_HANDLE) {
+	if (cvHostname == null) {
 		buffer[0] = '\0';
 		return false;
 	}

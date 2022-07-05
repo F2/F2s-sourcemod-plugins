@@ -15,8 +15,7 @@
  * @param vehicle			Entity index.
  * @return					Client index, or -1 if there is no driver.
  */
-stock int Vehicle_GetDriver(int vehicle)
-{
+stock int Vehicle_GetDriver(int vehicle) {
 	int m_hVehicle = GetEntPropEnt(vehicle, Prop_Send, "m_hPlayer");
 
 	return m_hVehicle;
@@ -28,8 +27,7 @@ stock int Vehicle_GetDriver(int vehicle)
  * @param vehicle			Entity index.
  * @return					True if the vehicle has a driver, false otherwise
  */
-stock bool Vehicle_HasDriver(int vehicle)
-{
+stock bool Vehicle_HasDriver(int vehicle) {
 	return Vehicle_GetDriver(vehicle) != -1;
 }
 
@@ -39,8 +37,7 @@ stock bool Vehicle_HasDriver(int vehicle)
  * @param vehicle			Entity index.
  * @return					True on success, false otherwise.
  */
-stock bool Vehicle_ExitDriver(int vehicle)
-{
+stock bool Vehicle_ExitDriver(int vehicle) {
 	if (!Vehicle_HasDriver(vehicle)) {
 		return false;
 	}
@@ -54,8 +51,7 @@ stock bool Vehicle_ExitDriver(int vehicle)
  * @param vehicle			Entity index.
  * @return					True on success, false otherwise.
  */
-stock bool Vehicle_TurnOn(int vehicle)
-{
+stock bool Vehicle_TurnOn(int vehicle) {
 	return AcceptEntityInput(vehicle, "TurnOn");
 }
 
@@ -65,8 +61,7 @@ stock bool Vehicle_TurnOn(int vehicle)
  * @param vehicle			Entity index.
  * @return					True on success, false otherwise.
  */
-stock bool Vehicle_TurnOff(int vehicle)
-{
+stock bool Vehicle_TurnOff(int vehicle) {
 	return AcceptEntityInput(vehicle, "TurnOff");
 }
 
@@ -76,8 +71,7 @@ stock bool Vehicle_TurnOff(int vehicle)
  * @param vehicle			Entity index.
  * @return					True on success, false otherwise.
  */
-stock bool Vehicle_Lock(int vehicle)
-{
+stock bool Vehicle_Lock(int vehicle) {
 	return AcceptEntityInput(vehicle, "Lock");
 }
 
@@ -87,8 +81,7 @@ stock bool Vehicle_Lock(int vehicle)
  * @param vehicle			Entity index.
  * @return					True on success, false otherwise.
  */
-stock bool Vehicle_Unlock(int vehicle)
-{
+stock bool Vehicle_Unlock(int vehicle) {
 	return AcceptEntityInput(vehicle, "Unlock");
 }
 
@@ -98,8 +91,7 @@ stock bool Vehicle_Unlock(int vehicle)
  * @param vehicle			Entity index.
  * @return					True if it is a valid vehicle, false otherwise.
  */
-stock bool Vehicle_IsValid(int vehicle)
-{
+stock bool Vehicle_IsValid(int vehicle) {
 	if (!Entity_IsValid(vehicle)) {
 		return false;
 	}
@@ -117,9 +109,9 @@ stock bool Vehicle_IsValid(int vehicle)
  * @param size				String Buffer size.
  * @noreturn
  */
-stock bool Vehicle_GetScript(int vehicle, char[] buffer, int size)
-{
+stock bool Vehicle_GetScript(int vehicle, char[] buffer, int size) {
 	GetEntPropString(vehicle, Prop_Data, "m_vehicleScript", buffer, size);
+	return true;
 }
 
 /**
@@ -131,7 +123,7 @@ stock bool Vehicle_GetScript(int vehicle, char[] buffer, int size)
  * @param buffer			Vehicle Script path.
  * @noreturn
  */
-stock bool Vehicle_SetScript(int vehicle, char[] script)
-{
+stock bool Vehicle_SetScript(int vehicle, char[] script) {
 	DispatchKeyValue(vehicle, "vehiclescript", script);
+	return true;
 }

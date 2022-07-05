@@ -18,8 +18,7 @@
  * @param priority		Priority queue to use
  * @param ...			Variable number of format parameters.
  */
-stock void SQL_TQueryF(Database database, SQLTCallback callback, any data, DBPriority priority=DBPrio_Normal, const char[] format, any ...) {
-
+stock void SQL_TQueryF(Database database, SQLTCallback callback, any data, DBPriority priority = DBPrio_Normal, const char[] format, any ...) {
 	if (!database) {
 		ThrowError("[SMLIB] Error: Invalid database handle.");
 		return;
@@ -42,8 +41,7 @@ stock void SQL_TQueryF(Database database, SQLTCallback callback, any data, DBPri
  *						type conversion requested from the database,
  *						or no current result set.
  */
-stock int SQL_FetchIntByName(DBResultSet query, const char[] fieldName, DBResult &result=DBVal_Error) {
-
+stock int SQL_FetchIntByName(DBResultSet query, const char[] fieldName, DBResult &result = DBVal_Error) {
 	int fieldNum;
 	SQL_FieldNameToNum(query, fieldName, fieldNum);
 
@@ -61,8 +59,7 @@ stock int SQL_FetchIntByName(DBResultSet query, const char[] fieldName, DBResult
  *						type conversion requested from the database,
  *						or no current result set.
  */
-stock bool SQL_FetchBoolByName(DBResultSet query, const char[] fieldName, DBResult &result=DBVal_Error) {
-
+stock bool SQL_FetchBoolByName(DBResultSet query, const char[] fieldName, DBResult &result = DBVal_Error) {
 	return SQL_FetchIntByName(query, fieldName, result) != 0;
 }
 
@@ -77,8 +74,7 @@ stock bool SQL_FetchBoolByName(DBResultSet query, const char[] fieldName, DBResu
  *						type conversion requested from the database,
  *						or no current result set.
  */
-stock float SQL_FetchFloatByName(DBResultSet query, const char[] fieldName, DBResult &result=DBVal_Error) {
-
+stock float SQL_FetchFloatByName(DBResultSet query, const char[] fieldName, DBResult &result = DBVal_Error) {
 	int fieldNum;
 	SQL_FieldNameToNum(query, fieldName, fieldNum);
 
@@ -98,8 +94,7 @@ stock float SQL_FetchFloatByName(DBResultSet query, const char[] fieldName, DBRe
  *						type conversion requested from the database,
  *						or no current result set.
  */
-stock int SQL_FetchStringByName(DBResultSet query, const char[] fieldName, char[] buffer, int maxlength, DBResult &result=DBVal_Error) {
-
+stock int SQL_FetchStringByName(DBResultSet query, const char[] fieldName, char[] buffer, int maxlength, DBResult &result = DBVal_Error) {
 	int fieldNum;
 	SQL_FieldNameToNum(query, fieldName, fieldNum);
 
