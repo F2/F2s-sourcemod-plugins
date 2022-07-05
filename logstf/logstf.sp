@@ -99,7 +99,6 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#pragma newdecls required
 
 #define PLUGIN_VERSION 	"2.4.0"
 #define UPDATE_URL		"http://sourcemod.krus.dk/logstf/update.txt"
@@ -109,6 +108,7 @@ TODO:
 #define LOG_BUFFERSIZE 768 // I have seen log lines longer than 512
 #define LOG_BUFFERCNT 100
 
+#pragma newdecls required
 
 public Plugin myinfo = {
 	name = "Logs.TF Uploader",
@@ -315,7 +315,7 @@ void EndMatch(bool endedMidgame) {
 	g_bLogReady = true;
 	g_iUploadAttempt = 1;
 	
-	new autoupload = GetConVarInt(g_hCvarAutoUpload);
+	int autoupload = GetConVarInt(g_hCvarAutoUpload);
 	if (autoupload == 1) {
 		if (g_iPlayersInMatch >= 4 && GetEngineTime() - g_fMatchStartTime >= 90) {
 			UploadLog(false);
@@ -411,7 +411,7 @@ public Action Timer_UploadPartialLog(Handle timer) {
 }
 
 
-public Event_PlayerDeath(Handle event, const char[] name, bool dontBroadcast) {
+public Action Event_PlayerDeath(Handle event, const char[] name, bool dontBroadcast) {
 	if (GetConVarInt(g_hCvarMidGameUpload) <= 0)
 		return;
 	if (!GetConVarBool(g_hCvarMidGameNotice)) // Is midgame notices disabled?
@@ -433,6 +433,8 @@ public Event_PlayerDeath(Handle event, const char[] name, bool dontBroadcast) {
 	
 	g_bPartialUploadNotice[client] = false;
 	CPrintToChat(client, "%s%s", "{lightgreen}[LogsTF] {blue}To see the stats from the previous rounds, type: {yellow}", g_sDefaultTrigger);
+
+	return Plugin_Continue;
 }
 
 // -----------------------------------
