@@ -431,9 +431,10 @@ stock bool:SteamID_ToOldFormat(String:oldID[], oldIDsize, const String:newID[]) 
 	return true;
 }
 
-
-stock bool:GetClientAuthStringOld(client, String:steamid[], steamidSize, bool:validate = true) {
-	if (!GetClientAuthString(client, steamid, steamidSize, validate)) {
+stock bool:GetClientAuthStringOld(client, String:steamid[], steamidSize, bool:validate = true)
+{
+	if (!GetClientAuthId(client, AuthId_Engine, steamid, steamidSize, validate))
+	{
 		strcopy(steamid, steamidSize, "");
 		return false;
 	}
