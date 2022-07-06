@@ -80,6 +80,7 @@ Release notes:
 
 ---- 2.4.0 (05/07/2022) ----
 - Update syntax to newdecls so that this plugin can compile on latest sourcemod (1.11)
+- sappho
 
 TODO:
 - Check if midgameupload works for mini-rounds
@@ -100,7 +101,7 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION 	"2.4.0"
+#define PLUGIN_VERSION	"2.4.0"
 #define UPDATE_URL		"http://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
