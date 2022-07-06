@@ -259,10 +259,10 @@ stock void Client_SetObserverMode(int client, Obs_Mode mode, bool updateMoveType
 		if (mp_forcecamera != INVALID_HANDLE) {
 			switch (mp_forcecamera.IntValue)
 			{
-				case OBS_ALLOW_TEAM: {
+				case view_as<int>(OBS_ALLOW_TEAM): {
 					mode = OBS_MODE_IN_EYE;
 				}
-				case OBS_ALLOW_NONE: {
+				case view_as<int>(OBS_ALLOW_NONE): {
 					mode = OBS_MODE_FIXED; // don't allow anything
 				}
 			}
@@ -718,6 +718,10 @@ stock int Client_GetScore(int client)
 stock int Client_SetScore(int client, int value)
 {
 	SetEntProp(client, Prop_Data, "m_iFrags", value);
+
+	// ./include/smlib/clients.inc(718) : warning 209: function has explicit 'int' tag but does not return a value
+	// -sappho
+	return 1;
 }
 
 /**
