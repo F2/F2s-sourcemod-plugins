@@ -378,23 +378,25 @@ void AnnounceLogReady() {
 
 public Action Event_RoundEnd(Handle event, const char[] name, bool dontBroadcast) {
 	if (GetConVarInt(g_hCvarMidGameUpload) <= 0)
-		return;
+		return Plugin_Continue;
 	
 	// Don't upload if the map is about to end
 	int timeleft = GetTimeLeft();
 	if (timeleft != -1 && timeleft < 15)
-		return;
+		return Plugin_Continue;
 	
 	if (!g_bInMatch)
-		return;
+		return Plugin_Continue;
 	
 	int autoupload = GetConVarInt(g_hCvarAutoUpload);
 	bool shouldUpload = (autoupload == 1 && g_iPlayersInMatch >= 4 && GetEngineTime() - g_fMatchStartTime >= 90) || (autoupload == 2);
 	if (!shouldUpload)
-		return;
+		return Plugin_Continue;
 	
 	// Make a timer to be sure the relevant log lines have been written
 	CreateTimer(0.1, Timer_UploadPartialLog, _, TIMER_FLAG_NO_MAPCHANGE);
+
+	return Plugin_Continue;
 }
 
 public Action Timer_UploadPartialLog(Handle timer) {
@@ -413,23 +415,23 @@ public Action Timer_UploadPartialLog(Handle timer) {
 
 public Action Event_PlayerDeath(Handle event, const char[] name, bool dontBroadcast) {
 	if (GetConVarInt(g_hCvarMidGameUpload) <= 0)
-		return;
+		return Plugin_Continue;
 	if (!GetConVarBool(g_hCvarMidGameNotice)) // Is midgame notices disabled?
-		return;
+		return Plugin_Continue;
 	if (!g_bInMatch) // Partial Upload is only relevant during the match
-		return;
+		return Plugin_Continue;
 	if (g_bIsBonusRoundTime) // Ignore deaths during bonus round time
-		return;
+		return Plugin_Continue;
 	if (!g_bFirstPartialUploaded) // Has there not been a partial upload yet?
-		return;
+		return Plugin_Continue;
 	
 	int userid = GetEventInt(event, "userid");
 	int client = GetClientOfUserId(userid);
 	
 	if (!g_bPartialUploadNotice[client]) // Does the user need to be notified? If not ...
-		return;
+		return Plugin_Continue;
 	if ((GetEngineTime() - g_fLastRoundEnd) <= 15.0) // Ignore deaths in beginning of the round
-		return;
+		return Plugin_Continue;
 	
 	g_bPartialUploadNotice[client] = false;
 	CPrintToChat(client, "%s%s", "{lightgreen}[LogsTF] {blue}To see the stats from the previous rounds, type: {yellow}", g_sDefaultTrigger);
@@ -537,7 +539,7 @@ public Action BlockSay(int client, const char[] text, bool teamSay) {
 // -sappho
 public Action Timer_ShowStats(Handle timer, any client) {
 	if (!IsClientValid(client))
-		return;
+		return Plugin_Continue;
 	
 	char num[3];
 	Handle Kv = CreateKeyValues("data");
@@ -548,6 +550,8 @@ public Action Timer_ShowStats(Handle timer, any client) {
 	KvSetNum(Kv, "customsvr", 1);
 	ShowVGUIPanel(client, "info", Kv);
 	CloseHandle(Kv);
+
+	return Plugin_Continue;
 }
 
 // -----------------------------------
