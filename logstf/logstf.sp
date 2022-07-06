@@ -157,7 +157,7 @@ Handle g_hTimerUploadPartialLog;
 char g_sCurrentLogID[32];
 bool g_bReuploadASAP;
 bool g_bPartialUploadNotice[TFMAXPLAYERS+1]; // true if the player should receive a Partial Upload notice upon death
-bool g_bFirstPartialUploade;
+bool g_bFirstPartialUploaded;
 
 bool g_bDisableSS;
 
@@ -496,7 +496,7 @@ public Action Command_say(int client, int args) {
 	return Plugin_Continue;
 }
 
-public QueryConVar_DisableHtmlMotd(QueryCookie cookie, int client, ConVarQueryResult result, const char[] cvarName, const char[] cvarValue) {
+public void QueryConVar_DisableHtmlMotd(QueryCookie cookie, int client, ConVarQueryResult result, const char[] cvarName, const char[] cvarValue) {
 	if (!IsClientValid(client))
 		return;
 	
@@ -514,8 +514,8 @@ public QueryConVar_DisableHtmlMotd(QueryCookie cookie, int client, ConVarQueryRe
 	waitTime -= GetTickedTime() - g_fSSTime[client];
 	if (waitTime <= 0.0)
 	{
-		// -sappho
 		// sourcemod timers are at minimum 0.1 seconds
+		// -sappho
 		waitTime = 0.1;
 	}
 	
@@ -524,7 +524,7 @@ public QueryConVar_DisableHtmlMotd(QueryCookie cookie, int client, ConVarQueryRe
 }
 
 // Compatibility with ChatColor plugin
-public Action BlockSay(client, const char[] text, bool teamSay) {
+public Action BlockSay(int client, const char[] text, bool teamSay) {
 	if (teamSay)
 		return Plugin_Continue;
 	if (StrEqual(text, "!ul", false) && Client_IsAdmin(client))
@@ -715,7 +715,7 @@ public void UploadLog_Complete(bool success, const char[] contents, int response
 		} else {
 			if (success && g_bFirstPartialUploaded == false) {
 				g_bFirstPartialUploaded = true;
-				for (new i = 1; i <= MaxClients; i++) {
+				for (int i = 1; i <= MaxClients; i++) {
 					if (!IsRealPlayer(i))
 						continue;
 					
@@ -725,7 +725,7 @@ public void UploadLog_Complete(bool success, const char[] contents, int response
 		}
 	} else if (!success) {
 		if (g_iUploadAttempt < 3) {
-			new waittime = (g_iUploadAttempt - 1) * 10 + 5;
+			int waittime = (g_iUploadAttempt - 1) * 10 + 5;
 			if (!g_bIsPartialUpload)
 				CPrintToChatAll("%s%i%s", "{lightgreen}[LogsTF] {red}Retrying upload in ", waittime, " seconds...");
 			g_iUploadAttempt++;
