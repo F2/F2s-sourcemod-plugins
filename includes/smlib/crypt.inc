@@ -70,7 +70,8 @@ static const char base64_url_chars[]	= "-_.";
  *						This is not needed for a text string, but is important for binary data since there is no end-of-line character.
  * @return				The length of the written Base64 string, in bytes.
  */
-stock int Crypt_Base64Encode(const char[] sString, char[] sResult, int len, int sourcelen=0) {
+stock int Crypt_Base64Encode(const char[] sString, char[] sResult, int len, int sourcelen=0)
+{
 	int nLength;	// The string length to be read from the input
 	int resPos;		// The string position in the result buffer
 
@@ -131,7 +132,8 @@ stock int Crypt_Base64Encode(const char[] sString, char[] sResult, int len, int 
  * @param len			The maximum length of the storage buffer, in characters/bytes.
  * @return				The length of the decoded data, in bytes.
  */
-stock int Crypt_Base64Decode(const char[] sString, char[] sResult, int len) {
+stock int Crypt_Base64Decode(const char[] sString, char[] sResult, int len)
+{
 	int nLength = strlen(sString);	// The string length to be read from the input
 	int resPos;						// The string position in the result buffer
 
@@ -188,7 +190,8 @@ stock int Crypt_Base64Decode(const char[] sString, char[] sResult, int len) {
  * @param len			The maximum length of the storage buffer in characters/bytes.
  * @return				Number of cells written.
  */
-stock int Crypt_Base64MimeToUrl(const char[] sString, char[] sResult, int len) {
+stock int Crypt_Base64MimeToUrl(const char[] sString, char[] sResult, int len)
+{
 	int chars_len = sizeof(base64_mime_chars);	// Length of the two standards vs. URL character lists
 	int nLength;								// The string length to be read from the input
 	int temp_char;								// Buffer character
@@ -227,7 +230,8 @@ stock int Crypt_Base64MimeToUrl(const char[] sString, char[] sResult, int len) {
  * @param len			The maximum length of the storage buffer in characters/bytes.
  * @return				Number of cells written.
  */
-stock int Crypt_Base64UrlToMime(const char[] sString, char[] sResult, int len) {
+stock int Crypt_Base64UrlToMime(const char[] sString, char[] sResult, int len)
+{
 	int chars_len = sizeof(base64_mime_chars);	// Length of the two standards vs. URL character lists
 	int nLength;								// The string length to be read from the input
 	int temp_char;								// Buffer character
@@ -270,7 +274,8 @@ stock int Crypt_Base64UrlToMime(const char[] sString, char[] sResult, int len) {
  * @param output		Output String Buffer
  * @param maxlen		Size of the Output String Buffer
  */
-stock void Crypt_MD5(const char[] str, char[] output, int maxlen) {
+stock void Crypt_MD5(const char[] str, char[] output, int maxlen)
+{
 	int x[2];
 	int buf[4];
 	int input[64];
@@ -308,7 +313,8 @@ stock void Crypt_MD5(const char[] str, char[] output, int maxlen) {
 
 		if (mdi == 0x40) {
 
-			for (i = 0, ii = 0; i < 16; ++i, ii += 4) {
+			for (i = 0, ii = 0; i < 16; ++i, ii += 4)
+			{
 				update[i] = (input[ii + 3] << 24) | (input[ii + 2] << 16) | (input[ii + 1] << 8) | input[ii];
 			}
 
@@ -388,25 +394,29 @@ stock void Crypt_MD5(const char[] str, char[] output, int maxlen) {
 		digest[8], digest[9], digest[10], digest[11], digest[12], digest[13], digest[14], digest[15]);
 }
 
-static stock void MD5Transform_FF(int &a, int &b, int &c, int &d, int x, int s, int ac) {
+static stock void MD5Transform_FF(int &a, int &b, int &c, int &d, int x, int s, int ac)
+{
 	a += (((b) & (c)) | ((~b) & (d))) + x + ac;
 	a = (((a) << (s)) | ((a) >>> (32-(s))));
 	a += b;
 }
 
-static stock void MD5Transform_GG(int &a, int &b, int &c, int &d, int x, int s, int ac) {
+static stock void MD5Transform_GG(int &a, int &b, int &c, int &d, int x, int s, int ac)
+{
 	a += (((b) & (d)) | ((c) & (~d))) + x + ac;
 	a = (((a) << (s)) | ((a) >>> (32-(s))));
 	a += b;
 }
 
-static stock void MD5Transform_HH(int &a, int &b, int &c, int &d, int x, int s, int ac) {
+static stock void MD5Transform_HH(int &a, int &b, int &c, int &d, int x, int s, int ac)
+	{
 	a += ((b) ^ (c) ^ (d)) + x + ac;
 	a = (((a) << (s)) | ((a) >>> (32-(s))));
 	a += b;
 }
 
-static stock void MD5Transform_II(int &a, int &b, int &c, int &d, int x, int s, int ac) {
+static stock void MD5Transform_II(int &a, int &b, int &c, int &d, int x, int s, int ac)
+{
 	a += ((c) ^ ((b) | (~d))) + x + ac;
 	a = (((a) << (s)) | ((a) >>> (32-(s))));
 	a += b;
@@ -510,7 +520,8 @@ static stock void MD5Transform(int[] buf, int[] input){
  * @param output		The encoded result.
  * @param maxlen		The maximum length of the output buffer.
  */
-stock void Crypt_RC4Encode(const char[] input, const char[] pwd, char[] output, int maxlen) {
+stock void Crypt_RC4Encode(const char[] input, const char[] pwd, char[] output, int maxlen)
+{
 	int pwd_len,str_len,i,j,a,k;
 	int key[256];
 	int box[256];
@@ -558,7 +569,8 @@ stock void Crypt_RC4Encode(const char[] input, const char[] pwd, char[] output, 
  * @param output		The encoded result.
  * @param maxlen		The maximum length of the output buffer.
  */
-stock int Crypt_RC4EncodeBinary(const char[] input, int str_len, const char[] pwd, char[] output, int maxlen) {
+stock int Crypt_RC4EncodeBinary(const char[] input, int str_len, const char[] pwd, char[] output, int maxlen)
+{
 	int pwd_len,i,j,a,k;
 	int key[256];
 	int box[256];

@@ -13,9 +13,10 @@
  * @param name			Name of the entity you want so search.
  * @return				Edict Index or INVALID_ENT_REFERENCE if no entity was found.
  */
-stock int Edict_FindByName(const char[] name) {
+stock int Edict_FindByName(const char[] name)
+{
 	int maxEntities = GetMaxEntities();
-	for (int edict = 0; edict < maxEntities; edict++) {
+	for (int edict=0; edict < maxEntities; edict++) {
 
 		if (!IsValidEdict(edict)) {
 			continue;
@@ -38,9 +39,10 @@ stock int Edict_FindByName(const char[] name) {
  * @param hammerId		Hammer editor ID
  * @return				Edict Index or INVALID_ENT_REFERENCE if no entity was found.
  */
-stock int Edict_FindByHammerId(int hammerId) {
+stock int Edict_FindByHammerId(int hammerId)
+{
 	int maxEntities = GetMaxEntities();
-	for (int edict = 0; edict < maxEntities; edict++) {
+	for (int edict=0; edict < maxEntities; edict++) {
 
 		if (!IsValidEdict(edict)) {
 			continue;
@@ -62,7 +64,8 @@ stock int Edict_FindByHammerId(int hammerId) {
  * @param ignoreEntity		Ignore this entity
  * @return					Edict Index or INVALID_ENT_REFERENCE if no entity was found.
  */
-stock int Edict_GetClosest(float vecOrigin_center[3], bool clientsOnly = false, int ignoreEntity = -1) {
+stock int Edict_GetClosest(float vecOrigin_center[3], bool clientsOnly=false, int ignoreEntity=-1)
+{
 	float vecOrigin_edict[3];
 	float smallestDistance = 0.0;
 	int closestEdict = INVALID_ENT_REFERENCE;
@@ -110,7 +113,8 @@ stock int Edict_GetClosest(float vecOrigin_center[3], bool clientsOnly = false, 
  * @param clientsOnly		True if you only want to search for clients
  * @return					The closest edict or INVALID_ENT_REFERENCE
  */
-stock int Edict_GetClosestToEdict(int edict, bool clientsOnly = false) {
+stock int Edict_GetClosestToEdict(int edict, bool clientsOnly=false)
+{
 	float vecOrigin[3];
 
 	if (!HasEntProp(edict, Prop_Send, "m_vecOrigin")) {

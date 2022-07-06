@@ -11,5 +11,6 @@
  * @param vec		Vector buffer
  */
 stock void World_GetMaxs(float vec[3]) {
+
 	GetEntPropVector(0, Prop_Data, "m_WorldMaxs", vec);
 }

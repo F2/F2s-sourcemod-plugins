@@ -13,10 +13,11 @@
  * @param str				String to check.
  * @return					True if the String is numeric, false otherwise..
  */
-stock bool String_IsNumeric(const char[] str) {
-	int x = 0;
-	int dotsFound = 0;
-	int numbersFound = 0;
+stock bool String_IsNumeric(const char[] str)
+{
+	int x=0;
+	int dotsFound=0;
+	int numbersFound=0;
 
 	if (str[x] == '+' || str[x] == '-') {
 		x++;
@@ -58,8 +59,9 @@ stock bool String_IsNumeric(const char[] str) {
  * @param size				Size of the output String.
  * @param chars				Characters to remove.
  */
-stock void String_Trim(const char[] str, char[] output, int size, const char[] chrs=" \t\r\n") {
-	int x = 0;
+stock void String_Trim(const char[] str, char[] output, int size, const char[] chrs=" \t\r\n")
+{
+	int x=0;
 	while (str[x] != '\0' && FindCharInString(chrs, str[x]) != -1) {
 		x++;
 	}
@@ -82,8 +84,9 @@ stock void String_Trim(const char[] str, char[] output, int size, const char[] c
  * @param size				Number of Strings in the List.
  * @param caseSensitive		If true, comparison is case sensitive. If false (default), comparison is case insensitive.
  */
-stock void String_RemoveList(char[] buffer, const char[][] removeList, int size, bool caseSensitive = false) {
-	for (int i = 0; i < size; i++) {
+stock void String_RemoveList(char[] buffer, const char[][] removeList, int size, bool caseSensitive=false)
+{
+	for (int i=0; i < size; i++) {
 		ReplaceString(buffer, SIZE_OF_INT, removeList[i], "", caseSensitive);
 	}
 }
@@ -97,10 +100,11 @@ stock void String_RemoveList(char[] buffer, const char[][] removeList, int size,
  * @param output			Output String.
  * @param size				Max Size of the Output string
  */
-stock void String_ToLower(const char[] input, char[] output, int size) {
+stock void String_ToLower(const char[] input, char[] output, int size)
+{
 	size--;
 
-	int x = 0;
+	int x=0;
 	while (input[x] != '\0' && x < size) {
 
 		output[x] = CharToLower(input[x]);
@@ -120,10 +124,11 @@ stock void String_ToLower(const char[] input, char[] output, int size) {
  * @param output			Output String.
  * @param size				Max Size of the Output string
  */
-stock void String_ToUpper(const char[] input, char[] output, int size) {
+stock void String_ToUpper(const char[] input, char[] output, int size)
+{
 	size--;
 
-	int x = 0;
+	int x=0;
 	while (input[x] != '\0' && x < size) {
 
 		output[x] = CharToUpper(input[x]);
@@ -145,7 +150,8 @@ stock void String_ToUpper(const char[] input, char[] output, int size) {
  * 							By default it will use all letters of the alphabet (upper and lower) and all numbers.
  * 							If you pass an empty String, it will use all readable ASCII characters (33 - 126)
  */
-stock void String_GetRandom(char[] buffer, int size, int length = 32, const char[] chrs="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234556789") {
+stock void String_GetRandom(char[] buffer, int size, int length=32, const char[] chrs="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234556789")
+{
 	int random, len;
 	size--;
 
@@ -179,7 +185,8 @@ stock void String_GetRandom(char[] buffer, int size, int length = 32, const char
  * @param subString			Sub-String to check in str
  * @return					True if str starts with subString, false otherwise.
  */
-stock bool String_StartsWith(const char[] str, const char[] subString) {
+stock bool String_StartsWith(const char[] str, const char[] subString)
+{
 	int n = 0;
 	while (subString[n] != '\0') {
 
@@ -201,7 +208,8 @@ stock bool String_StartsWith(const char[] str, const char[] subString) {
  * @param subString			Sub-String to check in str
  * @return					True if str ends with subString, false otherwise.
  */
-stock bool String_EndsWith(const char[] str, const char[] subString) {
+stock bool String_EndsWith(const char[] str, const char[] subString)
+{
 	int n_str = strlen(str) - 1;
 	int n_subString = strlen(subString) - 1;
 

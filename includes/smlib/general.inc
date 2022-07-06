@@ -18,7 +18,8 @@
  * @param material			Path of the material to precache.
  * @return					Returns the material index, INVALID_STRING_INDEX on error.
  */
-stock int PrecacheMaterial(const char[] material) {
+stock int PrecacheMaterial(const char[] material)
+{
 	static int materialNames = INVALID_STRING_TABLE;
 
 	if (materialNames == INVALID_STRING_TABLE) {
@@ -47,7 +48,8 @@ stock int PrecacheMaterial(const char[] material) {
  * @param material			Path of the material.
  * @return					True if it is precached, false otherwise.
  */
-stock bool IsMaterialPrecached(const char[] material) {
+stock bool IsMaterialPrecached(const char[] material)
+{
 	static int materialNames = INVALID_STRING_TABLE;
 
 	if (materialNames == INVALID_STRING_TABLE) {
@@ -67,7 +69,8 @@ stock bool IsMaterialPrecached(const char[] material) {
  * @param particleSystem	Name of the particle system to precache.
  * @return					Returns the particle system index, INVALID_STRING_INDEX on error.
  */
-stock int PrecacheParticleSystem(const char[] particleSystem) {
+stock int PrecacheParticleSystem(const char[] particleSystem)
+{
 	static int particleEffectNames = INVALID_STRING_TABLE;
 
 	if (particleEffectNames == INVALID_STRING_TABLE) {
@@ -96,7 +99,8 @@ stock int PrecacheParticleSystem(const char[] particleSystem) {
  * @param material			Name of the particle system
  * @return					True if it is precached, false otherwise.
  */
-stock bool IsParticleSystemPrecached(const char[] particleSystem) {
+stock bool IsParticleSystemPrecached(const char[] particleSystem)
+{
 	static int particleEffectNames = INVALID_STRING_TABLE;
 
 	if (particleEffectNames == INVALID_STRING_TABLE) {
@@ -115,7 +119,8 @@ stock bool IsParticleSystemPrecached(const char[] particleSystem) {
  * @param str			String to find.
  * @return				String index if found, INVALID_STRING_INDEX otherwise.
  */
-stock int FindStringIndexByTableName(const char[] table, const char[] str) {
+stock int FindStringIndexByTableName(const char[] table, const char[] str)
+{
 	int tableIndex = INVALID_STRING_TABLE;
 	if ((tableIndex = FindStringTable("ParticleEffectNames")) == INVALID_STRING_TABLE) {
 		return INVALID_STRING_INDEX;
@@ -133,11 +138,12 @@ stock int FindStringIndexByTableName(const char[] table, const char[] str) {
  * @param str			String to find.
  * @return				String index if found, INVALID_STRING_INDEX otherwise.
  */
-stock int FindStringIndex2(int tableidx, const char[] str) {
+stock int FindStringIndex2(int tableidx, const char[] str)
+{
 	char buf[1024];
 
 	int numStrings = GetStringTableNumStrings(tableidx);
-	for (int i = 0; i < numStrings; i++) {
+	for (int i=0; i < numStrings; i++) {
 		ReadStringTable(tableidx, i, buf, sizeof(buf));
 
 		if (StrEqual(buf, str)) {
@@ -155,7 +161,8 @@ stock int FindStringIndex2(int tableidx, const char[] str) {
  * @param buffer		String Buffer (size = 16)
  * @param size			String Buffer size
  */
-stock void LongToIP(int ip, char[] buffer, int size) {
+stock void LongToIP(int ip, char[] buffer, int size)
+{
 	Format(
 		buffer, size,
 		"%d.%d.%d.%d",
@@ -172,7 +179,8 @@ stock void LongToIP(int ip, char[] buffer, int size) {
  * @param ip			IP String
  * @return				Long IP
  */
-stock int IPToLong(const char[] ip) {
+stock int IPToLong(const char[] ip)
+{
 	char pieces[4][4];
 
 	if (ExplodeString(ip, ".", pieces, sizeof(pieces), sizeof(pieces[])) != 4) {
@@ -187,7 +195,8 @@ stock int IPToLong(const char[] ip) {
 	);
 }
 
-static int localIPRanges[] = {
+static int localIPRanges[] =
+{
 	10	<< 24,				// 10.
 	127	<< 24 | 1		,	// 127.0.0.1
 	127	<< 24 | 16	<< 16,	// 127.16.
@@ -200,16 +209,17 @@ static int localIPRanges[] = {
  * @param ip			IP Long
  * @return				True if the IP is local, false otherwise.
  */
-stock bool IsIPLocal(int ip) {
+stock bool IsIPLocal(int ip)
+{
 	int range, bits, move;
 	bool matches;
 
-	for (int i = 0; i < sizeof(localIPRanges); i++) {
+	for (int i=0; i < sizeof(localIPRanges); i++) {
 
 		range = localIPRanges[i];
 		matches = true;
 
-		for (int j = 0; j < 4; j++) {
+		for (int j=0; j < 4; j++) {
 			move = j * 8;
 			bits = (range >> move) & 0xFF;
 
@@ -232,7 +242,8 @@ stock bool IsIPLocal(int ip) {
  *
  * @param handle   handle
  */
-stock void ClearHandle(Handle &handle) {
+stock void ClearHandle(Handle &handle)
+{
 	if (handle != INVALID_HANDLE) {
 		CloseHandle(handle);
 		handle = INVALID_HANDLE;
