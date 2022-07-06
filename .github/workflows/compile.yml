@@ -29,7 +29,7 @@ jobs:
         path: dist/ftp/
   
   publish:
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && github.repository == 'F2/F2s-sourcemod-plugins'
     needs: build
     runs-on: ubuntu-latest
     steps:
