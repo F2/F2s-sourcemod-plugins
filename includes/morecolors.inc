@@ -459,7 +459,8 @@ stock CShowActivity2(client, const String:tag[], const String:message[], any:...
  */
 stock bool:CColorExists(const String:color[]) {
 	CCheckTrie();
-	return GetTrieValue(CTrie, color, 0);
+	int junk;
+	return GetTrieValue(CTrie, color, junk);
 }
 
 /**
