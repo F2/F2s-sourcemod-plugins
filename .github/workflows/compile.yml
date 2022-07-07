@@ -17,6 +17,8 @@ jobs:
       uses: actions/checkout@v2
     - name: Setup SourcePawn Compiler
       uses: rumblefrog/setup-sp@v1.0.1
+      with:
+        version: '1.10.x'
     - name: Prepare publish
       run: |
         pwsh prepare-publish.ps1
