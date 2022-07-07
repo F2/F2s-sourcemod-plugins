@@ -433,7 +433,7 @@ stock bool:SteamID_ToOldFormat(String:oldID[], oldIDsize, const String:newID[]) 
 
 stock bool:GetClientAuthStringOld(client, String:steamid[], steamidSize, bool:validate = true)
 {
-	if (!GetClientAuthId(client, AuthId_Engine, steamid, steamidSize, validate))
+	if (!GetClientAuthId(client, AuthId_Steam2, steamid, steamidSize, validate))
 	{
 		strcopy(steamid, steamidSize, "");
 		return false;
