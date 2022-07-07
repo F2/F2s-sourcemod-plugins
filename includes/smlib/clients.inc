@@ -715,13 +715,9 @@ stock int Client_GetScore(int client)
  * @param value				Score.
  * @noreturn
  */
-stock int Client_SetScore(int client, int value)
+stock void Client_SetScore(int client, int value)
 {
 	SetEntProp(client, Prop_Data, "m_iFrags", value);
-
-	// ./include/smlib/clients.inc(718) : warning 209: function has explicit 'int' tag but does not return a value
-	// -sappho
-	return 1;
 }
 
 /**

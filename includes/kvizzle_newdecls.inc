@@ -75,7 +75,7 @@ const int Kviz_iMaxContexts = 4;
 // Max path depth... ie: aa.bb.cc.dd.ee(...).zz. Depth 32 equals 31 periods.
 const int Kviz_iMaxPathDepth = 32;
 // Max size of the traversal stack. The size of the traversal stack gets increased by 1 every time you call KvizJumpToKey, and decreased by 1 every time you call KvizGoBack. You can set it to 0 by calling KvizRewind.
-const int Kviz_iMaxTraversalStack = 32;
+#define Kviz_iMaxTraversalStack 32
 // Max string length of a section in a Kv-file.
 const int Kviz_iMaxSectionLen = 128;
 // ---------------------
@@ -116,7 +116,7 @@ enum struct KvizData {
     Handle Kviz_hKv;
     int Kviz_iPositionPathCount;
 
-    int Kviz_iTraversalStack[32]; // Kviz_iMaxTraversalStack = 32
+    int Kviz_iTraversalStack[Kviz_iMaxTraversalStack];
     int Kviz_iTraversalStackLen;
 
     int Kviz_iLRU;
@@ -953,7 +953,7 @@ stock bool KvizSetVector(KeyValues kv, float vec[3], const char[] path, any ...)
             return true;
         }
         else if (action == KVIZ_ACTION_SECTIONNAME) {
-            char strvalue[128];
+            char strvalue[Kviz_iMaxSectionLen];
             Format(strvalue, sizeof(strvalue), "%f %f %f", vec[0], vec[1], vec[2]);
             kv.SetSectionName(strvalue);
             return true;
@@ -1169,7 +1169,7 @@ stock bool KvizGoto(KeyValues kv, const char[] path, bool create, int &action, b
 }
 
 stock bool KvizGoto2(KeyValues kv, const char[] path, bool create, int &action, bool jumpToValues, int depth) {
-    char key[128];
+    char key[Kviz_iMaxSectionLen];
     int endPos = 0;
     int destPos = 0;
     while (path[endPos] != '.' && path[endPos] != '\0' && !(path[endPos] == ':' && endPos != 0)) {
@@ -1541,7 +1541,7 @@ stock bool KvizSwitchFromArchive(KeyValues kv) {
         if (archiveKv == kv) {
             int context = KvizGetFreeContext();
 
-            char path[256][128];
+            char path[Kviz_iMaxPathDepth][Kviz_iMaxSectionLen];
 
             int pathPos = 0;
             for (int kvDepth = kv.NodesInStack(); kvDepth > 0; kvDepth = kv.GoBack() ? kvDepth - 1 : 0) {
@@ -1549,7 +1549,7 @@ stock bool KvizSwitchFromArchive(KeyValues kv) {
                 pathPos++;
             }
 
-            char kvizPos[256*128] = "";
+            char kvizPos[Kviz_iMaxPathDepth*Kviz_iMaxSectionLen] = "";
             if (pathPos > 0) {
                 // TODO: Can be optimized a lot, because StrCat is getting strlen all the time
                 pathPos--;

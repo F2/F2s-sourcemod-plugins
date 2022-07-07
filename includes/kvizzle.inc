@@ -72,7 +72,7 @@ TODO:
 // Customizable settings
 const Kviz_iMaxContexts = 4; // Max number of simultaneously open Kvizzles. You can still use more, but the performance will degrade. However, if you set the number too high, then the performance will degrade when you have few Kvizzles opened simultaneously.
 const Kviz_iMaxPathDepth = 32; // Max path depth... ie: aa.bb.cc.dd.ee(...).zz. Depth 32 equals 31 periods.
-const Kviz_iMaxTraversalStack = 32; // Max size of the traversal stack. The size of the traversal stack gets increased by 1 every time you call KvizJumpToKey, and decreased by 1 every time you call KvizGoBack. You can set it to 0 by calling KvizRewind.
+#define Kviz_iMaxTraversalStack 32 // Max size of the traversal stack. The size of the traversal stack gets increased by 1 every time you call KvizJumpToKey, and decreased by 1 every time you call KvizGoBack. You can set it to 0 by calling KvizRewind.
 const Kviz_iMaxSectionLen = 128; // Max string length of a section in a Kv-file.
 // ---------------------
 
@@ -101,7 +101,7 @@ enum struct KvizData {
 	Handle Kviz_hKv;
 	int Kviz_iPositionPathCount;
 	
-	int Kviz_iTraversalStack[32]; // Kviz_iMaxTraversalStack = 32;
+	int Kviz_iTraversalStack[Kviz_iMaxTraversalStack];
 	int Kviz_iTraversalStackLen;
 	
 	int Kviz_iLRU;
@@ -888,7 +888,7 @@ stock bool:KvizSetVector(Handle:kv, Float:vec[3], const String:path[], any:...) 
 			KvSetVector(kv, NULL_STRING, vec);
 			return true;
 		} else if (action == KVIZ_ACTION_SECTIONNAME) {
-			decl String:strvalue[128];
+			decl String:strvalue[Kviz_iMaxSectionLen];
 			Format(strvalue, sizeof(strvalue), "%f %f %f", vec[0], vec[1], vec[2]);
 			KvSetSectionName(kv, strvalue);
 			return true;
@@ -1087,7 +1087,7 @@ stock bool:KvizGoto(Handle:kv, const String:path[], bool:create, &action, bool:j
 }
 
 stock bool:KvizGoto2(Handle:kv, const String:path[], bool:create, &action, bool:jumpToValues, depth) {
-	decl String:key[128];
+	decl String:key[Kviz_iMaxSectionLen];
 	new endPos = 0, destPos = 0;
 	while (path[endPos] != '.' && path[endPos] != '\0' && !(path[endPos] == ':' && endPos != 0)) {
 		if (path[endPos] == '\\') {
@@ -1419,7 +1419,7 @@ stock bool:KvizSwitchFromArchive(Handle:kv) {
 		if (archiveKv == kv) {
 			new context = KvizGetFreeContext();
 			
-			decl String:path[256][128];
+			decl String:path[Kviz_iMaxPathDepth][Kviz_iMaxSectionLen];
 			
 			new pathPos = 0;
 			for (new kvDepth = KvNodesInStack(kv); kvDepth > 0; kvDepth = KvGoBack(kv) ? kvDepth - 1 : 0) {
@@ -1427,7 +1427,7 @@ stock bool:KvizSwitchFromArchive(Handle:kv) {
 				pathPos++;
 			}
 			
-			decl String:kvizPos[256*128] = "";
+			decl String:kvizPos[Kviz_iMaxPathDepth*Kviz_iMaxSectionLen] = "";
 			if (pathPos > 0) {
 				// TODO: Can be optimized a lot, because StrCat is getting strlen all the time
 				pathPos--;

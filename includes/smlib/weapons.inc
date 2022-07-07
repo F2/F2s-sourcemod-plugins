@@ -37,13 +37,9 @@ stock int Weapon_GetOwner(int weapon)
  * @param entity		Entity Index.
  * @noreturn
  */
-stock int Weapon_SetOwner(int weapon, int entity)
+stock void Weapon_SetOwner(int weapon, int entity)
 {
 	SetEntPropEnt(weapon, Prop_Data, "m_hOwner", entity);
-
-	// ./include/smlib/weapons.inc(40) : warning 209: function has explicit 'int' tag but does not return a value
-	// -sappho
-	return 1;
 }
 
 /*

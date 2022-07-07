@@ -79,10 +79,10 @@ Release notes:
 
 
 ---- 2.4.0 (05/07/2022) ----
-- Update syntax to newdecls so that this plugin can compile on latest sourcemod (1.11)
-- sappho
+- Update syntax to newdecls so that this plugin can compile on latest sourcemod (1.11) /sappho
 
 TODO:
+- Sanitize names for < and >, since logs.tf doesn't like those
 - Check if midgameupload works for mini-rounds
 - Make a logstf.txt, logstf-upload1.txt, logstf-upload2.txt, such that a new match can start while it is still uploading the old log
 */
@@ -119,8 +119,6 @@ public Plugin myinfo = {
 	url = "http://sourcemod.krus.dk/"
 };
 
-// we don't need 64 maxplayers because this is only for tf2. saves some memory.
-// -sappho
 #define TFMAXPLAYERS 33
 
 char g_sPluginVersion[32];
@@ -133,15 +131,16 @@ bool g_bLogReady;
 bool g_bIsUploading;
 int g_iUploadAttempt;
 int g_iPlayersInMatch;
-Handle g_hCvarHostname;
-Handle g_hCvarRedTeamName;
-Handle g_hCvarBlueTeamName;
-Handle g_hCvarLogsDir;
-Handle g_hCvarApikey;
-Handle g_hCvarTitle;
-Handle g_hCvarAutoUpload;
-Handle g_hCvarMidGameUpload;
-Handle g_hCvarMidGameNotice;
+
+Handle g_hCvarHostname, 
+       g_hCvarRedTeamName,
+       g_hCvarBlueTeamName,
+       g_hCvarLogsDir,
+       g_hCvarApikey,
+       g_hCvarTitle,
+       g_hCvarAutoUpload,
+       g_hCvarMidGameUpload,
+       g_hCvarMidGameNotice;
 
 char g_sLastLogURL[128];
 char g_sCachedHostname[64];
@@ -264,8 +263,6 @@ void StartMatch() {
 		char playerName[64];
 		char playerSteamID[64];
 		char playerTeam[64];
-		// Maybe sanitize this? Logs.TF seems to choke on player names with brackets (<,>) in them...
-		// -sappho
 		GetClientName(client, playerName, sizeof(playerName));
 		GetClientAuthStringNew(client, playerSteamID, sizeof(playerSteamID), false);
 		GetPlayerTeamStr(GetClientTeam(client), playerTeam, sizeof(playerTeam));
@@ -291,9 +288,6 @@ void StartMatch() {
 	CacheMatchValues();
 }
 
-// new syntax prefers CloseHandle to KillTimer (if you aren't destroying the data associated with the timer)
-// and null to INVALID_HANDLE
-// -sappho
 void ResetMatch() {
 	if (g_hTimerUploadPartialLog != null) {
 		CloseHandle(g_hTimerUploadPartialLog);
@@ -449,7 +443,7 @@ public Action Event_PlayerDeath(Handle event, const char[] name, bool dontBroadc
 // -----------------------------------
 // Handle user input
 // -----------------------------------
-float g_fSSTime[MAXPLAYERS+1];
+float g_fSSTime[TFMAXPLAYERS+1];
 public Action Command_say(int client, int args) {
 	if (client == 0)
 		return Plugin_Continue;
@@ -475,8 +469,7 @@ public Action Command_say(int client, int args) {
 			}
 			return Plugin_Stop;
 		}
-	} else if
-	(
+	} else if (
 		(!g_bDisableSS && (StrEqual(text, ".ss", false) || StrEqual(text, "!ss", false)))
 		|| StrEqual(text, ".stats", false)
 		|| StrEqual(text, "!stats", false)
@@ -484,8 +477,7 @@ public Action Command_say(int client, int args) {
 		|| StrEqual(text, "!log", false)
 		|| StrEqual(text, ".logs", false)
 		|| StrEqual(text, "!logs", false)
-	)
-	{
+	) {
 		if (strlen(g_sLastLogURL) != 0) {
 			// If the person has used .ss, don't show the Partial Upload notice
 			g_bPartialUploadNotice[client] = false;
@@ -517,8 +509,6 @@ public void QueryConVar_DisableHtmlMotd(QueryCookie cookie, int client, ConVarQu
 	waitTime -= GetTickedTime() - g_fSSTime[client];
 	if (waitTime <= 0.0)
 	{
-		// sourcemod timers are at minimum 0.1 seconds
-		// -sappho
 		waitTime = 0.1;
 	}
 	
@@ -535,12 +525,9 @@ public Action BlockSay(int client, const char[] text, bool teamSay) {
 	return Plugin_Continue;
 }
 
-// i think this can be int
-// but i am leaving it as any just in case
-// -sappho
 public Action Timer_ShowStats(Handle timer, any client) {
 	if (!IsClientValid(client))
-		return Plugin_Continue;
+		return Plugin_Stop;
 	
 	char num[3];
 	Handle Kv = CreateKeyValues("data");
@@ -552,7 +539,7 @@ public Action Timer_ShowStats(Handle timer, any client) {
 	ShowVGUIPanel(client, "info", Kv);
 	CloseHandle(Kv);
 
-	return Plugin_Continue;
+	return Plugin_Stop;
 }
 
 // -----------------------------------
@@ -651,8 +638,7 @@ void UploadLog(bool partial) {
 	ReplaceString(title, sizeof(title), "{blue}", g_sCachedBluTeamName, false);
 	ReplaceString(title, sizeof(title), "{red}", g_sCachedRedTeamName, false);
 	
-	char path[64];
-	char partialpath[64];
+	char path[64], partialpath[64];
 	GetLogPath(LOG_PATH, path, sizeof(path));
 	GetLogPath(PLOG_PATH, partialpath, sizeof(partialpath));
 	
@@ -751,8 +737,7 @@ public bool ParseLogsResponse(const char[] contents) {
 	char[] resBuff = new char[size];
 	strcopy(resBuff, size, contents);
 	
-	char url[64];
-	char success[16];
+	char url[64], success[16];
 	if (FindJsonValue(resBuff, "success", success, sizeof(success)) && StrEqual(success, "true", false) && FindJsonValue(resBuff, "url", url, sizeof(url))) {
 		if (!FindJsonValue(resBuff, "log_id", g_sCurrentLogID, sizeof(g_sCurrentLogID))) {
 			CPrintToChatAll("%s", "{lightgreen}[LogsTF] {blue}log_id not found");
@@ -800,7 +785,7 @@ public Action RetryUploadLog(Handle timer, int client) {
 	g_bIsUploading = false;
 	UploadLog(false);
 
-	return Plugin_Continue;
+	return Plugin_Stop;
 }
 
 
@@ -865,7 +850,7 @@ bool FindJsonValue(const char[] input, const char[] key, char[] value, int maxle
 	Regex regex = CompileRegex(regex_str, PCRE_CASELESS);
 	if (regex == INVALID_HANDLE)
 		return false;
-	int matches = MatchRegex(regex, input);
+	int matches = regex.Match(input);
 	if (matches < 3) {
 		CloseHandle(regex);
 		return false;
