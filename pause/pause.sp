@@ -187,6 +187,7 @@ public Action:Cmd_Pause(client, const String:command[], args) {
 		return Plugin_Handled;
 	}
 	
+	// Bla
 	return Plugin_Continue;
 }
 
