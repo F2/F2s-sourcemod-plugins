@@ -8,7 +8,7 @@ Release notes:
 
 */
 
-#pragma semicolon 1 // Force strict semicolon mode.
+#pragma semicolon 1
 
 #include <sourcemod>
 #include <f2stocks>
@@ -37,10 +37,10 @@ public void OnPluginStart()
 	{
 		Updater_AddPlugin(UPDATE_URL);
 	}
+
 	// We don't need to do any special logic for handling server boot.
-	// Tested this, and it works even if tv_enable is set to 1 on the command line,
-	// and obviously it also works if it's set in server.cfg.
-	// -sappho
+	// It works even if tv_enable is set to 1 on the command line,
+	// and also works if it's set in server.cfg.
 	HookConVarChange(FindConVar("tv_enable"), OnSTVChanged);
 }
 
@@ -58,46 +58,28 @@ public void OnSTVChanged(ConVar convar, char[] oldValue, char[] newValue)
 	if
 	(
 		// stv doesn't exist
-		FindSTV_nocache() == 0
+		FindSTV() == -1
 		// stv was off
 		&& StrEqual(oldValue, "0")
 		// stv is now on
 		&& StrEqual(newValue, "1")
 	)
 	{
-		doMapChangeTimer();
+		LogMessage("[FixSTVSlot] tv_enable changed to 1! Changing level...");
+		PrintToChatAll("[FixSTVSlot] tv_enable changed to 1! Changing level...");
+		
+		// We use the TIMER_FLAG_NO_MAPCHANGE so that,
+		// if someone quickly changes the level before the timer hits 0, it won't change the level twice.
+		// Also this maintains compatibility with the rglqol plugin.
+		CreateTimer(1.0, ChangeMap, TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
 
-void doMapChangeTimer()
-{
-	LogMessage("[FixSTVSlot] tv_enable changed to 1! Changing level...");
-	PrintToChatAll("[FixSTVSlot] tv_enable changed to 1! Changing level...");
-	// we have TIMER_FLAG_NO_MAPCHANGE so that,
-	// if someone quickly changes the level before the timer hits 0, it won't change the level twice
-	// also this maintains compatibility with the rglqol plugin
-	CreateTimer(1.0, changeMap, TIMER_FLAG_NO_MAPCHANGE);
-}
-
-public Action changeMap(Handle timer)
+public Action ChangeMap(Handle timer)
 {
 	char map[128];
 	GetCurrentMap(map, sizeof(map));
 	ForceChangeLevel(map, "STV joined! Forcibly changing level so the bot can join.");
 
-	return Plugin_Continue;
-}
-
-// find stv stock that doesn't rely on caches
-// what if stv is enabled and disabled?
-int FindSTV_nocache()
-{
-	for (int client = 1; client <= MaxClients; client++)
-	{
-		if ( IsClientConnected(client) && IsClientInGame(client) && IsClientSourceTV(client) )
-		{
-			return client;
-		}
-	}
-	return 0;
+	return Plugin_Stop;
 }
