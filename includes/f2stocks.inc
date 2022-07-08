@@ -12,7 +12,7 @@ TODO:
 */
 
 #include <tf2_stocks>
-
+#include <morecolors>
 
 new Float:g_fCapMultipliers[] = { 0.0, // Harmonic numbers
 	1.0000, 1.5000, 1.8333, 2.0833, 2.2833, 2.4500, 2.5929, 2.7179, 
@@ -389,7 +389,7 @@ stock bool:SteamID_Equal(const String:id1[], const String:id2[]) {
 		if (steam1 == 0)
 			return false;
 		steam1 = steam1 * 2 + a;
-	} else if (F2_String_StartsWith(id1, "[U:1:", false) && String_EndsWith(id1, "]")) {
+	} else if (F2_String_StartsWith(id1, "[U:1:", false) && F2_String_EndsWith(id1, "]")) {
 		if (StringToIntEx(id1[5], steam1) != strlen(id1) - 5 - 1)
 			return false;
 	} else {
@@ -406,7 +406,7 @@ stock bool:SteamID_Equal(const String:id1[], const String:id2[]) {
 		if (steam2 == 0)
 			return false;
 		steam2 = steam2 * 2 + a;
-	} else if (F2_String_StartsWith(id2, "[U:1:", false) && String_EndsWith(id2, "]")) {
+	} else if (F2_String_StartsWith(id2, "[U:1:", false) && F2_String_EndsWith(id2, "]")) {
 		if (StringToIntEx(id2[5], steam2) != strlen(id2) - 5 - 1)
 			return false;
 	} else {

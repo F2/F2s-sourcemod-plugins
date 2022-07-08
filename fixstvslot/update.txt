@@ -4,11 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"1.0.1"
+			"Latest"	"2.0.0"
 		}
 		
-		"Notes"	"Changes in 1.0.1:"
-		"Notes"	"- Changes the map on server start"
+		"Notes"	"Changes in 2.0.0:"
+		"Notes"	"- Now automatically changes the level if stv is enabled, not just on server start"
 	}
 	
 	"Files"
