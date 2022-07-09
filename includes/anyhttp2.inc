@@ -56,8 +56,11 @@ enum AnyHttp_Extension {
 };
 
 
-//typedef AnyHttp_Result = function void (bool success, const char[] contents);
-typedef AnyHttp_Result = function void (bool success, const char[] contents, int httpCode, int metadata);
+typeset AnyHttp_Result {
+    function void (bool success, const char[] contents, int httpCode, int metadata);
+    function void (bool success, const char[] contents, int httpCode);
+    function void (bool success, const char[] contents);
+};
 
 
 static AnyHttp_Extension CurrentExtension = AnyHttpUnknown;
