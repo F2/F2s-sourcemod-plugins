@@ -11,7 +11,7 @@ Public functions:
 - bool AnyHttp.Init(): Returns false if no HTTP extension is loaded 
 - void AnyHttp.Require(): Calls ThrowError if no HTTP extension is loaded
 - void AnyHttp.Get(const char[] url, AnyHttp_Result callback, int metadata = 0)
-- AnyHttpForm form = AnyHttp.CreatePost(const char[] url)
+- AnyHttpRequest form = AnyHttp.CreatePost(const char[] url)
 - form.PutFile(const char[] name, const char[] filepath)
 - form.PutString(const char[] name, const char[] value)
 - form.Send(AnyHttp_Result callback)
@@ -66,7 +66,7 @@ typeset AnyHttp_Result {
 static AnyHttp_Extension CurrentExtension = AnyHttpUnknown;
 
 
-enum struct AnyHttpRequest {
+enum struct AnyHttpRequestData {
     Handle extensionHandle;
     bool initialized;
     AnyHttp_Result callback;
@@ -81,10 +81,10 @@ enum struct AnyHttpRequest {
     */
 }
 
-static AnyHttpRequest requests[SimultaneousConnections];
+static AnyHttpRequestData requests[SimultaneousConnections];
 static int nextConnection = 0;
 
-methodmap AnyHttpForm {
+methodmap AnyHttpRequest {
     property int Id {
         public get() {
             return view_as<int>(this);
@@ -190,7 +190,7 @@ methodmap AnyHttpForm {
         }
     }
 };
-static AnyHttpForm InvalidForm = view_as<AnyHttpForm>(-1);
+static AnyHttpRequest InvalidRequest = view_as<AnyHttpRequest>(-1);
 
 methodmap AnyHttpClass {
     public bool Init() {
@@ -206,7 +206,7 @@ methodmap AnyHttpClass {
         return AnyHttp_Get(url, callback, metadata);
     }
     
-    public AnyHttpForm CreatePost(const char[] url) {
+    public AnyHttpRequest CreatePost(const char[] url) {
         return AnyHttp_CreatePostForm(url);
     }
     
@@ -263,9 +263,9 @@ static bool AnyHttp_Get(const char[] url, AnyHttp_Result callback, int metadata 
     }
 }
 
-static AnyHttpForm AnyHttp_CreatePostForm(const char[] url) {
+static AnyHttpRequest AnyHttp_CreatePostForm(const char[] url) {
     if (!AnyHttp_Initialize())
-        return InvalidForm;
+        return InvalidRequest;
     
     if (CurrentExtension == UseSteamWorks) {
         return AnyHttp_SteamWorks_CreatePostForm(url);
@@ -273,16 +273,16 @@ static AnyHttpForm AnyHttp_CreatePostForm(const char[] url) {
         return AnyHttp_cURL_CreatePostForm(url);
     } else {
         ThrowError("Unknown extension");
-        return InvalidForm; // Avoid compiler warning
+        return InvalidRequest; // Avoid compiler warning
     }
 }
 
 
 // Common private functions
 
-static AnyHttpForm AnyHttp_NewRequest() {
+static AnyHttpRequest AnyHttp_NewRequest() {
     int id = (nextConnection++) % SimultaneousConnections;
-    AnyHttpForm request = view_as<AnyHttpForm>(id);
+    AnyHttpRequest request = view_as<AnyHttpRequest>(id);
 
     if (request.Initialized) {
         if (request.ExtensionHandle != null)
@@ -301,7 +301,7 @@ static AnyHttpForm AnyHttp_NewRequest() {
     return request;
 }
 
-static void AnyHttp_CleanUp(AnyHttpForm request) {
+static void AnyHttp_CleanUp(AnyHttpRequest request) {
     request.Initialized = false;
     if (request.ExtensionHandle != null) {
         CloseHandle(request.ExtensionHandle);
@@ -314,11 +314,11 @@ static void AnyHttp_CleanUp(AnyHttpForm request) {
     KvizClose(request.Fields);
 }
 
-static bool FindRequestByHandle(Handle handle, AnyHttpForm &request) {
+static bool FindRequestByHandle(Handle handle, AnyHttpRequest &request) {
     for (int i = 0; i < SimultaneousConnections; i++) {
         if (requests[i].initialized) {
             if (requests[i].extensionHandle == handle) {
-                request = view_as<AnyHttpForm>(i);
+                request = view_as<AnyHttpRequest>(i);
                 return true;
             }
         }
@@ -418,7 +418,7 @@ static void AnyHttp_GenerateUniqueFilename(char[] filename, int maxsize) {
 static bool AnyHttp_SteamWorks_Get(const char[] url, AnyHttp_Result callback, int metadata = 0) {
     Handle handle = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, url);
     
-    AnyHttpForm request = AnyHttp_NewRequest();
+    AnyHttpRequest request = AnyHttp_NewRequest();
     request.ExtensionHandle = handle;
     request.Callback = callback;
     request.MetaData = metadata;
@@ -432,13 +432,13 @@ static bool AnyHttp_SteamWorks_Get(const char[] url, AnyHttp_Result callback, in
 }
 
 
-static AnyHttpForm AnyHttp_SteamWorks_CreatePostForm(const char[] url) {
-    AnyHttpForm request = AnyHttp_NewRequest();
+static AnyHttpRequest AnyHttp_SteamWorks_CreatePostForm(const char[] url) {
+    AnyHttpRequest request = AnyHttp_NewRequest();
     request.ExtensionHandle = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, url);
     return request;
 }
 
-static bool AnyHttp_SteamWorks_SendPostForm(AnyHttpForm request) {
+static bool AnyHttp_SteamWorks_SendPostForm(AnyHttpRequest request) {
     int length = AnyHttp_SteamWorks_SendPostForm_Internal(request, 0);
     if (length < 0 || AnyHttp_SteamWorks_SendPostForm_Internal(request, length) < 0) { 
         AnyHttp_CleanUp(request);
@@ -447,7 +447,7 @@ static bool AnyHttp_SteamWorks_SendPostForm(AnyHttpForm request) {
     return true;
 }
 
-static int AnyHttp_SteamWorks_SendPostForm_Internal(AnyHttpForm request, int bufferSize) {
+static int AnyHttp_SteamWorks_SendPostForm_Internal(AnyHttpRequest request, int bufferSize) {
     char type[64];
     char[] buffer = new char[bufferSize];
     int bufferPos = 0;
@@ -489,7 +489,7 @@ static int AnyHttp_SteamWorks_SendPostForm_Internal(AnyHttpForm request, int buf
 }
 
 public void AnyHttp_SteamWorks_Done(Handle HTTPRequest, bool bFailure, bool requestSuccessful, EHTTPStatusCode statusCode) {
-    AnyHttpForm request;
+    AnyHttpRequest request;
     if (!FindRequestByHandle(HTTPRequest, request)) {
         return;
     }
@@ -527,30 +527,20 @@ public void AnyHttp_SteamWorks_Done(Handle HTTPRequest, bool bFailure, bool requ
 
 
 
-// // =========== CURL ============
+// =========== CURL ============
 
 static int CURL_Default_Opts[][2] = {
-    {view_as<int>(CURLOPT_NOSIGNAL),1},
-    {view_as<int>(CURLOPT_NOPROGRESS),1},
-    {view_as<int>(CURLOPT_TIMEOUT),30},
-    {view_as<int>(CURLOPT_CONNECTTIMEOUT),60},
-    {view_as<int>(CURLOPT_USE_SSL),CURLUSESSL_TRY},
-    {view_as<int>(CURLOPT_SSL_VERIFYPEER),0},
-    {view_as<int>(CURLOPT_SSL_VERIFYHOST),0},
-    {view_as<int>(CURLOPT_VERBOSE),0}
+    {view_as<int>(CURLOPT_NOSIGNAL), 1},
+    {view_as<int>(CURLOPT_NOPROGRESS), 1},
+    {view_as<int>(CURLOPT_TIMEOUT), 30},
+    {view_as<int>(CURLOPT_CONNECTTIMEOUT), 60},
+    {view_as<int>(CURLOPT_USE_SSL), CURLUSESSL_TRY},
+    {view_as<int>(CURLOPT_SSL_VERIFYPEER), 0},
+    {view_as<int>(CURLOPT_SSL_VERIFYHOST), 0},
+    {view_as<int>(CURLOPT_VERBOSE), 0}
 };
-// int CURL_Default_Opts[][2] = {
-// 	{_:CURLOPT_NOSIGNAL,1},
-// 	{_:CURLOPT_NOPROGRESS,1},
-// 	{_:CURLOPT_TIMEOUT,30},
-// 	{_:CURLOPT_CONNECTTIMEOUT,60},
-// 	{_:CURLOPT_USE_SSL,CURLUSESSL_TRY},
-// 	{_:CURLOPT_SSL_VERIFYPEER,0},
-// 	{_:CURLOPT_SSL_VERIFYHOST,0},
-// 	{_:CURLOPT_VERBOSE,0}
-// };
 
-stock bool AnyHttp_cURL_Get(const char[] url, AnyHttp_Result callback, int metadata = 0) {
+static bool AnyHttp_cURL_Get(const char[] url, AnyHttp_Result callback, int metadata = 0) {
     Handle curl = curl_easy_init();
     if (curl == null)
         return false;
@@ -560,7 +550,7 @@ stock bool AnyHttp_cURL_Get(const char[] url, AnyHttp_Result callback, int metad
         return false;
     }
 
-    AnyHttpForm request = AnyHttp_NewRequest();
+    AnyHttpRequest request = AnyHttp_NewRequest();
     request.ExtensionHandle = curl;
     request.Callback = callback;
     request.MetaData = metadata;
@@ -592,27 +582,27 @@ stock bool AnyHttp_cURL_Get(const char[] url, AnyHttp_Result callback, int metad
 
 
 
-stock AnyHttpForm AnyHttp_cURL_CreatePostForm(const char[] url) {
+static AnyHttpRequest AnyHttp_cURL_CreatePostForm(const char[] url) {
     Handle handle = curl_easy_init();
     if (handle == null)
-        return InvalidForm;
+        return InvalidRequest;
     if (!curl_easy_setopt_int_array(handle, CURL_Default_Opts, sizeof(CURL_Default_Opts))) {
         LogError("Couldn't set cURL options");
         CloseHandle(handle);
-        return InvalidForm;
+        return InvalidRequest;
     }
     if (!curl_easy_setopt_string(handle, CURLOPT_URL, url)) {
         CloseHandle(handle);
-        return InvalidForm;
+        return InvalidRequest;
     }
     
-    AnyHttpForm request = AnyHttp_NewRequest();
+    AnyHttpRequest request = AnyHttp_NewRequest();
     request.ExtensionHandle = handle;
     
     return request;
 }
 
-stock bool AnyHttp_cURL_SendPostForm(AnyHttpForm request) {
+static bool AnyHttp_cURL_SendPostForm(AnyHttpRequest request) {
     Handle hCurlForm = curl_httppost();
     char type[64];
     
@@ -663,12 +653,11 @@ stock bool AnyHttp_cURL_SendPostForm(AnyHttpForm request) {
     }
 
     curl_easy_perform_thread(request.ExtensionHandle, AnyHttp_cURL_Done);
-    
     return true;
 }
 
 public void AnyHttp_cURL_Done(Handle hndl, CURLcode code) {
-    AnyHttpForm request;
+    AnyHttpRequest request;
     if (!FindRequestByHandle(hndl, request)) {
         return;
     }
