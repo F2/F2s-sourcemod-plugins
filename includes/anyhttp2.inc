@@ -11,13 +11,16 @@ Public functions:
 - bool AnyHttp.Init(): Returns false if no HTTP extension is loaded 
 - void AnyHttp.Require(): Calls ThrowError if no HTTP extension is loaded
 - void AnyHttp.Get(const char[] url, AnyHttp_Result callback, int metadata = 0)
-- AnyHttpRequest form = AnyHttp.CreatePost(const char[] url)
-- form.PutFile(const char[] name, const char[] filepath)
-- form.PutString(const char[] name, const char[] value)
-- form.Send(AnyHttp_Result callback)
+- AnyHttpRequest request = AnyHttp.CreatePost(const char[] url)
+- request.PutFile(const char[] name, const char[] filepath)
+- request.PutString(const char[] name, const char[] value)
+- request.Send(AnyHttp_Result callback)
 
 Callbacks:
-- AnyHttp_Result: public void HttpRequestDone(bool success, const char[] contents, int metadata) { }
+- AnyHttp_Result: 
+    public void HttpRequestDone(bool success, const char[] contents, int httpCode, int metadata) { }
+    public void HttpRequestDone(bool success, const char[] contents, int httpCode) { }
+    public void HttpRequestDone(bool success, const char[] contents) { }
 
 
 TODO:
@@ -44,7 +47,6 @@ TODO:
 
 #define ANYHTTP_VERSION		     "2.0.0"
 #define SimultaneousConnections  16
-#define MaxFilenameLength        128
 
 #pragma dynamic 20971520 // Make sure we can allocate enough space for uploading files. Here's 20MB.
 #pragma newdecls required
@@ -199,7 +201,7 @@ methodmap AnyHttpClass {
     
     public void Require() {
         if (!this.Init())
-            ThrowError("Missing HTTP extension");
+            ThrowError("Missing HTTP extension (e.g. SteamWorks)");
     }
     
     public bool Get(const char[] url, AnyHttp_Result callback, int metadata = 0) {
@@ -220,7 +222,7 @@ stock AnyHttpClass AnyHttp;
 
 
 static bool IsInitialized = false;
-static char MultiPartBoundary[] = "--------------------AnyHttp--AnyHttp--h7doWqx7m--";
+static const char MultiPartBoundary[] = "--------------------AnyHttp--AnyHttp--h7doWqx7m--";
 
 
 
@@ -234,10 +236,9 @@ static bool AnyHttp_Initialize() {
     if (CurrentExtension == AnyHttpUnknown) {
         if (LibraryExists("SteamWorks")) {
             CurrentExtension = UseSteamWorks;
-        }
 #if SOURCEMOD_V_MAJOR == 1 && SOURCEMOD_V_MINOR <= 10
-        // Initializing cURL options doesn't work on SM 1.11 at the moment. /F2, 09/07/2022
-        else if (GetFeatureStatus(FeatureType_Native, "curl_easy_init") == FeatureStatus_Available) {
+        } else if (GetFeatureStatus(FeatureType_Native, "curl_easy_init") == FeatureStatus_Available) {
+            // Initializing cURL options doesn't work on SM 1.11 at the moment. /F2, 09/07/2022
             CurrentExtension = UseCURL;
 #endif
         } else {
