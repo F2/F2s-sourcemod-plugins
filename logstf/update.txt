@@ -4,11 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.4.0"
+			"Latest"	"2.4.1"
 		}
 		
-		"Notes"	"Changes in 2.4.0:"
-		"Notes"	"- Update syntax to newdecls so that this plugin can compile on latest sourcemod (1.11) /sappho"
+		"Notes"	"Changes in 2.4.1:"
+		"Notes"	"- More internal syntax updates"
 	}
 	
 	"Files"
