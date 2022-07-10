@@ -11,10 +11,10 @@ Public functions:
 - bool AnyHttp.Init(): Returns false if no HTTP extension is loaded 
 - void AnyHttp.Require(): Calls ThrowError if no HTTP extension is loaded
 - bool AnyHttp.Get(const char[] url, AnyHttp_Result callback, any metadata = 0)
-- AnyHttpRequest request = AnyHttp.CreatePost(const char[] url)
+- AnyHttpRequest request = AnyHttp.CreatePost(const char[] url, any metadata = 0)
 - request.PutFile(const char[] name, const char[] filepath)
 - request.PutString(const char[] name, const char[] value)
-- bool AnyHttp.Send(AnyHttpRequest request, AnyHttp_Result callback, any metadata = 0)
+- bool AnyHttp.Send(AnyHttpRequest request, AnyHttp_Result callback)
 
 Callbacks:
 - AnyHttp_Result: 
@@ -197,9 +197,9 @@ enum struct AnyHttpClass {
             return false;
         
         if (this.Extension == UseSteamWorks) {
-            return AnyHttp_SteamWorks_Get(url, callback, metadata);
+            return SteamWorks_Get(url, callback, metadata);
         } else if (this.Extension == UseCURL) {
-            return AnyHttp_cURL_Get(url, callback, metadata);
+            return cURL_Get(url, callback, metadata);
         } else {
             ThrowError("Unknown extension");
             return false; // Avoid compiler warning
@@ -211,9 +211,9 @@ enum struct AnyHttpClass {
             return InvalidRequest;
     
         if (this.Extension == UseSteamWorks) {
-            return AnyHttp_SteamWorks_CreatePostForm(url, metadata);
+            return SteamWorks_CreatePostForm(url, metadata);
         } else if (this.Extension == UseCURL) {
-            return AnyHttp_cURL_CreatePostForm(url, metadata);
+            return cURL_CreatePostForm(url, metadata);
         } else {
             ThrowError("Unknown extension");
             return InvalidRequest; // Avoid compiler warning
@@ -224,9 +224,9 @@ enum struct AnyHttpClass {
         request.Callback = callback;
 
         if (this.Extension == UseSteamWorks) {
-            return AnyHttp_SteamWorks_SendPostForm(request);
+            return SteamWorks_SendPostForm(request);
         } else if (this.Extension == UseCURL) {
-            return AnyHttp_cURL_SendPostForm(request);
+            return cURL_SendPostForm(request);
         } else {
             ThrowError("Unknown extension");
             return false; // Avoid compiler warning
@@ -241,12 +241,12 @@ stock AnyHttpClass AnyHttp;
 
 static const char MultiPartBoundary[] = "--------------------AnyHttp--AnyHttp--h7doWqx7m--";
 
-static AnyHttpRequest AnyHttp_NewRequest() {
+static AnyHttpRequest NewRequest() {
     int id = (nextConnection++) % SimultaneousConnections;
     AnyHttpRequest request = view_as<AnyHttpRequest>(id);
 
     if (request.Initialized) {
-        AnyHttp_CleanUp(request);
+        CleanUpRequest(request);
     }
 
     request.ExtensionHandle = null;
@@ -260,7 +260,7 @@ static AnyHttpRequest AnyHttp_NewRequest() {
     return request;
 }
 
-static void AnyHttp_CleanUp(AnyHttpRequest request) {
+static void CleanUpRequest(AnyHttpRequest request) {
     request.Initialized = false;
     if (request.ExtensionHandle != null) {
         CloseHandle(request.ExtensionHandle);
@@ -286,7 +286,7 @@ static bool FindRequestByHandle(Handle handle, AnyHttpRequest &request) {
     return false;
 }
 
-static void AnyHttp_GetFileName(char[] filename, int maxsize, const char[] filepath) {
+static void GetFileName(char[] filename, int maxsize, const char[] filepath) {
     int lastBackSlash = FindCharInString(filepath, '\\', true);
     int lastForwardSlash = FindCharInString(filepath, '/', true);
     if (lastBackSlash == -1 && lastForwardSlash == -1) {
@@ -297,29 +297,29 @@ static void AnyHttp_GetFileName(char[] filename, int maxsize, const char[] filep
     }
 }
 
-static void AnyHttp_AppendMultipartString(char[] buffer, int &bufferPos, int maxsize, const char[] name, const char[] contents, bool computeLength) {
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, "--", bufferPos, 0, computeLength);
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, MultiPartBoundary, bufferPos, 0, computeLength);
+static void AppendMultipartString(char[] buffer, int &bufferPos, int maxsize, const char[] name, const char[] contents, bool computeLength) {
+    bufferPos += CopyBytes(buffer, maxsize, "--", bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, MultiPartBoundary, bufferPos, 0, computeLength);
     
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, "\nContent-Disposition: form-data; name=\"", bufferPos, 0, computeLength);
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, name, bufferPos, 0, computeLength);
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, "\"\n\n", bufferPos, 0, computeLength);
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, contents, bufferPos, 0, computeLength);
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, "\n", bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, "\nContent-Disposition: form-data; name=\"", bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, name, bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, "\"\n\n", bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, contents, bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, "\n", bufferPos, 0, computeLength);
 }
 
-static bool AnyHttp_AppendMultipartFile(char[] buffer, int &bufferPos, int maxsize, const char[] name, const char[] filepath, bool computeLength) {
+static bool AppendMultipartFile(char[] buffer, int &bufferPos, int maxsize, const char[] name, const char[] filepath, bool computeLength) {
     char filename[PLATFORM_MAX_PATH];
-    AnyHttp_GetFileName(filename, sizeof(filename), filepath);
+    GetFileName(filename, sizeof(filename), filepath);
         
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, "--", bufferPos, 0, computeLength);
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, MultiPartBoundary, bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, "--", bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, MultiPartBoundary, bufferPos, 0, computeLength);
     
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, "\nContent-Disposition: form-data; name=\"", bufferPos, 0, computeLength);
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, name, bufferPos, 0, computeLength);
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, "\"; filename=\"", bufferPos, 0, computeLength);
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, filename, bufferPos, 0, computeLength);
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, "\"\n\n", bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, "\nContent-Disposition: form-data; name=\"", bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, name, bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, "\"; filename=\"", bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, filename, bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, "\"\n\n", bufferPos, 0, computeLength);
     
     int filesize = FileSize(filepath);
     if (computeLength) {
@@ -337,17 +337,17 @@ static bool AnyHttp_AppendMultipartFile(char[] buffer, int &bufferPos, int maxsi
         filehandle.Close();
     }
     
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, "\n", bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, "\n", bufferPos, 0, computeLength);
     return true;
 }
 
 static void AppendMultipartEnd(char[] buffer, int &bufferPos, int maxsize, bool computeLength) {
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, "--", bufferPos, 0, computeLength);
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, MultiPartBoundary, bufferPos, 0, computeLength);
-    bufferPos += AnyHttp_CopyBytes(buffer, maxsize, "--", bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, "--", bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, MultiPartBoundary, bufferPos, 0, computeLength);
+    bufferPos += CopyBytes(buffer, maxsize, "--", bufferPos, 0, computeLength);
 }
 
-static int AnyHttp_CopyBytes(char[] dest, int destSize, const char[] src, int destPos, int srcPos, bool computeLength, int bytes = -1) {
+static int CopyBytes(char[] dest, int destSize, const char[] src, int destPos, int srcPos, bool computeLength, int bytes = -1) {
     int bytesCopied = 0;
     if (bytes == -1)
         bytes = strlen(src);
@@ -362,7 +362,7 @@ static int AnyHttp_CopyBytes(char[] dest, int destSize, const char[] src, int de
     return bytesCopied;
 }
 
-static void AnyHttp_GenerateUniqueFilename(char[] filename, int maxsize) {
+static void GenerateUniqueFilename(char[] filename, int maxsize) {
     GetPluginFilename(GetMyHandle(), filename, maxsize);
     Format(filename, maxsize, "%s.%i.%i.txt", filename, GetSysTickCount(), GetRandomInt(0, 100000));
 }
@@ -374,16 +374,16 @@ static void AnyHttp_GenerateUniqueFilename(char[] filename, int maxsize) {
 
 // =========== SteamWorks ============
 
-static bool AnyHttp_SteamWorks_Get(const char[] url, AnyHttp_Result callback, any metadata = 0) {
+static bool SteamWorks_Get(const char[] url, AnyHttp_Result callback, any metadata = 0) {
     Handle handle = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, url);
     
-    AnyHttpRequest request = AnyHttp_NewRequest();
+    AnyHttpRequest request = NewRequest();
     request.ExtensionHandle = handle;
     request.Callback = callback;
     request.MetaData = metadata;
 
-    if (!SteamWorks_SetHTTPCallbacks(handle, AnyHttp_SteamWorks_Done) || !SteamWorks_SendHTTPRequest(handle)) {
-        AnyHttp_CleanUp(request);
+    if (!SteamWorks_SetHTTPCallbacks(handle, SteamWorks_Done) || !SteamWorks_SendHTTPRequest(handle)) {
+        CleanUpRequest(request);
         return false;
     }
 
@@ -391,23 +391,23 @@ static bool AnyHttp_SteamWorks_Get(const char[] url, AnyHttp_Result callback, an
 }
 
 
-static AnyHttpRequest AnyHttp_SteamWorks_CreatePostForm(const char[] url, any metadata = 0) {
-    AnyHttpRequest request = AnyHttp_NewRequest();
+static AnyHttpRequest SteamWorks_CreatePostForm(const char[] url, any metadata = 0) {
+    AnyHttpRequest request = NewRequest();
     request.ExtensionHandle = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, url);
     request.MetaData = metadata;
     return request;
 }
 
-static bool AnyHttp_SteamWorks_SendPostForm(AnyHttpRequest request) {
-    int length = AnyHttp_SteamWorks_SendPostForm_Internal(request, 0);
-    if (length < 0 || AnyHttp_SteamWorks_SendPostForm_Internal(request, length) < 0) { 
-        AnyHttp_CleanUp(request);
+static bool SteamWorks_SendPostForm(AnyHttpRequest request) {
+    int length = SteamWorks_SendPostForm_Internal(request, 0);
+    if (length < 0 || SteamWorks_SendPostForm_Internal(request, length) < 0) { 
+        CleanUpRequest(request);
         return false;
     }
     return true;
 }
 
-static int AnyHttp_SteamWorks_SendPostForm_Internal(AnyHttpRequest request, int bufferSize) {
+static int SteamWorks_SendPostForm_Internal(AnyHttpRequest request, int bufferSize) {
     char type[64];
     char[] buffer = new char[bufferSize];
     int bufferPos = 0;
@@ -418,13 +418,13 @@ static int AnyHttp_SteamWorks_SendPostForm_Internal(AnyHttpRequest request, int 
             KvizGetStringExact(request.Fields, name, sizeof(name), "%i.name", i);
             char contents[1024];
             KvizGetStringExact(request.Fields, contents, sizeof(contents), "%i.value", i);
-            AnyHttp_AppendMultipartString(buffer, bufferPos, bufferSize, name, contents, bufferSize == 0);
+            AppendMultipartString(buffer, bufferPos, bufferSize, name, contents, bufferSize == 0);
         } else if (StrEqual(type, "file")) {
             char name[1024];
             KvizGetStringExact(request.Fields, name, sizeof(name), "%i.name", i);
             char filepath[1024];
             KvizGetStringExact(request.Fields, filepath, sizeof(filepath), "%i.value", i);
-            if (!AnyHttp_AppendMultipartFile(buffer, bufferPos, bufferSize, name, filepath, bufferSize == 0))
+            if (!AppendMultipartFile(buffer, bufferPos, bufferSize, name, filepath, bufferSize == 0))
                 return -1;
         } else {
             ThrowError("Unknown type");
@@ -440,7 +440,7 @@ static int AnyHttp_SteamWorks_SendPostForm_Internal(AnyHttpRequest request, int 
     StrCat(contentType, sizeof(contentType), MultiPartBoundary);
     
     if (!SteamWorks_SetHTTPRequestRawPostBody(request.ExtensionHandle, contentType, buffer, bufferPos) ||
-        !SteamWorks_SetHTTPCallbacks(request.ExtensionHandle, AnyHttp_SteamWorks_Done) || 
+        !SteamWorks_SetHTTPCallbacks(request.ExtensionHandle, SteamWorks_Done) || 
         !SteamWorks_SendHTTPRequest(request.ExtensionHandle)) 
     {
         return -1;
@@ -449,7 +449,7 @@ static int AnyHttp_SteamWorks_SendPostForm_Internal(AnyHttpRequest request, int 
     return bufferPos;
 }
 
-public void AnyHttp_SteamWorks_Done(Handle HTTPRequest, bool bFailure, bool requestSuccessful, EHTTPStatusCode statusCode) {
+static void SteamWorks_Done(Handle HTTPRequest, bool bFailure, bool requestSuccessful, EHTTPStatusCode statusCode) {
     AnyHttpRequest request;
     if (!FindRequestByHandle(HTTPRequest, request)) {
         return;
@@ -473,7 +473,7 @@ public void AnyHttp_SteamWorks_Done(Handle HTTPRequest, bool bFailure, bool requ
 
     Call_PushCell(statusCode);
     Call_PushCell(request.MetaData);
-    AnyHttp_CleanUp(request);
+    CleanUpRequest(request);
     Call_Finish();
 }
 
@@ -496,7 +496,7 @@ static int CURL_Default_Opts[][2] = {
     {view_as<int>(CURLOPT_VERBOSE), 0}
 };
 
-static bool AnyHttp_cURL_Get(const char[] url, AnyHttp_Result callback, any metadata = 0) {
+static bool cURL_Get(const char[] url, AnyHttp_Result callback, any metadata = 0) {
     Handle curl = curl_easy_init();
     if (curl == null)
         return false;
@@ -506,39 +506,39 @@ static bool AnyHttp_cURL_Get(const char[] url, AnyHttp_Result callback, any meta
         return false;
     }
 
-    AnyHttpRequest request = AnyHttp_NewRequest();
+    AnyHttpRequest request = NewRequest();
     request.ExtensionHandle = curl;
     request.Callback = callback;
     request.MetaData = metadata;
     
     char filename[128];
-    AnyHttp_GenerateUniqueFilename(filename, sizeof(filename));
+    GenerateUniqueFilename(filename, sizeof(filename));
     request.SetFileName(filename);
     
     Handle filehandle = curl_OpenFile(filename, "wb");
     if (filehandle == null) {
-        AnyHttp_CleanUp(request);
+        CleanUpRequest(request);
         return false;
     }
 
     if (!curl_easy_setopt_handle(curl, CURLOPT_WRITEDATA, filehandle)) {
-        AnyHttp_CleanUp(request);
+        CleanUpRequest(request);
         return false;
     }
 
     request.FileHandle = filehandle;
     if (!curl_easy_setopt_string(curl, CURLOPT_URL, url)) {
-        AnyHttp_CleanUp(request);
+        CleanUpRequest(request);
         return false;
     }
 
-    curl_easy_perform_thread(curl, AnyHttp_cURL_Done);
+    curl_easy_perform_thread(curl, cURL_Done);
     return true;
 }
 
 
 
-static AnyHttpRequest AnyHttp_cURL_CreatePostForm(const char[] url, any metadata = 0) {
+static AnyHttpRequest cURL_CreatePostForm(const char[] url, any metadata = 0) {
     Handle handle = curl_easy_init();
     if (handle == null)
         return InvalidRequest;
@@ -552,14 +552,14 @@ static AnyHttpRequest AnyHttp_cURL_CreatePostForm(const char[] url, any metadata
         return InvalidRequest;
     }
     
-    AnyHttpRequest request = AnyHttp_NewRequest();
+    AnyHttpRequest request = NewRequest();
     request.ExtensionHandle = handle;
     request.MetaData = metadata;
     
     return request;
 }
 
-static bool AnyHttp_cURL_SendPostForm(AnyHttpRequest request) {
+static bool cURL_SendPostForm(AnyHttpRequest request) {
     Handle hCurlForm = curl_httppost();
     char type[64];
     
@@ -570,7 +570,7 @@ static bool AnyHttp_cURL_SendPostForm(AnyHttpRequest request) {
             char contents[1024];
             KvizGetStringExact(request.Fields, contents, sizeof(contents), "%i.value", i);
             if (curl_formadd(hCurlForm, CURLFORM_COPYNAME, name, CURLFORM_COPYCONTENTS, contents, CURLFORM_END) != CURL_FORMADD_OK) {
-                AnyHttp_CleanUp(request);
+                CleanUpRequest(request);
                 return false;
             }
         } else if (StrEqual(type, "file")) {
@@ -579,7 +579,7 @@ static bool AnyHttp_cURL_SendPostForm(AnyHttpRequest request) {
             char filepath[PLATFORM_MAX_PATH];
             KvizGetStringExact(request.Fields, filepath, sizeof(filepath), "%i.value", i);
             if (curl_formadd(hCurlForm, CURLFORM_COPYNAME, name, CURLFORM_FILE, filepath, CURLFORM_END) != CURL_FORMADD_OK) {
-                AnyHttp_CleanUp(request);
+                CleanUpRequest(request);
                 return false;
             }
         } else {
@@ -588,32 +588,32 @@ static bool AnyHttp_cURL_SendPostForm(AnyHttpRequest request) {
     }
     
     if (!curl_easy_setopt_handle(request.ExtensionHandle, CURLOPT_HTTPPOST, hCurlForm)) {
-        AnyHttp_CleanUp(request);
+        CleanUpRequest(request);
         return false;
     }
     
     char filename[128];
-    AnyHttp_GenerateUniqueFilename(filename, sizeof(filename));
+    GenerateUniqueFilename(filename, sizeof(filename));
     request.SetFileName(filename);
     
     Handle filehandle = curl_OpenFile(filename, "w");
     if (filehandle == null) {
-        AnyHttp_CleanUp(request);
+        CleanUpRequest(request);
         return false;
     }
     
     request.FileHandle = filehandle;
 
     if (!curl_easy_setopt_handle(request.ExtensionHandle, CURLOPT_WRITEDATA, filehandle)) {
-        AnyHttp_CleanUp(request);
+        CleanUpRequest(request);
         return false;
     }
 
-    curl_easy_perform_thread(request.ExtensionHandle, AnyHttp_cURL_Done);
+    curl_easy_perform_thread(request.ExtensionHandle, cURL_Done);
     return true;
 }
 
-public void AnyHttp_cURL_Done(Handle hndl, CURLcode code) {
+static void cURL_Done(Handle hndl, CURLcode code) {
     AnyHttpRequest request;
     if (!FindRequestByHandle(hndl, request)) {
         return;
@@ -667,7 +667,7 @@ public void AnyHttp_cURL_Done(Handle hndl, CURLcode code) {
     Call_PushCell(responseCode);
     Call_PushCell(request.MetaData);
 
-    AnyHttp_CleanUp(request);
+    CleanUpRequest(request);
     Call_Finish();
 }
 
