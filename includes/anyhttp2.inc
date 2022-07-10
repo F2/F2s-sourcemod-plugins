@@ -10,11 +10,11 @@ Features:
 Public functions:
 - bool AnyHttp.Init(): Returns false if no HTTP extension is loaded 
 - void AnyHttp.Require(): Calls ThrowError if no HTTP extension is loaded
-- void AnyHttp.Get(const char[] url, AnyHttp_Result callback, int metadata = 0)
+- bool AnyHttp.Get(const char[] url, AnyHttp_Result callback, any metadata = 0)
 - AnyHttpRequest request = AnyHttp.CreatePost(const char[] url)
 - request.PutFile(const char[] name, const char[] filepath)
 - request.PutString(const char[] name, const char[] value)
-- request.Send(AnyHttp_Result callback)
+- bool AnyHttp.Send(AnyHttpRequest request, AnyHttp_Result callback, any metadata = 0)
 
 Callbacks:
 - AnyHttp_Result: 
@@ -49,7 +49,6 @@ TODO:
 #define SimultaneousConnections  16
 
 #pragma dynamic 20971520 // Make sure we can allocate enough space for uploading files. Here's 20MB.
-#pragma newdecls required
 
 enum AnyHttp_Extension {
     AnyHttpUnknown,
@@ -57,15 +56,12 @@ enum AnyHttp_Extension {
     UseSteamWorks,
 };
 
-
 typeset AnyHttp_Result {
     function void (bool success, const char[] contents, int httpCode, int metadata);
     function void (bool success, const char[] contents, int httpCode);
     function void (bool success, const char[] contents);
 };
 
-
-static AnyHttp_Extension CurrentExtension = AnyHttpUnknown;
 
 
 enum struct AnyHttpRequestData {
@@ -88,66 +84,50 @@ static int nextConnection = 0;
 
 methodmap AnyHttpRequest {
     property int Id {
-        public get() {
-            return view_as<int>(this);
-        }
+        public get() { return view_as<int>(this); }
     }
 
     property bool IsValid {
-        public get() {
-            return this.Id >= 0;
-        }
+        public get() { return this.Id >= 0; }
     }
 
     property Handle ExtensionHandle {
-        public get() {
-            return requests[this.Id].extensionHandle;
-        }
+        public get() { return requests[this.Id].extensionHandle; }
         public set(Handle extensionHandle) {
             requests[this.Id].extensionHandle = extensionHandle;
         }
     }
 
     property bool Initialized {
-        public get() {
-            return requests[this.Id].initialized;
-        }
+        public get() { return requests[this.Id].initialized; }
         public set(bool initialized) {
             requests[this.Id].initialized = initialized;
         }
     }
 
     property AnyHttp_Result Callback {
-        public get() {
-            return requests[this.Id].callback;
-        }
+        public get() { return requests[this.Id].callback; }
         public set(AnyHttp_Result callback) {
             requests[this.Id].callback = callback;
         }
     }
 
     property any MetaData {
-        public get() {
-            return requests[this.Id].metadata;
-        }
+        public get() { return requests[this.Id].metadata; }
         public set(any metadata) {
             requests[this.Id].metadata = metadata;
         }
     }
 
     property Handle Fields {
-        public get() {
-            return requests[this.Id].fields;
-        }
+        public get() { return requests[this.Id].fields; }
         public set(Handle fields) {
             requests[this.Id].fields = fields;
         }
     }
 
     property Handle FileHandle {
-        public get() {
-            return requests[this.Id].filehandle;
-        }
+        public get() { return requests[this.Id].filehandle; }
         public set(Handle filehandle) {
             requests[this.Id].filehandle = filehandle;
         }
@@ -178,117 +158,95 @@ methodmap AnyHttpRequest {
         KvizSetString(kv, "string", "%i.type", id);
         KvizSetString(kv, value, "%i.value", id);
     }
-    
-    public bool Send(AnyHttp_Result callback) {
-        this.Callback = callback;
+};
+static AnyHttpRequest InvalidRequest = view_as<AnyHttpRequest>(-1);
 
-        if (CurrentExtension == UseSteamWorks) {
-            return AnyHttp_SteamWorks_SendPostForm(this);
-        } else if (CurrentExtension == UseCURL) {
-            return AnyHttp_cURL_SendPostForm(this);
+
+enum struct AnyHttpClass {
+    AnyHttp_Extension Extension;
+    bool IsInitialized;
+
+    bool Init() {
+        if (this.IsInitialized)
+            return true;
+        
+        if (this.Extension == AnyHttpUnknown) {
+            if (LibraryExists("SteamWorks")) {
+                this.Extension = UseSteamWorks;
+#if SOURCEMOD_V_MAJOR == 1 && SOURCEMOD_V_MINOR <= 10
+            } else if (GetFeatureStatus(FeatureType_Native, "curl_easy_init") == FeatureStatus_Available) {
+                // Initializing cURL options doesn't work on SM 1.11 at the moment. /F2, 09/07/2022
+                this.Extension = UseCURL;
+#endif
+            } else {
+                return false;
+            }
+        }
+        
+        this.IsInitialized = true;
+        return true;
+    }
+    
+    void Require() {
+        if (!this.Init())
+            ThrowError("Missing HTTP extension (e.g. SteamWorks)");
+    }
+    
+    bool Get(const char[] url, AnyHttp_Result callback, any metadata = 0) {
+        if (!this.Init())
+            return false;
+        
+        if (this.Extension == UseSteamWorks) {
+            return AnyHttp_SteamWorks_Get(url, callback, metadata);
+        } else if (this.Extension == UseCURL) {
+            return AnyHttp_cURL_Get(url, callback, metadata);
         } else {
             ThrowError("Unknown extension");
             return false; // Avoid compiler warning
         }
     }
-};
-static AnyHttpRequest InvalidRequest = view_as<AnyHttpRequest>(-1);
-
-methodmap AnyHttpClass {
-    public bool Init() {
-        return AnyHttp_Initialize();
-    }
     
-    public void Require() {
+    AnyHttpRequest CreatePost(const char[] url, any metadata = 0) {
         if (!this.Init())
-            ThrowError("Missing HTTP extension (e.g. SteamWorks)");
+            return InvalidRequest;
+    
+        if (this.Extension == UseSteamWorks) {
+            return AnyHttp_SteamWorks_CreatePostForm(url, metadata);
+        } else if (this.Extension == UseCURL) {
+            return AnyHttp_cURL_CreatePostForm(url, metadata);
+        } else {
+            ThrowError("Unknown extension");
+            return InvalidRequest; // Avoid compiler warning
+        }
     }
     
-    public bool Get(const char[] url, AnyHttp_Result callback, int metadata = 0) {
-        return AnyHttp_Get(url, callback, metadata);
+    bool Send(AnyHttpRequest request, AnyHttp_Result callback) {
+        request.Callback = callback;
+
+        if (this.Extension == UseSteamWorks) {
+            return AnyHttp_SteamWorks_SendPostForm(request);
+        } else if (this.Extension == UseCURL) {
+            return AnyHttp_cURL_SendPostForm(request);
+        } else {
+            ThrowError("Unknown extension");
+            return false; // Avoid compiler warning
+        }
     }
-    
-    public AnyHttpRequest CreatePost(const char[] url) {
-        return AnyHttp_CreatePostForm(url);
-    }
-    
-    property AnyHttp_Extension Extension {
-        public get() { return CurrentExtension; }
-        public set(AnyHttp_Extension value) { CurrentExtension = value; }
-    }
-};
+}
 stock AnyHttpClass AnyHttp;
 
 
 
-static bool IsInitialized = false;
-static const char MultiPartBoundary[] = "--------------------AnyHttp--AnyHttp--h7doWqx7m--";
-
-
-
-
-// Public functions
-
-static bool AnyHttp_Initialize() {
-    if (IsInitialized)
-        return true;
-    
-    if (CurrentExtension == AnyHttpUnknown) {
-        if (LibraryExists("SteamWorks")) {
-            CurrentExtension = UseSteamWorks;
-#if SOURCEMOD_V_MAJOR == 1 && SOURCEMOD_V_MINOR <= 10
-        } else if (GetFeatureStatus(FeatureType_Native, "curl_easy_init") == FeatureStatus_Available) {
-            // Initializing cURL options doesn't work on SM 1.11 at the moment. /F2, 09/07/2022
-            CurrentExtension = UseCURL;
-#endif
-        } else {
-            return false;
-        }
-    }
-    
-    IsInitialized = true;
-    return true;
-}
-
-static bool AnyHttp_Get(const char[] url, AnyHttp_Result callback, int metadata = 0) {
-    if (!AnyHttp_Initialize())
-        return false;
-    
-    if (CurrentExtension == UseSteamWorks) {
-        return AnyHttp_SteamWorks_Get(url, callback, metadata);
-    } else if (CurrentExtension == UseCURL) {
-        return AnyHttp_cURL_Get(url, callback, metadata);
-    } else {
-        ThrowError("Unknown extension");
-        return false; // Avoid compiler warning
-    }
-}
-
-static AnyHttpRequest AnyHttp_CreatePostForm(const char[] url) {
-    if (!AnyHttp_Initialize())
-        return InvalidRequest;
-    
-    if (CurrentExtension == UseSteamWorks) {
-        return AnyHttp_SteamWorks_CreatePostForm(url);
-    } else if (CurrentExtension == UseCURL) {
-        return AnyHttp_cURL_CreatePostForm(url);
-    } else {
-        ThrowError("Unknown extension");
-        return InvalidRequest; // Avoid compiler warning
-    }
-}
-
-
 // Common private functions
+
+static const char MultiPartBoundary[] = "--------------------AnyHttp--AnyHttp--h7doWqx7m--";
 
 static AnyHttpRequest AnyHttp_NewRequest() {
     int id = (nextConnection++) % SimultaneousConnections;
     AnyHttpRequest request = view_as<AnyHttpRequest>(id);
 
     if (request.Initialized) {
-        if (request.ExtensionHandle != null)
-            CloseHandle(request.ExtensionHandle);
-        KvizClose(request.Fields);
+        AnyHttp_CleanUp(request);
     }
 
     request.ExtensionHandle = null;
@@ -416,7 +374,7 @@ static void AnyHttp_GenerateUniqueFilename(char[] filename, int maxsize) {
 
 // =========== SteamWorks ============
 
-static bool AnyHttp_SteamWorks_Get(const char[] url, AnyHttp_Result callback, int metadata = 0) {
+static bool AnyHttp_SteamWorks_Get(const char[] url, AnyHttp_Result callback, any metadata = 0) {
     Handle handle = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, url);
     
     AnyHttpRequest request = AnyHttp_NewRequest();
@@ -425,7 +383,7 @@ static bool AnyHttp_SteamWorks_Get(const char[] url, AnyHttp_Result callback, in
     request.MetaData = metadata;
 
     if (!SteamWorks_SetHTTPCallbacks(handle, AnyHttp_SteamWorks_Done) || !SteamWorks_SendHTTPRequest(handle)) {
-        CloseHandle(handle);
+        AnyHttp_CleanUp(request);
         return false;
     }
 
@@ -433,9 +391,10 @@ static bool AnyHttp_SteamWorks_Get(const char[] url, AnyHttp_Result callback, in
 }
 
 
-static AnyHttpRequest AnyHttp_SteamWorks_CreatePostForm(const char[] url) {
+static AnyHttpRequest AnyHttp_SteamWorks_CreatePostForm(const char[] url, any metadata = 0) {
     AnyHttpRequest request = AnyHttp_NewRequest();
     request.ExtensionHandle = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, url);
+    request.MetaData = metadata;
     return request;
 }
 
@@ -480,9 +439,10 @@ static int AnyHttp_SteamWorks_SendPostForm_Internal(AnyHttpRequest request, int 
     char contentType[256] = "multipart/form-data; boundary=";
     StrCat(contentType, sizeof(contentType), MultiPartBoundary);
     
-    SteamWorks_SetHTTPRequestRawPostBody(request.ExtensionHandle, contentType, buffer, bufferPos);
-    
-    if (!SteamWorks_SetHTTPCallbacks(request.ExtensionHandle, AnyHttp_SteamWorks_Done) || !SteamWorks_SendHTTPRequest(request.ExtensionHandle)) {
+    if (!SteamWorks_SetHTTPRequestRawPostBody(request.ExtensionHandle, contentType, buffer, bufferPos) ||
+        !SteamWorks_SetHTTPCallbacks(request.ExtensionHandle, AnyHttp_SteamWorks_Done) || 
+        !SteamWorks_SendHTTPRequest(request.ExtensionHandle)) 
+    {
         return -1;
     }
     
@@ -523,11 +483,6 @@ public void AnyHttp_SteamWorks_Done(Handle HTTPRequest, bool bFailure, bool requ
 
 
 
-
-
-
-
-
 // =========== CURL ============
 
 static int CURL_Default_Opts[][2] = {
@@ -541,7 +496,7 @@ static int CURL_Default_Opts[][2] = {
     {view_as<int>(CURLOPT_VERBOSE), 0}
 };
 
-static bool AnyHttp_cURL_Get(const char[] url, AnyHttp_Result callback, int metadata = 0) {
+static bool AnyHttp_cURL_Get(const char[] url, AnyHttp_Result callback, any metadata = 0) {
     Handle curl = curl_easy_init();
     if (curl == null)
         return false;
@@ -583,7 +538,7 @@ static bool AnyHttp_cURL_Get(const char[] url, AnyHttp_Result callback, int meta
 
 
 
-static AnyHttpRequest AnyHttp_cURL_CreatePostForm(const char[] url) {
+static AnyHttpRequest AnyHttp_cURL_CreatePostForm(const char[] url, any metadata = 0) {
     Handle handle = curl_easy_init();
     if (handle == null)
         return InvalidRequest;
@@ -599,6 +554,7 @@ static AnyHttpRequest AnyHttp_cURL_CreatePostForm(const char[] url) {
     
     AnyHttpRequest request = AnyHttp_NewRequest();
     request.ExtensionHandle = handle;
+    request.MetaData = metadata;
     
     return request;
 }
@@ -640,15 +596,15 @@ static bool AnyHttp_cURL_SendPostForm(AnyHttpRequest request) {
     AnyHttp_GenerateUniqueFilename(filename, sizeof(filename));
     request.SetFileName(filename);
     
-    Handle hCurlOutput = curl_OpenFile(filename, "w");
-    if (hCurlOutput == null) {
+    Handle filehandle = curl_OpenFile(filename, "w");
+    if (filehandle == null) {
         AnyHttp_CleanUp(request);
         return false;
     }
     
-    request.FileHandle = hCurlOutput;
+    request.FileHandle = filehandle;
 
-    if (!curl_easy_setopt_handle(request.ExtensionHandle, CURLOPT_WRITEDATA, hCurlOutput)) {
+    if (!curl_easy_setopt_handle(request.ExtensionHandle, CURLOPT_WRITEDATA, filehandle)) {
         AnyHttp_CleanUp(request);
         return false;
     }
@@ -676,7 +632,7 @@ public void AnyHttp_cURL_Done(Handle hndl, CURLcode code) {
         CloseHandle(filehandle);
         request.FileHandle = null;
         
-        // We are currently not doing anything with the error. Perhaps we could expose it somehow.
+        LogError("cURL error: %s", error_buffer);
         
         success = false;
      } else {

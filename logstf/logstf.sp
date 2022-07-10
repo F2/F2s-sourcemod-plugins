@@ -93,7 +93,7 @@ TODO:
 #include <tf2_stocks>
 #include <smlib>
 #include <morecolors>
-#include <anyhttp>
+#include <anyhttp2>
 #include <regex>
 #include <f2stocks>
 #include <match>
@@ -668,18 +668,18 @@ void UploadLog(bool partial) {
 	if (!partial)
 		CPrintToChatAll("%s", "{lightgreen}[LogsTF] {blue}Uploading logs...");
 	
-	AnyHttpForm form = AnyHttp.CreatePost("http://logs.tf/upload");
+	AnyHttpRequest req = AnyHttp.CreatePost("http://logs.tf/upload");
 	
-	form.PutFile("logfile", partial ? partialpath : path);
-	form.PutString("title", title);
-	form.PutString("map", g_sCachedMap);
-	form.PutString("key", apiKey);
-	form.PutString("uploader", g_sPluginVersion);
+	req.PutFile("logfile", partial ? partialpath : path);
+	req.PutString("title", title);
+	req.PutString("map", g_sCachedMap);
+	req.PutString("key", apiKey);
+	req.PutString("uploader", g_sPluginVersion);
 	
 	if (g_sCurrentLogID[0] != '\0')
-		form.PutString("updatelog", g_sCurrentLogID);
+		req.PutString("updatelog", g_sCurrentLogID);
     
-	form.Send(UploadLog_Complete);
+	AnyHttp.Send(req, UploadLog_Complete);
 }
 
 public void UploadLog_Complete(bool success, const char[] contents, int responseCode, int metadata) {
