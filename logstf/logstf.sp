@@ -682,7 +682,7 @@ void UploadLog(bool partial) {
 	AnyHttp.Send(req, UploadLog_Complete);
 }
 
-public void UploadLog_Complete(bool success, const char[] contents, int responseCode, int metadata) {
+public void UploadLog_Complete(bool success, const char[] contents, int responseCode) {
 	g_bIsUploading = false;
 	
 	if (success) {
