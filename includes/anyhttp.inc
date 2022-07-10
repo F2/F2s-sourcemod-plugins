@@ -27,10 +27,10 @@ TODO:
 - Expose functions that can download to a file
 */
 
-#if defined _anyhttp2_included
+#if defined _anyhttp_included
  #endinput
 #endif
-#define _anyhttp2_included
+#define _anyhttp_included
 
 #if defined REQUIRE_EXTENSIONS
     #define ANYHTTP_REQUIRE_EXTENSIONS
