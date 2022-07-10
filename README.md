@@ -30,7 +30,7 @@ Download all plugins in a zip file here: <a href="http://sourcemod.krus.dk/f2-so
 - Logs shots fired and shots hit (for certain weapons)
 
 ### LogsTF <a href="http://sourcemod.krus.dk/logstf.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
-- **Note:** Requires either [SteamWorks](http://users.alliedmods.net/~kyles/builds/SteamWorks/) ([mirror](https://github.com/hexa-core-eu/SteamWorks/releases)) or [cURL](https://code.google.com/archive/p/sourcemod-curl-extension/downloads) extension
+- **Note:** Requires the [SteamWorks](http://users.alliedmods.net/~kyles/builds/SteamWorks/) ([mirror](https://github.com/hexa-core-eu/SteamWorks/releases)) extension
 - Automatically uploads logs to logs.tf
 - Set cvar **logstf_apikey** to your Logs.tf API Key
 - You can see the logs in-game by typing `!logs` or `.ss`

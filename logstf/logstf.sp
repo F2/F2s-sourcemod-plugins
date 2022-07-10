@@ -81,6 +81,11 @@ Release notes:
 ---- 2.4.0 (05/07/2022) ----
 - Update syntax to newdecls so that this plugin can compile on latest sourcemod (1.11) /sappho
 
+
+---- 2.4.1 (10/07/2022) ----
+- More internal syntax updates
+
+
 TODO:
 - Sanitize names for < and >, since logs.tf doesn't like those
 - Check if midgameupload works for mini-rounds
@@ -101,7 +106,7 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION	"2.4.0"
+#define PLUGIN_VERSION	"2.4.1"
 #define UPDATE_URL		"http://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
@@ -668,21 +673,21 @@ void UploadLog(bool partial) {
 	if (!partial)
 		CPrintToChatAll("%s", "{lightgreen}[LogsTF] {blue}Uploading logs...");
 	
-	AnyHttpForm form = AnyHttp.CreatePost("http://logs.tf/upload");
+	AnyHttpRequest req = AnyHttp.CreatePost("http://logs.tf/upload");
 	
-	form.PutFile("logfile", partial ? partialpath : path);
-	form.PutString("title", title);
-	form.PutString("map", g_sCachedMap);
-	form.PutString("key", apiKey);
-	form.PutString("uploader", g_sPluginVersion);
+	req.PutFile("logfile", partial ? partialpath : path);
+	req.PutString("title", title);
+	req.PutString("map", g_sCachedMap);
+	req.PutString("key", apiKey);
+	req.PutString("uploader", g_sPluginVersion);
 	
 	if (g_sCurrentLogID[0] != '\0')
-		form.PutString("updatelog", g_sCurrentLogID);
+		req.PutString("updatelog", g_sCurrentLogID);
     
-	form.Send(UploadLog_Complete);
+	AnyHttp.Send(req, UploadLog_Complete);
 }
 
-public void UploadLog_Complete(bool success, const char[] contents, int responseCode, int metadata) {
+public void UploadLog_Complete(bool success, const char[] contents, int responseCode) {
 	g_bIsUploading = false;
 	
 	if (success) {
