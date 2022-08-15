@@ -86,10 +86,14 @@ Release notes:
 - More internal syntax updates
 
 
+
 TODO:
+- Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log and -partial files have dynamic names, and don't forget to clean them up.
 - Sanitize names for < and >, since logs.tf doesn't like those
+- Perhaps also sanitize names containing "connect xx"
 - Check if midgameupload works for mini-rounds
 - Make a logstf.txt, logstf-upload1.txt, logstf-upload2.txt, such that a new match can start while it is still uploading the old log
+--- This may also be fixed by having dynamic names per logstf.log file.
 */
 
 #pragma semicolon 1
@@ -149,8 +153,6 @@ Handle g_hCvarHostname,
 
 char g_sLastLogURL[128];
 char g_sCachedHostname[64];
-// these could probably be shorter... 8 chars?
-// -sappho
 char g_sCachedRedTeamName[32];
 char g_sCachedBluTeamName[32];
 char g_sCachedMap[32];
@@ -336,8 +338,6 @@ void CacheMatchValues() {
 	String_Trim(g_sCachedHostname, g_sCachedHostname, sizeof(g_sCachedHostname));
 	String_Trim(g_sCachedBluTeamName, g_sCachedBluTeamName, sizeof(g_sCachedBluTeamName));
 	String_Trim(g_sCachedRedTeamName, g_sCachedRedTeamName, sizeof(g_sCachedRedTeamName));
-	// todo: maybe work with workshop maps?
-	// -sappho
 	GetCurrentMap(g_sCachedMap, sizeof(g_sCachedMap));
 	
 	// Remove last word in hostname
