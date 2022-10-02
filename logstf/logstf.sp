@@ -152,7 +152,8 @@ Handle g_hCvarHostname,
        g_hCvarTitle,
        g_hCvarAutoUpload,
        g_hCvarMidGameUpload,
-       g_hCvarMidGameNotice;
+       g_hCvarMidGameNotice,
+	   g_hCvarSuppressChat;
 
 char g_sLastLogURL[128];
 char g_sCachedHostname[64];
@@ -202,7 +203,8 @@ public void OnPluginStart() {
 	g_hCvarAutoUpload = CreateConVar("logstf_autoupload", "2", "Set to 2 to upload logs from all matches. (default)\n - Set to 1 to upload logs from matches with at least 4 players.\n - Set to 0 to disable automatic upload. Admins can still upload logs by typing !ul", FCVAR_NONE);
 	g_hCvarMidGameUpload = CreateConVar("logstf_midgameupload", "1", "Set to 0 to upload logs after the match has finished.\n - Set to 1 to upload the logs after each round.", FCVAR_NONE);
 	g_hCvarMidGameNotice = CreateConVar("logstf_midgamenotice", "1", "Set to 1 to notice players about midgame logs.\n - Set to 0 to disable it.", FCVAR_NONE);
-	
+	g_hCvarSuppressChat = CreateConVar("logstf_suppresschat", "0", "Set to 1 to hide '!log' chats.", FCVAR_NONE);
+
 	// Events
 	HookEvent("teamplay_round_win", Event_RoundEnd);
 	HookEvent("teamplay_round_stalemate", Event_RoundEnd);
@@ -494,6 +496,10 @@ public Action Command_say(int client, int args) {
 			g_fSSTime[client] = GetTickedTime();
 			QueryClientConVar(client, "cl_disablehtmlmotd", QueryConVar_DisableHtmlMotd);
 		}
+
+		if (GetConVarBool(g_hCvarSuppressChat)) {
+			return Plugin_Stop;
+		}
 	}
 	
 	return Plugin_Continue;
@@ -529,6 +535,16 @@ public Action BlockSay(int client, const char[] text, bool teamSay) {
 	if (teamSay)
 		return Plugin_Continue;
 	if (StrEqual(text, "!ul", false) && Client_IsAdmin(client))
+		return Plugin_Handled;
+	if (GetConVarBool(g_hCvarSuppressChat) && (
+		(!g_bDisableSS && (StrEqual(text, ".ss", false) || StrEqual(text, "!ss", false)))
+		|| StrEqual(text, ".stats", false)
+		|| StrEqual(text, "!stats", false)
+		|| StrEqual(text, ".log", false)
+		|| StrEqual(text, "!log", false)
+		|| StrEqual(text, ".logs", false)
+		|| StrEqual(text, "!logs", false)
+	))
 		return Plugin_Handled;
 	return Plugin_Continue;
 }
