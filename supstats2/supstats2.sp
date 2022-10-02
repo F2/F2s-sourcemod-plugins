@@ -63,8 +63,13 @@ Release notes:
 - Do not log self-heal
 
 
+---- 2.3.2 (02/10/2022) ----
+- Fixed 'pause' logs being wrong
+
+
 
 TODO:
+- Fix picking up medpacks: [supstats2.smx] Wrong player-healed event detected: patient=2/1, healer=0/0
 - Better detection of pause .. perhaps use GetGameTime()? .. needs to support setpause, unpause commands, and also the "pause plugin"
 - Use GetGameTime() instead of GetEngineTime()?
 - Write comments in code :D
@@ -85,7 +90,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.3.1"
+#define PLUGIN_VERSION "2.3.2"
 #define UPDATE_URL		"http://sourcemod.krus.dk/supstats2/update.txt"
 
 #define NAMELEN 64
@@ -247,6 +252,7 @@ public OnMapStart() {
 		for (new i = 0; i < MAXSTICKIES; i++)
 			g_iStickyId[client][i] = 0;
 	}
+	g_bIsPaused = false; // The game is automatically unpaused during a map change
 }
 
 public OnClientPutInServer(client) {
@@ -290,14 +296,21 @@ public Action:Listener_Pause(client, const String:command[], argc) {
 	if (client == 0)
 		return Plugin_Continue; // Using "rcon pause" won't do anything
 	
-	g_bIsPaused = !g_bIsPaused;
-
-	if (g_bIsPaused)
-		LogToGame("World triggered \"Game_Paused\"");
-	else
-		LogToGame("World triggered \"Game_Unpaused\"");
+	CreateTimer(0.1, CheckPause);
 
 	return Plugin_Continue;
+}
+
+
+public Action CheckPause(Handle timer) {
+	bool isPaused = !IsServerProcessing();
+
+	if (isPaused && !g_bIsPaused)
+		LogToGame("World triggered \"Game_Paused\"");
+	else if (!isPaused && g_bIsPaused)
+		LogToGame("World triggered \"Game_Unpaused\"");
+	
+	g_bIsPaused = isPaused;
 }
 
 public Action:Event_PlayerHealed(Handle:event, const String:name[], bool:dontBroadcast) {
