@@ -86,14 +86,16 @@ Release notes:
 - More internal syntax updates
 
 
+---- 2.5.0 ----
+- Reduced risk of file locks messing up log upload
+
+
 
 TODO:
 - Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log and -partial files have dynamic names, and don't forget to clean them up.
 - Sanitize names for < and >, since logs.tf doesn't like those
 - Perhaps also sanitize names containing "connect xx"
 - Check if midgameupload works for mini-rounds
-- Make a logstf.txt, logstf-upload1.txt, logstf-upload2.txt, such that a new match can start while it is still uploading the old log
---- This may also be fixed by having dynamic names per logstf.log file.
 */
 
 #pragma semicolon 1
@@ -116,7 +118,8 @@ TODO:
 #define LOG_PATH  "logstf.log"
 #define PLOG_PATH "logstf-partial.log"
 #define LOG_BUFFERSIZE 768 // I have seen log lines longer than 512
-#define LOG_BUFFERCNT 100
+#define LOG_FLUSHCNT 100
+#define LOG_BUFFERCNT 150
 
 #pragma newdecls required
 
@@ -279,8 +282,8 @@ void StartMatch() {
 	// Clear the log file and make sure it exists
 	char path[64];
 	GetLogPath(LOG_PATH, path, sizeof(path));
-	Handle file = OpenFile(path, "w");
-	CloseHandle(file);
+	File file = OpenFile(path, "w");
+	file.Close();
 	g_bLogReady = false;
 	
 	// Set up Partial Upload
@@ -572,26 +575,31 @@ void AddLogLine(const char [] message) {
 	char time[32];
 	FormatTime(time, sizeof(time), "%m/%d/%Y - %H:%M:%S");
 	FormatEx(g_sLogBuffer[g_iNextLogBuffer++], LOG_BUFFERSIZE, "L %s: %s", time, message);
-	if (g_iNextLogBuffer == LOG_BUFFERCNT)
+	if (g_iNextLogBuffer >= LOG_FLUSHCNT)
 		FlushLog();
 }
 
 void FlushLog() {
 	if (g_iNextLogBuffer == 0)
 		return;
-		
-	int firstLine;
+	
 	int lastLine = g_iNextLogBuffer;
 	
 	if (g_bInMatch) {
 		char path[64];
 		GetLogPath(LOG_PATH, path, sizeof(path));
-		Handle file = OpenFile(path, "a"); // TODO: If it returns null, then handle it! (might wanna set nextlogbuffer to 0 anyway)
-		for (int line = firstLine; line < lastLine; line++)
-		{
-			WriteFileString(file, g_sLogBuffer[line], false);
+		File file = OpenFile(path, "a");
+		if (file == null) {
+			// Something is blocking us for writing to the file right now. Try again next time FlushLog is called.
+			LogError("FlushLog: Could not open file %s", path);
+			return;
 		}
-		CloseHandle(file);
+		
+		for (int line = 0; line < lastLine; line++)
+		{
+			file.WriteString(g_sLogBuffer[line], false);
+		}
+		file.Close();
 	}
 	
 	g_iNextLogBuffer = 0;
@@ -684,7 +692,10 @@ void UploadLog(bool partial) {
 	if (g_sCurrentLogID[0] != '\0')
 		req.PutString("updatelog", g_sCurrentLogID);
     
-	AnyHttp.Send(req, UploadLog_Complete);
+	if (!AnyHttp.Send(req, UploadLog_Complete)) {
+		char[] noContents = "";
+		UploadLog_Complete(false, noContents, 0);
+	}
 }
 
 public void UploadLog_Complete(bool success, const char[] contents, int responseCode) {
