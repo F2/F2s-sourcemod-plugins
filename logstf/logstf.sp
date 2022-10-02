@@ -86,7 +86,7 @@ Release notes:
 - More internal syntax updates
 
 
----- 2.5.0 ----
+---- 2.5.0 (02/10/2022) ----
 - Reduced risk of file locks messing up log upload
 - Added cvar 'logstf_suppresschat'
 
@@ -113,7 +113,7 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION	"2.5.0"
+#define PLUGIN_VERSION	"2.4.9"
 #define UPDATE_URL		"http://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
