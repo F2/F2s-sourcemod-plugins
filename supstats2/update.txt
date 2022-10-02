@@ -4,10 +4,10 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.3.2"
+			"Latest"	"2.4.0"
 		}
 		
-		"Notes"	"Changes in 2.3.2:"
+		"Notes"	"Changes in 2.4.0:"
 		"Notes"	"- Fixed 'pause' logs being wrong"
 	}
 	

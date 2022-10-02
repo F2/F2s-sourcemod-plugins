@@ -63,7 +63,7 @@ Release notes:
 - Do not log self-heal
 
 
----- 2.3.2 (02/10/2022) ----
+---- 2.4.0 (02/10/2022) ----
 - Fixed 'pause' logs being wrong
 
 
@@ -90,7 +90,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.3.2"
+#define PLUGIN_VERSION "2.4.0"
 #define UPDATE_URL		"http://sourcemod.krus.dk/supstats2/update.txt"
 
 #define NAMELEN 64
