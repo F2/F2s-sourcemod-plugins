@@ -9,6 +9,7 @@
 		
 		"Notes"	"Changes in 2.4.0:"
 		"Notes"	"- Fixed 'pause' logs being wrong"
+		"Notes"	"- Fixed SM error logs when picking up medpacks"
 	}
 	
 	"Files"

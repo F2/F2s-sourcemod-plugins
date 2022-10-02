@@ -65,11 +65,11 @@ Release notes:
 
 ---- 2.4.0 (02/10/2022) ----
 - Fixed 'pause' logs being wrong
+- Fixed SM error logs when picking up medpacks
 
 
 
 TODO:
-- Fix picking up medpacks: [supstats2.smx] Wrong player-healed event detected: patient=2/1, healer=0/0
 - Better detection of pause .. perhaps use GetGameTime()? .. needs to support setpause, unpause commands, and also the "pause plugin"
 - Use GetGameTime() instead of GetEngineTime()?
 - Write comments in code :D
@@ -117,11 +117,11 @@ new	String:lastWeaponDamage[MAXPLAYERS+1][MAXWEPNAMELEN],
 	String:lastPostHumousWeaponDamage[MAXPLAYERS+1][MAXWEPNAMELEN], 
 	Float:lastPostHumousWeaponDamageTime[MAXPLAYERS+1], 
 	lastHealth[MAXPLAYERS+1], 
-	lastHealthBeforePickup[MAXPLAYERS+1], 
 	lastHealingOnHit[MAXPLAYERS+1], 
 	bool:lastHeadshot[MAXPLAYERS+1], 
 	bool:lastAirshot[MAXPLAYERS+1], 
 	bool:g_bPlayerTakenDirectHit[MAXPLAYERS+1];
+int medpackHealAmount[MAXPLAYERS+1];
 new String:g_sTauntNames[][] = { "", "taunt_scout", "taunt_sniper", "taunt_soldier", "taunt_demoman", "taunt_medic", "taunt_heavy", "taunt_pyro", "taunt_spy", "taunt_engineer" };
 
 
@@ -220,10 +220,6 @@ public OnPluginStart() {
 	HookEvent("player_chargedeployed", EventPre_player_chargedeployed, EventHookMode_Pre);
 	HookEvent("player_chargedeployed", Event_player_chargedeployed);
 	
-	HookEntityOutput("item_healthkit_small",  "OnCacheInteraction", EntityOutput_HealthKit);
-	HookEntityOutput("item_healthkit_medium", "OnCacheInteraction", EntityOutput_HealthKit);
-	HookEntityOutput("item_healthkit_full",   "OnCacheInteraction", EntityOutput_HealthKit);
-	
 	AddCommandListener(Listener_Pause, "pause");
 	
 	
@@ -266,10 +262,6 @@ public OnPluginEnd() {
 			SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 		}
 	}
-	
-	UnhookEntityOutput("item_healthkit_small",  "OnCacheInteraction", EntityOutput_HealthKit);
-	UnhookEntityOutput("item_healthkit_medium", "OnCacheInteraction", EntityOutput_HealthKit);
-	UnhookEntityOutput("item_healthkit_full",   "OnCacheInteraction", EntityOutput_HealthKit);
 	
 	RemoveGameLogHook(GameLog);
 }
@@ -327,9 +319,15 @@ public Action:Event_PlayerHealed(Handle:event, const String:name[], bool:dontBro
 	new healer = GetClientOfUserId(healerId);
 	new amount = GetEventInt(event, "amount");
 	
+	if (healer == 0 && patient != 0) {
+		// Healed by a medpack
+		medpackHealAmount[patient] = amount;
+		return Plugin_Continue;
+	}
+	
 	if (patient == 0 || healer == 0) {
 		// This has been observed to happen by http://www.teamfortress.tv/post/631052/medicstats-sourcemod-plugin
-		LogMessage("Wrong player-healed event detected: patient=%i/%i, healer=%i/%i", patientId, patient, healerId, healer);
+		LogMessage("Wrong player-healed event detected: patient=%i/%i, healer=%i/%i, amount=%i", patientId, patient, healerId, healer, amount);
 		return Plugin_Continue;
 	}
 	
@@ -450,48 +448,16 @@ GetMedigunName(client, String:medigun[], medigunLen) {
 
 
 // Medkit pickup with healing
-public EntityOutput_HealthKit(const String:output[], caller, activator, Float:delay) {
-	if (activator > 0 && activator <= MaxClients && IsClientInGame(activator) && IsPlayerAlive(activator)) {
-		new health = GetClientHealth(activator);
-		lastHealthBeforePickup[activator] = health;
-	}
-}
-
 public Event_ItemPickup(Handle:event, const String:name[], bool:dontBroadcast) {
 	decl String:item[64];
 	GetEventString(event, "item", item, sizeof(item));
 	new userid = GetEventInt(event, "userid");
 	new client = GetClientOfUserId(userid);
 	
-	if (StrContains(item, "medkit_") == 0) {
-		new health = lastHealthBeforePickup[client];
-		new maxHealth = GetMaxHealth(client);
-		
-		if (health < maxHealth) {
-			if (item[7] == 's') {
-				// small
-				new endHealth = RoundToNearest(0.205*maxHealth + health);
-				if (endHealth > maxHealth)
-					endHealth = maxHealth;
-				
-				LogItemPickup(userid, "medkit_small", endHealth - health);
-				return;
-			} else if (item[7] == 'm') {
-				// medium
-				new endHealth = RoundToNearest(0.5*maxHealth + health);
-				if (endHealth > maxHealth)
-					endHealth = maxHealth;
-				
-				LogItemPickup(userid, "medkit_medium", endHealth - health);
-				return;
-			} else if (item[7] == 'l') {
-				// large
-				new endHealth = maxHealth;
-				
-				LogItemPickup(userid, "medkit_large", endHealth - health);
-				return;
-			}
-		}
+	if (strncmp(item, "medkit_", 7, true) == 0 && medpackHealAmount[client] != 0) {
+		LogItemPickup(userid, item, medpackHealAmount[client]);
+		medpackHealAmount[client] = 0;
+		return;
 	}
 	
 	LogItemPickup(userid, item);
