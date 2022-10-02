@@ -4,11 +4,12 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.4.1"
+			"Latest"	"2.5.0"
 		}
 		
-		"Notes"	"Changes in 2.4.1:"
-		"Notes"	"- More internal syntax updates"
+		"Notes"	"Changes in 2.5.0:"
+		"Notes"	"- Reduced risk of file locks messing up log upload"
+		"Notes"	"- Added cvar 'logstf_suppresschat'"
 	}
 	
 	"Files"

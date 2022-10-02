@@ -113,7 +113,7 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION	"2.4.1"
+#define PLUGIN_VERSION	"2.5.0"
 #define UPDATE_URL		"http://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
