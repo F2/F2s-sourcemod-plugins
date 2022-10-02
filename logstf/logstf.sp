@@ -88,6 +88,7 @@ Release notes:
 
 ---- 2.5.0 ----
 - Reduced risk of file locks messing up log upload
+- Added cvar 'logstf_suppresschat'
 
 
 
@@ -203,7 +204,7 @@ public void OnPluginStart() {
 	g_hCvarAutoUpload = CreateConVar("logstf_autoupload", "2", "Set to 2 to upload logs from all matches. (default)\n - Set to 1 to upload logs from matches with at least 4 players.\n - Set to 0 to disable automatic upload. Admins can still upload logs by typing !ul", FCVAR_NONE);
 	g_hCvarMidGameUpload = CreateConVar("logstf_midgameupload", "1", "Set to 0 to upload logs after the match has finished.\n - Set to 1 to upload the logs after each round.", FCVAR_NONE);
 	g_hCvarMidGameNotice = CreateConVar("logstf_midgamenotice", "1", "Set to 1 to notice players about midgame logs.\n - Set to 0 to disable it.", FCVAR_NONE);
-	g_hCvarSuppressChat = CreateConVar("logstf_suppresschat", "0", "Set to 1 to hide '!log' chats.", FCVAR_NONE);
+	g_hCvarSuppressChat = CreateConVar("logstf_suppresschat", "0", "Set to 1 to hide '!log' chats.\n - Set to 0 to show '!log' chats.", FCVAR_NONE);
 
 	// Events
 	HookEvent("teamplay_round_win", Event_RoundEnd);
