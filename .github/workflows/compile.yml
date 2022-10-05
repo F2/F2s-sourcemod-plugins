@@ -45,6 +45,55 @@ jobs:
           name: ftp-files
           # Destination path
           path: ftp/
+      - name: Set up node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+      - name: Install npm packages
+        run: npm install fs path
+      - name: Create release
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const baseDir = "ftp";
+            const data = fs.readFileSync(path.join(baseDir, "f2-sourcemod-plugins.zip"));
+            
+            const d = new Date();
+            const dateString =
+                d.getUTCFullYear() + 
+                ("0" + (d.getUTCMonth()+1)).slice(-2) +
+                ("0" + d.getUTCDate()).slice(-2);
+            
+            const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+            let body = '| plugin | version |\n';
+            body += '| -- | -- |\n';
+            for (const entry of entries.filter((entry) => entry.isDirectory())) {
+              const p = path.join(baseDir, entry.name, "update.txt");
+              if (fs.existsSync(p)) {
+                const updateContents = fs.readFileSync(p);
+                const updateVersion = /"Latest"[ \t]+"([^"]+)"/.exec(updateContents);
+                if (updateVersion) {
+                  body += `| ${entry.name} | ${updateVersion[1]} |\n`;
+                }
+              }
+            }
+              
+            const release = await github.rest.repos.createRelease({
+              owner: "F2",
+              repo: "F2s-sourcemod-plugins",
+              tag_name: dateString + "-" + d.getTime(),
+              body: body,
+            });
+            
+            github.rest.repos.uploadReleaseAsset({
+              owner: "F2",
+              repo: "F2s-sourcemod-plugins",
+              release_id: release.data.id,
+              name: "f2-sourcemod-plugins.zip",
+              data: data,
+            });
       - name: Upload to FTP
         working-directory: ftp
         run: |
