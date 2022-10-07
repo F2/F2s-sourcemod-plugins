@@ -312,7 +312,8 @@ public Action CheckPause(Handle timer, int client) {
 		GetPlayerTeamStr(GetClientTeam(client), userTeam, sizeof(userTeam));
 
 		LogToGame("\"%N<%d><%s><%s>\" triggered \"matchpause\"", client, userId, userSteamId, userTeam);
-	} if (!isPaused && g_bIsPaused) {
+	}
+	if (!isPaused && g_bIsPaused) {
 		float pauseDuration = GetEngineTime() - g_fPauseStartTime;
 
 		LogToGame("World triggered \"Game_Unpaused\"");
