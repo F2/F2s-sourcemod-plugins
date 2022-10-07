@@ -64,13 +64,13 @@ Release notes:
 
 
 ---- 2.4.0 (02/10/2022) ----
+- Added pause length to logs
 - Fixed 'pause' logs being wrong
 - Fixed SM error logs when picking up medpacks
 
 
 
 TODO:
-- Better detection of pause .. perhaps use GetGameTime()? .. needs to support setpause, unpause commands, and also the "pause plugin"
 - Use GetGameTime() instead of GetEngineTime()?
 - Write comments in code :D
 - Make a separate file that deals with special weapon log-names
@@ -122,6 +122,7 @@ new	String:lastWeaponDamage[MAXPLAYERS+1][MAXWEPNAMELEN],
 	bool:lastAirshot[MAXPLAYERS+1], 
 	bool:g_bPlayerTakenDirectHit[MAXPLAYERS+1];
 int medpackHealAmount[MAXPLAYERS+1];
+float g_fPauseStartTime;
 new String:g_sTauntNames[][] = { "", "taunt_scout", "taunt_sniper", "taunt_soldier", "taunt_demoman", "taunt_medic", "taunt_heavy", "taunt_pyro", "taunt_spy", "taunt_engineer" };
 
 
@@ -232,6 +233,8 @@ public OnPluginStart() {
 	new String:map[64];
 	GetCurrentMap(map, sizeof(map));
 	LogToGame("Loading map \"%s\"", map);
+
+	g_fPauseStartTime = GetEngineTime(); // Just in case it is already paused
 }
 
 public OnLibraryAdded(const String:name[]) {
@@ -288,19 +291,38 @@ public Action:Listener_Pause(client, const String:command[], argc) {
 	if (client == 0)
 		return Plugin_Continue; // Using "rcon pause" won't do anything
 	
-	CreateTimer(0.1, CheckPause);
+	CreateTimer(0.1, CheckPause, client);
 
 	return Plugin_Continue;
 }
 
 
-public Action CheckPause(Handle timer) {
+public Action CheckPause(Handle timer, int client) {
 	bool isPaused = !IsServerProcessing();
+	int userId = GetClientUserId(client);
+	char userSteamId[64];
+	char userTeam[64];
 
-	if (isPaused && !g_bIsPaused)
+	if (isPaused && !g_bIsPaused) {
+		g_fPauseStartTime = GetEngineTime();
+
 		LogToGame("World triggered \"Game_Paused\"");
-	else if (!isPaused && g_bIsPaused)
+
+		GetClientAuthStringNew(client, userSteamId, sizeof(userSteamId), false);
+		GetPlayerTeamStr(GetClientTeam(client), userTeam, sizeof(userTeam));
+
+		LogToGame("\"%N<%d><%s><%s>\" triggered \"matchpause\"", client, userId, userSteamId, userTeam);
+	} if (!isPaused && g_bIsPaused) {
+		float pauseDuration = GetEngineTime() - g_fPauseStartTime;
+
 		LogToGame("World triggered \"Game_Unpaused\"");
+
+		GetClientAuthStringNew(client, userSteamId, sizeof(userSteamId), false);
+		GetPlayerTeamStr(GetClientTeam(client), userTeam, sizeof(userTeam));
+
+		LogToGame("\"%N<%d><%s><%s>\" triggered \"matchunpause\"", client, userId, userSteamId, userTeam);
+		LogToGame("World triggered \"Pause_Length\" (seconds \"%.2f\")", pauseDuration);
+	}
 	
 	g_bIsPaused = isPaused;
 }
