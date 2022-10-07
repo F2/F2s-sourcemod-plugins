@@ -49,13 +49,13 @@ stock PrintToSTV(const String:format[], any:...) {
 	PrintToChat(stv, "%s", buffer);
 }
 
-stock CPrintToSTV(const String:format[], any:...)
+stock void CPrintToSTV(const char[] format, any ...)
 {
-    new stv = FindSTV();
+    int stv = FindSTV();
     if (stv < 1)
         return;
 
-    decl String:buffer[512];
+    char buffer[512];
     VFormat(buffer, sizeof(buffer), format, 2);
     CPrintToChat(stv, "%s", buffer);
 }
