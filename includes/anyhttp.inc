@@ -149,15 +149,29 @@ methodmap AnyHttpRequest {
         KvizSetString(kv, "file", "%i.type",  id);
         KvizSetString(kv, "true", "%i.cleanup",  id);
 
-        char filename[128];
-        GenerateUniqueFilename(filename, sizeof(filename));
-        if (!CopyFile(filepath, filename)) {
-            LogError("Could not copy file from %s to %s", filepath, filename);
-            strcopy(filename, sizeof(filename), filepath);
+        // To avoid locking the file, we copy it to a temporary location.
+        // Put the temp file in the same directory as the file to be uploaded
+        char tempFilepath[128];
+        strcopy(tempFilepath, sizeof(tempFilepath), filepath);
+        int posOfDirSeparator = FindCharInString(tempFilepath, '/', true);
+        if (posOfDirSeparator == -1)
+            posOfDirSeparator = FindCharInString(tempFilepath, '\\', true);
+        if (posOfDirSeparator == -1) {
+            tempFilepath = "";
+        } else {
+            tempFilepath[posOfDirSeparator + 1] = '\0';
+        }
+        char tempFilename[128];
+        GenerateUniqueFilename(tempFilename, sizeof(tempFilename));
+        StrCat(tempFilepath, sizeof(tempFilepath), tempFilename);
+
+        if (!CopyFile(filepath, tempFilepath)) {
+            LogError("Could not copy file from %s to %s", filepath, tempFilepath);
+            strcopy(tempFilepath, sizeof(tempFilepath), filepath);
             KvizSetString(kv, "false", "%i.cleanup",  id);
         }
     
-        KvizSetString(kv, filename, "%i.value", id);
+        KvizSetString(kv, tempFilepath, "%i.value", id);
     }
     
     public void PutString(const char[] name, const char[] value) {
