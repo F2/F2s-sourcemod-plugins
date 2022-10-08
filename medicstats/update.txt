@@ -4,11 +4,12 @@
 	{
 		"Version"
 		{
-			"Latest"	"1.3.5"
+			"Latest"	"1.4.0"
 		}
 		
-		"Notes"	"Changes in 1.3.5:"
-		"Notes"	"- Fixed wrong empty_uber logs when there are healing events not related to medics (e.g. engineer's dispenser)"
+		"Notes"	"Changes in 1.4.0:"
+		"Notes"	"- Fixed SM error logs when picking up medpacks"
+		"Notes"	"- Implemented stephanie's colored STV Stats messages"
 	}
 	
 	"Files"

@@ -48,6 +48,11 @@ Release notes:
 - Fixed wrong empty_uber logs when there are healing events not related to medics (e.g. engineer's dispenser)
 
 
+---- 1.4.0 (02/10/2020) ----
+- Fixed SM error logs when picking up medpacks
+- Implemented stephanie's colored STV Stats messages
+
+
 
 TODO:
 - The log lines should include which medigun is wielded
@@ -69,7 +74,7 @@ Known Bugs:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.3.4"
+#define PLUGIN_VERSION "1.4.0"
 #define UPDATE_URL     "http://sourcemod.krus.dk/medicstats/update.txt"
 #define TIMER_TICK 0.15
 
@@ -273,9 +278,14 @@ public Action:Event_player_death(Handle:event, const String:name[], bool:dontBro
 		
 		new Float:uberPct = TF2_GetPlayerUberLevel(client, medic[team][MedicMedigun]);
 		
-		if (uberPct >= 0.95)
-			PrintToSTV("[STV Stats] %s's medic died with %i%% uber", team == TFTeam_Red ? "RED" : "BLU", RoundToFloor(uberPct * 100.0));
-		
+		if (uberPct == 1)
+        {
+			CPrintToSTV("{default}[STV Stats] %s{default}'s medic DROPPED!", team == TFTeam_Red ? "{red}RED" : "{blue}BLU");
+        }
+        else if (uberPct >= 0.95)
+        {
+			CPrintToSTV("{default}[STV Stats] %s{default}'s medic died with %s%i%%{default} uber", team == TFTeam_Red ? "{red}RED" : "{blue}BLU", team == TFTeam_Red ? "{red}" : "{blue}", RoundToFloor(uberPct * 100.0));
+        }
 		medic[team][MedicLastDeath] = GetGameTime();
 		
 		LogMedicDeath(client, RoundToFloor(uberPct * 100.0));
@@ -311,8 +321,9 @@ public Action:Event_player_chargedeployed(Handle:event, const String:name[], boo
 			medic[team][MedicFullyChargedTime] = -1.0;
 		}
 		
-		if (waitTime >= 30.0)
-			PrintToSTV("[STV Stats] %s had uber for %i seconds before using it", team == TFTeam_Red ? "RED" : "BLU", RoundToNearest(waitTime));
+		if (waitTime >= 30.0) {
+			CPrintToSTV("{default}[STV Stats] %s{default} had uber for %s%i seconds{default} before using it", team == TFTeam_Red ? "{red}RED" : "{blue}BLU", team == TFTeam_Red ? "{red}" : "{blue}", RoundToNearest(waitTime));
+		}
 	}
 }
 
@@ -322,7 +333,7 @@ public Action:Event_player_healed(Handle:event, const String:name[], bool:dontBr
 	new patient = GetClientOfUserId(patientId);
 	new healer = GetClientOfUserId(healerId);
 	//new amount = GetEventInt(event, "amount");
-	if (healer == 0 && patient == 0) {
+	if (healer == 0) {
 		// Caused by medpacks
 		return Plugin_Continue;
 	} else if (healer == 0 || patient == 0) {
@@ -470,8 +481,9 @@ public Action:Timer_CollectInfo(Handle:timer) {
 				new Float:timeBeforeHealing = gameTime - medic[team][MedicInitialHealSpawnTime];
 				medic[team][MedicInitialHealSpawnTime] = -1.0;
 				
-				if (timeBeforeHealing >= 5.0)
-					PrintToSTV("[STV Stats] %s spent %.1f seconds after spawning before healing", team == TFTeam_Red ? "RED" : "BLU", timeBeforeHealing);
+				if (timeBeforeHealing >= 5.0) {
+					CPrintToSTV("{default}[STV Stats] %s{default} spent %s%.1f seconds{default} after spawning before healing", team == TFTeam_Red ? "{red}RED" : "{blue}BLU", team == TFTeam_Red ? "{red}" : "{blue}", timeBeforeHealing);
+				}
 				LogFirstHeal(client, timeBeforeHealing);
 			}
 			
@@ -515,7 +527,7 @@ public Action:Timer_CollectInfo(Handle:timer) {
 				medic[team][MedicHasHadAdvantage] = false;
 				
 				LogLostUberAdvantage(client, medic[team][MedicCurrentBiggestAdvantage]);
-				PrintToSTV("[STV Stats] %s lost their uber advantage (%.0f seconds)", team == TFTeam_Red ? "RED" : "BLU", medic[team][MedicCurrentBiggestAdvantage]);
+				CPrintToSTV("{default}[STV Stats] %s{default} lost their uber advantage of %s%.0f seconds{default}", team == TFTeam_Red ? "{red}RED" : "{blue}BLU", team == TFTeam_Red ? "{red}" : "{blue}", medic[team][MedicCurrentBiggestAdvantage]);
 			}
 		}
 		
@@ -722,4 +734,3 @@ LogHealed(patient, healer, amount) {
 		patientTeam,
 		amount);
 }
-
