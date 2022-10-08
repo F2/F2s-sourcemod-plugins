@@ -22,6 +22,7 @@ Release notes:
 - Fixed bug with "repause" command
 
 ---- 1.5.0 (08/10/2022) ----
+- Added notification to use 'repause' command when someone joins during a pause
 - Fixed building ubercharge during pause glitch - by Aad | hl.RGL.gg
   Credit to rodrigo286 for providng base code for storing/restoring uber on medic death
   (https://forums.alliedmods.net/showthread.php?p=2022903)
@@ -30,7 +31,6 @@ Release notes:
 
 TODO:
 - Detect pause state upon plugin load
-- Automatically call "repause" when someone is in "sending client info" state
 */
 
 #pragma semicolon 1
@@ -119,6 +119,13 @@ public OnMapStart() {
 
 public void OnClientConnected(int client) {
 	g_fChargeLevel[client] = -1.0;
+}
+
+
+public void OnClientPutInServer(int client) {
+	if (g_iPauseState == Paused) {
+		CPrintToChatAll2("{lightgreen}[Pause] {default}Type {olive}repause {default}in the console to let in {normal}%N", client);
+	}
 }
 
 public void OnClientDisconnect_Post(int client) {

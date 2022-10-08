@@ -8,6 +8,7 @@
 		}
 		
 		"Notes"	"Changes in 1.5.0:"
+		"Notes" "- Added notification to use 'repause' command when someone joins during a pause"
 		"Notes"	"- Fixed building ubercharge during pause glitch - by Aad | hl.RGL.gg"
 		"Notes" "- Fixed bug when all players leave the server during a pause"
 	}
