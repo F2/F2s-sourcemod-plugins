@@ -53,11 +53,12 @@ enum PauseState {
 	Paused,
 	AboutToUnpause,
 	Ignore__Unpaused,
-	Ignore__UnpausePause1,
-	Ignore__UnpausePause2,
+	Ignore__Repause1,
+	Ignore__Repause2,
 };
 
 new Handle:g_cvarPausable = INVALID_HANDLE;
+ConVar g_cvarAllowHibernation = null;
 new PauseState:g_iPauseState;
 new Float:g_fLastPause;
 new g_iCountdown;
@@ -87,6 +88,7 @@ public OnPluginStart() {
 	AddCommandListener(Cmd_UnpausePause, "pauseunpause");
 	
 	g_cvarPausable = FindConVar("sv_pausable");
+	g_cvarAllowHibernation = FindConVar("tf_allow_server_hibernation");
 	
 	g_cvarPauseChat = CreateConVar("pause_enablechat", "1", "Enable people to chat as much as they want during a pause.", FCVAR_NONE);
 	AddCommandListener(Cmd_Say, "say");
@@ -120,8 +122,8 @@ public void OnClientConnected(int client) {
 }
 
 public void OnClientDisconnect_Post(int client) {
-	if (GetClientCount(false) == 0) {
-		// If everyone disconnects, the game is unpaused
+	if (GetClientCount(false) == 0 && g_cvarAllowHibernation.BoolValue) {
+		// If everyone disconnects, the game is unpaused due to hibernation
 
 		if (g_hCountdownTimer != null)
 			KillTimer(g_hCountdownTimer);
@@ -142,7 +144,7 @@ public Action:Cmd_UnpausePause(client, const String:command[], args) {
 	if (g_iPauseState != Paused)
 		return Plugin_Handled;
 	
-	g_iPauseState = Ignore__UnpausePause1;
+	g_iPauseState = Ignore__Repause1;
 	FakeClientCommand(client, "pause");
 	CPrintToChatAllEx2(client, "{lightgreen}[Pause] {default}Game was repaused by {teamcolor}%N", client);
 	
@@ -176,11 +178,11 @@ public Action:Cmd_Pause(client, const String:command[], args) {
 	if (g_iPauseState == Ignore__Unpaused) {
 		RestoreUbercharges();
 		g_iPauseState = Unpaused;
-	} else if (g_iPauseState == Ignore__UnpausePause1) {
+	} else if (g_iPauseState == Ignore__Repause1) {
 		// Let the game become unpaused
 		RestoreUbercharges();
-		g_iPauseState = Ignore__UnpausePause2;
-	} else if (g_iPauseState == Ignore__UnpausePause2) {
+		g_iPauseState = Ignore__Repause2;
+	} else if (g_iPauseState == Ignore__Repause2) {
 		// Let the game become paused
 		StoreUbercharges();
 		g_iPauseState = Paused;
