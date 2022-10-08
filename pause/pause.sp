@@ -29,9 +29,6 @@ Release notes:
 - When unpausing, fixed wrong name being logged
 - Fixed bug when all players leave the server during a pause
 
-
-TODO:
-- Detect pause state upon plugin load
 */
 
 #pragma semicolon 1
@@ -58,7 +55,7 @@ enum PauseState {
 	Ignore__Repause2,
 };
 
-new Handle:g_cvarPausable = INVALID_HANDLE;
+ConVar g_cvarPausable = null;
 ConVar g_cvarAllowHibernation = null;
 new PauseState:g_iPauseState;
 new Float:g_fLastPause;
@@ -95,8 +92,6 @@ public OnPluginStart() {
 	g_cvarPauseChat = CreateConVar("pause_enablechat", "1", "Enable people to chat as much as they want during a pause.", FCVAR_NONE);
 	AddCommandListener(Cmd_Say, "say");
 	
-	OnMapStart();
-	
 	// Set up auto updater
 	if (LibraryExists("updater"))
 		Updater_AddPlugin(UPDATE_URL);
@@ -110,12 +105,32 @@ public OnLibraryAdded(const String:name[]) {
 }
 
 public OnMapStart() {
+	// Be aware that this is also called upon Plugin Start.
+
 	g_fLastPause = -10.0;
-	g_iPauseState = Unpaused; // The game is automatically unpaused during a map change
 	g_hCountdownTimer = INVALID_HANDLE;
 	g_hPauseTimeTimer = INVALID_HANDLE;
 	for (int client = 1; client <= MaxClients; client++) {
 		g_fChargeLevel[client] = -1.0;
+	}
+
+	// The game is automatically unpaused during a map change
+	g_iPauseState = Unpaused; 
+
+	// Detect if the server is already paused
+	// If server is hibernating, I suppose we could risk IsServerProcessing() is false. (Although, my testing shows it is still true.)
+	bool isServerEmpty = GetClientCount(false) == 0;
+	if (IsServerProcessing() == false) {
+		if (!g_cvarAllowHibernation.BoolValue || (g_cvarAllowHibernation.BoolValue && !isServerEmpty)) {
+			g_iPauseState = Paused;
+			g_fLastPause = GetTickedTime();
+			StoreUbercharges();
+			if (g_hPauseTimeTimer != null) {
+				KillTimer(g_hPauseTimeTimer);
+			}
+			g_hPauseTimeTimer = CreateTimer(60.0, Timer_PauseTime, _, TIMER_FLAG_NO_MAPCHANGE | TIMER_REPEAT);
+			g_iPauseTimeMinutes = 0;
+		}
 	}
 }
 
@@ -145,7 +160,7 @@ public void OnClientDisconnect_Post(int client) {
 
 public Action:Cmd_UnpausePause(client, const String:command[], args) {
 	// Let the game handle the "off" situations
-	if (!GetConVarBool(g_cvarPausable))
+	if (!g_cvarPausable.BoolValue)
 		return Plugin_Continue;
 	if (client == 0)
 		return Plugin_Continue;
@@ -167,7 +182,7 @@ public Action:Timer_Repause(Handle:timer, any:client) {
 
 public Action:Cmd_Pause(client, const String:command[], args) {
 	// Let the game handle the "off" situations
-	if (!GetConVarBool(g_cvarPausable))
+	if (!g_cvarPausable.BoolValue)
 		return Plugin_Continue;
 	if (client == 0)
 		return Plugin_Continue;
@@ -244,8 +259,10 @@ public Action:Timer_Countdown(Handle:timer) {
 	if (g_iCountdown == 0) {
 		g_hCountdownTimer = INVALID_HANDLE;
 		
-		KillTimer(g_hPauseTimeTimer);
-		g_hPauseTimeTimer = INVALID_HANDLE;
+		if (g_hPauseTimeTimer != null) {
+			KillTimer(g_hPauseTimeTimer);
+			g_hPauseTimeTimer = null;
+		}
 		
 		g_iPauseState = Ignore__Unpaused;
 
