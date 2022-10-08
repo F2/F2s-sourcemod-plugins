@@ -48,7 +48,7 @@ TODO:
 #define ANYHTTP_VERSION		     "2.0.0"
 #define SimultaneousConnections  16
 
-#pragma dynamic 20971520 // Make sure we can allocate enough space for uploading files. Here's 20MB.
+#pragma dynamic 5242880 // Make sure we can allocate enough space for uploading files. Here's 20MB.
 
 enum AnyHttp_Extension {
     AnyHttpUnknown,
@@ -143,11 +143,35 @@ methodmap AnyHttpRequest {
 
     public void PutFile(const char[] name, const char[] filepath) {
         Handle kv = this.Fields;
-    
+
         int id = KvizGetNum(kv, 0, ":count") + 1;
         KvizSetString(kv, name, "%i.name", id);
         KvizSetString(kv, "file", "%i.type",  id);
-        KvizSetString(kv, filepath, "%i.value", id);
+        KvizSetString(kv, "true", "%i.cleanup",  id);
+
+        // To avoid locking the file, we copy it to a temporary location.
+        // Put the temp file in the same directory as the file to be uploaded
+        char tempFilepath[128];
+        strcopy(tempFilepath, sizeof(tempFilepath), filepath);
+        int posOfDirSeparator = FindCharInString(tempFilepath, '/', true);
+        if (posOfDirSeparator == -1)
+            posOfDirSeparator = FindCharInString(tempFilepath, '\\', true);
+        if (posOfDirSeparator == -1) {
+            tempFilepath = "";
+        } else {
+            tempFilepath[posOfDirSeparator + 1] = '\0';
+        }
+        char tempFilename[128];
+        GenerateUniqueFilename(tempFilename, sizeof(tempFilename));
+        StrCat(tempFilepath, sizeof(tempFilepath), tempFilename);
+
+        if (!CopyFile(filepath, tempFilepath)) {
+            LogError("Could not copy file from %s to %s", filepath, tempFilepath);
+            strcopy(tempFilepath, sizeof(tempFilepath), filepath);
+            KvizSetString(kv, "false", "%i.cleanup",  id);
+        }
+    
+        KvizSetString(kv, tempFilepath, "%i.value", id);
     }
     
     public void PutString(const char[] name, const char[] value) {
@@ -261,6 +285,9 @@ static AnyHttpRequest NewRequest() {
 }
 
 static void CleanUpRequest(AnyHttpRequest request) {
+    if (!request.Initialized)
+        return;
+    
     request.Initialized = false;
     if (request.ExtensionHandle != null) {
         CloseHandle(request.ExtensionHandle);
@@ -270,7 +297,24 @@ static void CleanUpRequest(AnyHttpRequest request) {
         CloseHandle(request.FileHandle);
         request.FileHandle = null;
     }
-    KvizClose(request.Fields);
+    if (request.Fields != null) {
+        char type[64];
+        for (int i = 1; KvizGetStringExact(request.Fields, type, sizeof(type), "%i.type", i); i++) {
+            if (StrEqual(type, "file")) {
+                char cleanup[16];
+                KvizGetStringExact(request.Fields, cleanup, sizeof(cleanup), "%i.cleanup", i);
+                if (StrEqual(cleanup, "true")) {
+                    char filepath[1024];
+                    KvizGetStringExact(request.Fields, filepath, sizeof(filepath), "%i.value", i);
+                    if (!DeleteFile(filepath, false))
+                        LogError("Could not delete %s", filepath);
+                }
+            }
+        }
+
+        KvizClose(request.Fields);
+        request.Fields = null;
+    }
 }
 
 static bool FindRequestByHandle(Handle handle, AnyHttpRequest &request) {
@@ -326,12 +370,18 @@ static bool AppendMultipartFile(char[] buffer, int &bufferPos, int maxsize, cons
         bufferPos += filesize;
     } else {
         File filehandle = OpenFile(filepath, "rb");
-        if (filehandle == null)
+        if (filehandle == null) {
+            LogError("AppendMultipartFile: Could not open file for reading %s", filepath);
             return false;
+        }
+        
         for (int i = 0; i < filesize; i++) {
             int byte;
-            if (!filehandle.ReadUint8(byte))
+            if (!filehandle.ReadUint8(byte)) {
+                LogError("AppendMultipartFile: Could not read byte from %s", filepath);
+                filehandle.Close();
                 return false;
+            }
             buffer[bufferPos++] = view_as<char>(byte);
         }
         filehandle.Close();
@@ -360,6 +410,33 @@ static int CopyBytes(char[] dest, int destSize, const char[] src, int destPos, i
     if (bytesCopied < bytes)
         ThrowError("AnyHttp: Not enough space allocated");
     return bytesCopied;
+}
+
+static bool CopyFile(const char[] sourceFile, const char[] targetFile)
+{
+	File hr = OpenFile(sourceFile, "rb", false);	
+    if (hr == null)
+        return false;
+
+    File hw = OpenFile(targetFile, "wb", false);	
+    if (hw == null) {
+        hr.Close();
+        return false;
+    }
+    
+    int bytesRead, buff[1024];
+    bool success = true;
+    while (!hr.EndOfFile()) {
+        bytesRead = hr.Read(buff, sizeof(buff), 1);
+        if (bytesRead == -1 || !hw.Write(buff, bytesRead, 1)) {
+            success = false;
+            break;
+        }
+    }
+
+    hw.Close();
+    hr.Close();
+    return success;
 }
 
 static void GenerateUniqueFilename(char[] filename, int maxsize) {

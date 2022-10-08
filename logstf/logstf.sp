@@ -86,14 +86,17 @@ Release notes:
 - More internal syntax updates
 
 
+---- 2.5.0 (02/10/2022) ----
+- Reduced risk of file locks messing up log upload
+- Added cvar 'logstf_suppresschat'
+
+
 
 TODO:
 - Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log and -partial files have dynamic names, and don't forget to clean them up.
 - Sanitize names for < and >, since logs.tf doesn't like those
 - Perhaps also sanitize names containing "connect xx"
 - Check if midgameupload works for mini-rounds
-- Make a logstf.txt, logstf-upload1.txt, logstf-upload2.txt, such that a new match can start while it is still uploading the old log
---- This may also be fixed by having dynamic names per logstf.log file.
 */
 
 #pragma semicolon 1
@@ -110,13 +113,14 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION	"2.4.1"
+#define PLUGIN_VERSION	"2.5.0"
 #define UPDATE_URL		"http://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
 #define PLOG_PATH "logstf-partial.log"
 #define LOG_BUFFERSIZE 768 // I have seen log lines longer than 512
-#define LOG_BUFFERCNT 100
+#define LOG_FLUSHCNT 100
+#define LOG_BUFFERCNT 150
 
 #pragma newdecls required
 
@@ -149,7 +153,8 @@ Handle g_hCvarHostname,
        g_hCvarTitle,
        g_hCvarAutoUpload,
        g_hCvarMidGameUpload,
-       g_hCvarMidGameNotice;
+       g_hCvarMidGameNotice,
+	   g_hCvarSuppressChat;
 
 char g_sLastLogURL[128];
 char g_sCachedHostname[64];
@@ -199,7 +204,8 @@ public void OnPluginStart() {
 	g_hCvarAutoUpload = CreateConVar("logstf_autoupload", "2", "Set to 2 to upload logs from all matches. (default)\n - Set to 1 to upload logs from matches with at least 4 players.\n - Set to 0 to disable automatic upload. Admins can still upload logs by typing !ul", FCVAR_NONE);
 	g_hCvarMidGameUpload = CreateConVar("logstf_midgameupload", "1", "Set to 0 to upload logs after the match has finished.\n - Set to 1 to upload the logs after each round.", FCVAR_NONE);
 	g_hCvarMidGameNotice = CreateConVar("logstf_midgamenotice", "1", "Set to 1 to notice players about midgame logs.\n - Set to 0 to disable it.", FCVAR_NONE);
-	
+	g_hCvarSuppressChat = CreateConVar("logstf_suppresschat", "0", "Set to 1 to hide '!log' chats.\n - Set to 0 to show '!log' chats.", FCVAR_NONE);
+
 	// Events
 	HookEvent("teamplay_round_win", Event_RoundEnd);
 	HookEvent("teamplay_round_stalemate", Event_RoundEnd);
@@ -279,8 +285,8 @@ void StartMatch() {
 	// Clear the log file and make sure it exists
 	char path[64];
 	GetLogPath(LOG_PATH, path, sizeof(path));
-	Handle file = OpenFile(path, "w");
-	CloseHandle(file);
+	File file = OpenFile(path, "w");
+	file.Close();
 	g_bLogReady = false;
 	
 	// Set up Partial Upload
@@ -491,6 +497,10 @@ public Action Command_say(int client, int args) {
 			g_fSSTime[client] = GetTickedTime();
 			QueryClientConVar(client, "cl_disablehtmlmotd", QueryConVar_DisableHtmlMotd);
 		}
+
+		if (GetConVarBool(g_hCvarSuppressChat)) {
+			return Plugin_Stop;
+		}
 	}
 	
 	return Plugin_Continue;
@@ -526,6 +536,16 @@ public Action BlockSay(int client, const char[] text, bool teamSay) {
 	if (teamSay)
 		return Plugin_Continue;
 	if (StrEqual(text, "!ul", false) && Client_IsAdmin(client))
+		return Plugin_Handled;
+	if (GetConVarBool(g_hCvarSuppressChat) && (
+		(!g_bDisableSS && (StrEqual(text, ".ss", false) || StrEqual(text, "!ss", false)))
+		|| StrEqual(text, ".stats", false)
+		|| StrEqual(text, "!stats", false)
+		|| StrEqual(text, ".log", false)
+		|| StrEqual(text, "!log", false)
+		|| StrEqual(text, ".logs", false)
+		|| StrEqual(text, "!logs", false)
+	))
 		return Plugin_Handled;
 	return Plugin_Continue;
 }
@@ -572,26 +592,31 @@ void AddLogLine(const char [] message) {
 	char time[32];
 	FormatTime(time, sizeof(time), "%m/%d/%Y - %H:%M:%S");
 	FormatEx(g_sLogBuffer[g_iNextLogBuffer++], LOG_BUFFERSIZE, "L %s: %s", time, message);
-	if (g_iNextLogBuffer == LOG_BUFFERCNT)
+	if (g_iNextLogBuffer >= LOG_FLUSHCNT)
 		FlushLog();
 }
 
 void FlushLog() {
 	if (g_iNextLogBuffer == 0)
 		return;
-		
-	int firstLine;
+	
 	int lastLine = g_iNextLogBuffer;
 	
 	if (g_bInMatch) {
 		char path[64];
 		GetLogPath(LOG_PATH, path, sizeof(path));
-		Handle file = OpenFile(path, "a"); // TODO: If it returns null, then handle it! (might wanna set nextlogbuffer to 0 anyway)
-		for (int line = firstLine; line < lastLine; line++)
-		{
-			WriteFileString(file, g_sLogBuffer[line], false);
+		File file = OpenFile(path, "a");
+		if (file == null) {
+			// Something is blocking us for writing to the file right now. Try again next time FlushLog is called.
+			LogError("FlushLog: Could not open file %s", path);
+			return;
 		}
-		CloseHandle(file);
+		
+		for (int line = 0; line < lastLine; line++)
+		{
+			file.WriteString(g_sLogBuffer[line], false);
+		}
+		file.Close();
 	}
 	
 	g_iNextLogBuffer = 0;
@@ -684,7 +709,10 @@ void UploadLog(bool partial) {
 	if (g_sCurrentLogID[0] != '\0')
 		req.PutString("updatelog", g_sCurrentLogID);
     
-	AnyHttp.Send(req, UploadLog_Complete);
+	if (!AnyHttp.Send(req, UploadLog_Complete)) {
+		char[] noContents = "";
+		UploadLog_Complete(false, noContents, 0);
+	}
 }
 
 public void UploadLog_Complete(bool success, const char[] contents, int responseCode) {
