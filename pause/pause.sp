@@ -22,7 +22,7 @@ Release notes:
 - Fixed bug with "repause" command
 
 
----- 1.5.0 (08/10/2022) ----
+---- 1.5.1 (08/10/2022) ----
 - Added notification to use 'repause' command when someone joins during a pause
 - Fixed building ubercharge during pause glitch - by Aad | hl.RGL.gg
   Credit to rodrigo286 for providng base code for storing/restoring uber on medic death
@@ -74,7 +74,7 @@ public Plugin myinfo = {
 	author = "F2",
 	description = "Avoids accidental unpausing and shows a countdown when unpausing",
 	version = PLUGIN_VERSION,
-	url = "http://sourcemod.krus.dk/"
+	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
 
@@ -119,7 +119,7 @@ public void OnMapStart() {
 
 	// Detect if the server is already paused
 	// If server is hibernating, I suppose we could risk IsServerProcessing() is false. (Although, my testing shows it is still true.)
-	bool isServerEmpty = GetClientCount(false) == 0;
+	bool isServerEmpty = GetRealPlayerCount() == 0;
 	if (IsServerProcessing() == false) {
 		if (!g_cvarAllowHibernation.BoolValue || (g_cvarAllowHibernation.BoolValue && !isServerEmpty)) {
 			g_iPauseState = Paused;
@@ -146,7 +146,7 @@ public void OnClientPutInServer(int client) {
 }
 
 public void OnClientDisconnect_Post(int client) {
-	if (GetClientCount(false) == 0 && g_cvarAllowHibernation.BoolValue) {
+	if (GetRealPlayerCount() == 0 && g_cvarAllowHibernation.BoolValue) {
 		// If everyone disconnects, the game is unpaused due to hibernation
 
 		if (g_hCountdownTimer != null)
