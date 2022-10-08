@@ -1,4 +1,4 @@
-# LogsTF
+# LogsTF <a href="https://sourcemod.krus.dk/logstf.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
 
 Features:
 
