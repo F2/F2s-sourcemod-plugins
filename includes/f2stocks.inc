@@ -49,6 +49,17 @@ stock PrintToSTV(const String:format[], any:...) {
 	PrintToChat(stv, "%s", buffer);
 }
 
+stock void CPrintToSTV(const char[] format, any ...)
+{
+    int stv = FindSTV();
+    if (stv < 1)
+        return;
+
+    char buffer[512];
+    VFormat(buffer, sizeof(buffer), format, 2);
+    CPrintToChat(stv, "%s", buffer);
+}
+
 stock FindSTV() {
 	if (!(PrintToSTV_iLastStvClient >= 1 && PrintToSTV_iLastStvClient <= MaxClients && IsClientConnected(PrintToSTV_iLastStvClient) && IsClientInGame(PrintToSTV_iLastStvClient) && IsClientSourceTV(PrintToSTV_iLastStvClient))) {
 		PrintToSTV_iLastStvClient = -1;
@@ -104,16 +115,18 @@ stock TF2_GetMedigunName(client, String:medigun[], medigunLen) {
 	new weaponid = GetPlayerWeaponSlot(client, 1);
 	if (weaponid >= 0) {
 		new defid = GetEntProp(weaponid, Prop_Send, "m_iItemDefinitionIndex");
-		if (defid == 29 || defid == 211 || defid == 663 || defid == 796 || defid == 805 || defid == 885 || defid == 894 || defid == 903 || defid == 912 || defid == 961 || defid == 970)
-			strcopy(medigun, medigunLen, "medigun");
-		else if (defid == 35)
-			strcopy(medigun, medigunLen, "kritzkrieg");
-		else if (defid == 411)
-			strcopy(medigun, medigunLen, "quickfix");
-		else if (defid == 998)
-			strcopy(medigun, medigunLen, "vaccinator");
-		else
-			strcopy(medigun, medigunLen, "unknown"); // TODO: Doesn't work for skins.
+		switch (defid) {
+			case 29, 211, 663, 796, 805, 885, 894, 903, 912, 961, 970, 15008, 15010, 15025, 15039, 15050, 15078, 15097, 15120, 15121, 15122, 15145, 15146, 16001, 16013, 16024:
+				strcopy(medigun, medigunLen, "medigun");
+			case 35:
+				strcopy(medigun, medigunLen, "kritzkrieg");
+			case 411:
+				strcopy(medigun, medigunLen, "quickfix");
+			case 998:
+				strcopy(medigun, medigunLen, "vaccinator");
+			default:
+				strcopy(medigun, medigunLen, "unknown");
+		}
 	} else {
 		strcopy(medigun, medigunLen, "");
 	}
