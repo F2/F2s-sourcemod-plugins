@@ -21,6 +21,16 @@ Release notes:
 ---- 1.3.0 (07/01/2015) ----
 - Fixed bug with "repause" command
 
+---- 1.5.0 (08/10/2022) ----
+- Fixed building ubercharge during pause glitch - by Aad | hl.RGL.gg
+  Credit to rodrigo286 for providng base code for storing/restoring uber on medic death
+  (https://forums.alliedmods.net/showthread.php?p=2022903)
+- Fixed bug when all players leave the server during a pause
+
+
+TODO:
+- Detect pause state upon plugin load
+- Automatically call "repause" when someone is in "sending client info" state
 */
 
 #pragma semicolon 1
@@ -32,7 +42,7 @@ Release notes:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.3.0"
+#define PLUGIN_VERSION "1.5.0"
 #define UPDATE_URL		"http://sourcemod.krus.dk/pause/update.txt"
 
 #define PAUSE_UNPAUSE_TIME 2.0
@@ -47,8 +57,6 @@ enum PauseState {
 	Ignore__UnpausePause2,
 };
 
-
-
 new Handle:g_cvarPausable = INVALID_HANDLE;
 new PauseState:g_iPauseState;
 new Float:g_fLastPause;
@@ -57,6 +65,7 @@ new Handle:g_hCountdownTimer = INVALID_HANDLE;
 new Handle:g_hPauseTimeTimer = INVALID_HANDLE;
 new g_iPauseTimeMinutes;
 new Handle:g_cvarPauseChat = INVALID_HANDLE;
+float g_fChargeLevel[MAXPLAYERS+1];
 
 public Plugin:myinfo = {
 	name = "Improved Pause Command",
@@ -101,6 +110,26 @@ public OnMapStart() {
 	g_iPauseState = Unpaused; // The game is automatically unpaused during a map change
 	g_hCountdownTimer = INVALID_HANDLE;
 	g_hPauseTimeTimer = INVALID_HANDLE;
+	for (int client = 1; client <= MaxClients; client++) {
+		g_fChargeLevel[client] = -1.0;
+	}
+}
+
+public void OnClientConnected(int client) {
+	g_fChargeLevel[client] = -1.0;
+}
+
+public void OnClientDisconnect_Post(int client) {
+	if (GetClientCount(false) == 0) {
+		// If everyone disconnects, the game is unpaused
+
+		if (g_hCountdownTimer != null)
+			KillTimer(g_hCountdownTimer);
+		if (g_hPauseTimeTimer != null)
+			KillTimer(g_hPauseTimeTimer);
+		
+		OnMapStart();
+	}
 }
 
 public Action:Cmd_UnpausePause(client, const String:command[], args) {
@@ -115,15 +144,14 @@ public Action:Cmd_UnpausePause(client, const String:command[], args) {
 	
 	g_iPauseState = Ignore__UnpausePause1;
 	FakeClientCommand(client, "pause");
-	CPrintToChatAllEx2(client, "{lightgreen}[Pause] {default}Game was unpaused by {teamcolor}%N", client);
+	CPrintToChatAllEx2(client, "{lightgreen}[Pause] {default}Game was repaused by {teamcolor}%N", client);
 	
-	CreateTimer(0.05, Timer_Repause, client, TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(0.1, Timer_Repause, client, TIMER_FLAG_NO_MAPCHANGE);
 	return Plugin_Handled;
 }
 
 public Action:Timer_Repause(Handle:timer, any:client) {
 	FakeClientCommandEx(client, "pause");
-	CPrintToChatAllEx2(client, "{lightgreen}[Pause] {default}Game was paused by {teamcolor}%N", client);
 }
 
 public Action:Cmd_Pause(client, const String:command[], args) {
@@ -146,22 +174,31 @@ public Action:Cmd_Pause(client, const String:command[], args) {
 	}
 	
 	if (g_iPauseState == Ignore__Unpaused) {
+		RestoreUbercharges();
 		g_iPauseState = Unpaused;
 	} else if (g_iPauseState == Ignore__UnpausePause1) {
+		// Let the game become unpaused
+		RestoreUbercharges();
 		g_iPauseState = Ignore__UnpausePause2;
 	} else if (g_iPauseState == Ignore__UnpausePause2) {
+		// Let the game become paused
+		StoreUbercharges();
 		g_iPauseState = Paused;
 	} else if (g_iPauseState == Unpaused || g_iPauseState == AboutToUnpause) {
 		g_fLastPause = GetTickedTime();
 		if (g_hCountdownTimer != INVALID_HANDLE) {
 			KillTimer(g_hCountdownTimer);
 			g_hCountdownTimer = INVALID_HANDLE;
-			PrintCenterTextAll(" ");
 		}
 		
 		new PauseState:oldState = g_iPauseState;
 		g_iPauseState = Paused;
+
 		CPrintToChatAllEx2(client, "{lightgreen}[Pause] {default}Game was paused by {teamcolor}%N", client);
+		if (oldState == Unpaused)
+			CPrintToChatAll2("{lightgreen}[Pause] {default}Ubercharges are also paused");
+
+		StoreUbercharges();
 		
 		if (oldState == AboutToUnpause)
 			return Plugin_Handled;
@@ -182,7 +219,7 @@ public Action:Cmd_Pause(client, const String:command[], args) {
 		
 		g_iCountdown = UNPAUSE_WAIT_TIME;
 		g_hCountdownTimer = CreateTimer(1.0, Timer_Countdown, _, TIMER_FLAG_NO_MAPCHANGE | TIMER_REPEAT);
-		Timer_Countdown(g_hCountdownTimer);
+		TriggerTimer(g_hCountdownTimer, true);
 		
 		return Plugin_Handled;
 	}
@@ -193,12 +230,14 @@ public Action:Cmd_Pause(client, const String:command[], args) {
 public Action:Timer_Countdown(Handle:timer) {
 	if (g_iCountdown == 0) {
 		g_hCountdownTimer = INVALID_HANDLE;
-		PrintCenterTextAll(" ");
 		
 		KillTimer(g_hPauseTimeTimer);
 		g_hPauseTimeTimer = INVALID_HANDLE;
 		
 		g_iPauseState = Ignore__Unpaused;
+
+		// TODO: Keep track of who unpaused, and if they're still in the server, then use their client! (for logs purposes)
+
 		for (new client = 1; client <= MaxClients; client++) {
 			if (IsClientValid(client)) {
 				CPrintToChatAll2("{lightgreen}[Pause] {default}Game is unpaused!");
@@ -209,7 +248,6 @@ public Action:Timer_Countdown(Handle:timer) {
 		
 		return Plugin_Stop;
 	} else {
-		PrintCenterTextAll("Unpausing in %is...", g_iCountdown);
 		if (g_iCountdown < UNPAUSE_WAIT_TIME)
 			CPrintToChatAll2("{lightgreen}[Pause] {default}Game is being unpaused in %i second%s...", g_iCountdown, g_iCountdown == 1 ? "" : "s");
 		g_iCountdown--;
@@ -255,3 +293,33 @@ public Action:Cmd_Say(client, const String:command[], args) {
 	return Plugin_Continue;
 }
 
+static void StoreUbercharges() {
+	for (int client = 1; client <= MaxClients; client++) {
+		g_fChargeLevel[client] = -1.0;
+		if (IsClientInGame(client)) {
+			if (TF2_GetPlayerClass(client) == TFClass_Medic) {
+				int ubergun = GetPlayerWeaponSlot(client, 1);
+				if (ubergun != -1) 
+				{
+					g_fChargeLevel[client] = GetEntPropFloat(ubergun, Prop_Send, "m_flChargeLevel");
+				}
+			}
+		}
+	}
+}
+
+static void RestoreUbercharges() {
+	for (int client = 1; client <= MaxClients; client++) {
+		if (IsClientInGame(client)) {				
+			if (TF2_GetPlayerClass(client) == TFClass_Medic) {
+				int ubergun = GetPlayerWeaponSlot(client, 1);
+				if (ubergun != -1 && g_fChargeLevel[client] >= 0) 
+				{
+					SetEntPropFloat(ubergun, Prop_Send, "m_flChargeLevel", g_fChargeLevel[client]);
+				}
+			}
+		}
+
+		g_fChargeLevel[client] = -1.0;
+	}
+}
