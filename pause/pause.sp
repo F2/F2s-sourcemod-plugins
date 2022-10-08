@@ -21,6 +21,7 @@ Release notes:
 ---- 1.3.0 (07/01/2015) ----
 - Fixed bug with "repause" command
 
+
 ---- 1.5.0 (08/10/2022) ----
 - Added notification to use 'repause' command when someone joins during a pause
 - Fixed building ubercharge during pause glitch - by Aad | hl.RGL.gg
