@@ -63,9 +63,14 @@ Release notes:
 - Do not log self-heal
 
 
+---- 2.4.0 (02/10/2022) ----
+- Added pause length to logs
+- Fixed 'pause' logs being wrong
+- Fixed SM error logs when picking up medpacks
+
+
 
 TODO:
-- Better detection of pause .. perhaps use GetGameTime()? .. needs to support setpause, unpause commands, and also the "pause plugin"
 - Use GetGameTime() instead of GetEngineTime()?
 - Write comments in code :D
 - Make a separate file that deals with special weapon log-names
@@ -85,7 +90,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.3.1"
+#define PLUGIN_VERSION "2.4.0"
 #define UPDATE_URL		"http://sourcemod.krus.dk/supstats2/update.txt"
 
 #define NAMELEN 64
@@ -112,11 +117,12 @@ new	String:lastWeaponDamage[MAXPLAYERS+1][MAXWEPNAMELEN],
 	String:lastPostHumousWeaponDamage[MAXPLAYERS+1][MAXWEPNAMELEN], 
 	Float:lastPostHumousWeaponDamageTime[MAXPLAYERS+1], 
 	lastHealth[MAXPLAYERS+1], 
-	lastHealthBeforePickup[MAXPLAYERS+1], 
 	lastHealingOnHit[MAXPLAYERS+1], 
 	bool:lastHeadshot[MAXPLAYERS+1], 
 	bool:lastAirshot[MAXPLAYERS+1], 
 	bool:g_bPlayerTakenDirectHit[MAXPLAYERS+1];
+int medpackHealAmount[MAXPLAYERS+1];
+float g_fPauseStartTime;
 new String:g_sTauntNames[][] = { "", "taunt_scout", "taunt_sniper", "taunt_soldier", "taunt_demoman", "taunt_medic", "taunt_heavy", "taunt_pyro", "taunt_spy", "taunt_engineer" };
 
 
@@ -215,10 +221,6 @@ public OnPluginStart() {
 	HookEvent("player_chargedeployed", EventPre_player_chargedeployed, EventHookMode_Pre);
 	HookEvent("player_chargedeployed", Event_player_chargedeployed);
 	
-	HookEntityOutput("item_healthkit_small",  "OnCacheInteraction", EntityOutput_HealthKit);
-	HookEntityOutput("item_healthkit_medium", "OnCacheInteraction", EntityOutput_HealthKit);
-	HookEntityOutput("item_healthkit_full",   "OnCacheInteraction", EntityOutput_HealthKit);
-	
 	AddCommandListener(Listener_Pause, "pause");
 	
 	
@@ -231,6 +233,8 @@ public OnPluginStart() {
 	new String:map[64];
 	GetCurrentMap(map, sizeof(map));
 	LogToGame("Loading map \"%s\"", map);
+
+	g_fPauseStartTime = GetEngineTime(); // Just in case it is already paused
 }
 
 public OnLibraryAdded(const String:name[]) {
@@ -247,6 +251,7 @@ public OnMapStart() {
 		for (new i = 0; i < MAXSTICKIES; i++)
 			g_iStickyId[client][i] = 0;
 	}
+	g_bIsPaused = false; // The game is automatically unpaused during a map change
 }
 
 public OnClientPutInServer(client) {
@@ -260,10 +265,6 @@ public OnPluginEnd() {
 			SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 		}
 	}
-	
-	UnhookEntityOutput("item_healthkit_small",  "OnCacheInteraction", EntityOutput_HealthKit);
-	UnhookEntityOutput("item_healthkit_medium", "OnCacheInteraction", EntityOutput_HealthKit);
-	UnhookEntityOutput("item_healthkit_full",   "OnCacheInteraction", EntityOutput_HealthKit);
 	
 	RemoveGameLogHook(GameLog);
 }
@@ -290,14 +291,41 @@ public Action:Listener_Pause(client, const String:command[], argc) {
 	if (client == 0)
 		return Plugin_Continue; // Using "rcon pause" won't do anything
 	
-	g_bIsPaused = !g_bIsPaused;
-
-	if (g_bIsPaused)
-		LogToGame("World triggered \"Game_Paused\"");
-	else
-		LogToGame("World triggered \"Game_Unpaused\"");
+	CreateTimer(0.1, CheckPause, client);
 
 	return Plugin_Continue;
+}
+
+
+public Action CheckPause(Handle timer, int client) {
+	bool isPaused = !IsServerProcessing();
+	int userId = GetClientUserId(client);
+	char userSteamId[64];
+	char userTeam[64];
+
+	if (isPaused && !g_bIsPaused) {
+		g_fPauseStartTime = GetEngineTime();
+
+		LogToGame("World triggered \"Game_Paused\"");
+
+		GetClientAuthStringNew(client, userSteamId, sizeof(userSteamId), false);
+		GetPlayerTeamStr(GetClientTeam(client), userTeam, sizeof(userTeam));
+
+		LogToGame("\"%N<%d><%s><%s>\" triggered \"matchpause\"", client, userId, userSteamId, userTeam);
+	}
+	if (!isPaused && g_bIsPaused) {
+		float pauseDuration = GetEngineTime() - g_fPauseStartTime;
+
+		LogToGame("World triggered \"Game_Unpaused\"");
+
+		GetClientAuthStringNew(client, userSteamId, sizeof(userSteamId), false);
+		GetPlayerTeamStr(GetClientTeam(client), userTeam, sizeof(userTeam));
+
+		LogToGame("\"%N<%d><%s><%s>\" triggered \"matchunpause\"", client, userId, userSteamId, userTeam);
+		LogToGame("World triggered \"Pause_Length\" (seconds \"%.2f\")", pauseDuration);
+	}
+	
+	g_bIsPaused = isPaused;
 }
 
 public Action:Event_PlayerHealed(Handle:event, const String:name[], bool:dontBroadcast) {
@@ -314,9 +342,15 @@ public Action:Event_PlayerHealed(Handle:event, const String:name[], bool:dontBro
 	new healer = GetClientOfUserId(healerId);
 	new amount = GetEventInt(event, "amount");
 	
+	if (healer == 0 && patient != 0) {
+		// Healed by a medpack
+		medpackHealAmount[patient] = amount;
+		return Plugin_Continue;
+	}
+	
 	if (patient == 0 || healer == 0) {
 		// This has been observed to happen by http://www.teamfortress.tv/post/631052/medicstats-sourcemod-plugin
-		LogMessage("Wrong player-healed event detected: patient=%i/%i, healer=%i/%i", patientId, patient, healerId, healer);
+		LogMessage("Wrong player-healed event detected: patient=%i/%i, healer=%i/%i, amount=%i", patientId, patient, healerId, healer, amount);
 		return Plugin_Continue;
 	}
 	
@@ -437,48 +471,16 @@ GetMedigunName(client, String:medigun[], medigunLen) {
 
 
 // Medkit pickup with healing
-public EntityOutput_HealthKit(const String:output[], caller, activator, Float:delay) {
-	if (activator > 0 && activator <= MaxClients && IsClientInGame(activator) && IsPlayerAlive(activator)) {
-		new health = GetClientHealth(activator);
-		lastHealthBeforePickup[activator] = health;
-	}
-}
-
 public Event_ItemPickup(Handle:event, const String:name[], bool:dontBroadcast) {
 	decl String:item[64];
 	GetEventString(event, "item", item, sizeof(item));
 	new userid = GetEventInt(event, "userid");
 	new client = GetClientOfUserId(userid);
 	
-	if (StrContains(item, "medkit_") == 0) {
-		new health = lastHealthBeforePickup[client];
-		new maxHealth = GetMaxHealth(client);
-		
-		if (health < maxHealth) {
-			if (item[7] == 's') {
-				// small
-				new endHealth = RoundToNearest(0.205*maxHealth + health);
-				if (endHealth > maxHealth)
-					endHealth = maxHealth;
-				
-				LogItemPickup(userid, "medkit_small", endHealth - health);
-				return;
-			} else if (item[7] == 'm') {
-				// medium
-				new endHealth = RoundToNearest(0.5*maxHealth + health);
-				if (endHealth > maxHealth)
-					endHealth = maxHealth;
-				
-				LogItemPickup(userid, "medkit_medium", endHealth - health);
-				return;
-			} else if (item[7] == 'l') {
-				// large
-				new endHealth = maxHealth;
-				
-				LogItemPickup(userid, "medkit_large", endHealth - health);
-				return;
-			}
-		}
+	if (strncmp(item, "medkit_", 7, true) == 0 && medpackHealAmount[client] != 0) {
+		LogItemPickup(userid, item, medpackHealAmount[client]);
+		medpackHealAmount[client] = 0;
+		return;
 	}
 	
 	LogItemPickup(userid, item);
