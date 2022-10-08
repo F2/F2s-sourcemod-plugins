@@ -26,6 +26,7 @@ Release notes:
 - Fixed building ubercharge during pause glitch - by Aad | hl.RGL.gg
   Credit to rodrigo286 for providng base code for storing/restoring uber on medic death
   (https://forums.alliedmods.net/showthread.php?p=2022903)
+- When unpausing, fixed wrong name being logged
 - Fixed bug when all players leave the server during a pause
 
 
@@ -61,6 +62,7 @@ new Handle:g_cvarPausable = INVALID_HANDLE;
 ConVar g_cvarAllowHibernation = null;
 new PauseState:g_iPauseState;
 new Float:g_fLastPause;
+int g_iClientUnpausing;
 new g_iCountdown;
 new Handle:g_hCountdownTimer = INVALID_HANDLE;
 new Handle:g_hPauseTimeTimer = INVALID_HANDLE;
@@ -152,7 +154,7 @@ public Action:Cmd_UnpausePause(client, const String:command[], args) {
 		return Plugin_Handled;
 	
 	g_iPauseState = Ignore__Repause1;
-	FakeClientCommand(client, "pause");
+	FirePauseCommand(client);
 	CPrintToChatAllEx2(client, "{lightgreen}[Pause] {default}Game was repaused by {teamcolor}%N", client);
 	
 	CreateTimer(0.1, Timer_Repause, client, TIMER_FLAG_NO_MAPCHANGE);
@@ -160,7 +162,7 @@ public Action:Cmd_UnpausePause(client, const String:command[], args) {
 }
 
 public Action:Timer_Repause(Handle:timer, any:client) {
-	FakeClientCommandEx(client, "pause");
+	FirePauseCommand(client);
 }
 
 public Action:Cmd_Pause(client, const String:command[], args) {
@@ -172,13 +174,13 @@ public Action:Cmd_Pause(client, const String:command[], args) {
 	
 	if (StrEqual(command, "unpause", false)) {
 		if (!(g_iPauseState == Unpaused || g_iPauseState == AboutToUnpause))
-			FakeClientCommandEx(client, "pause");
+			FirePauseCommand(client);
 		return Plugin_Handled;
 	}
 	
 	if (StrEqual(command, "setpause", false)) {
 		if (g_iPauseState == Unpaused || g_iPauseState == AboutToUnpause)
-			FakeClientCommandEx(client, "pause");
+			FirePauseCommand(client);
 		return Plugin_Handled;
 	}
 	
@@ -223,6 +225,8 @@ public Action:Cmd_Pause(client, const String:command[], args) {
 			return Plugin_Handled;
 		}
 		
+		g_iClientUnpausing = client;
+
 		g_iPauseState = AboutToUnpause;
 		CPrintToChatAllEx2(client, "{lightgreen}[Pause] {default}Game is being unpaused in %i seconds by {teamcolor}%N{default}...", UNPAUSE_WAIT_TIME, client);
 		
@@ -245,15 +249,8 @@ public Action:Timer_Countdown(Handle:timer) {
 		
 		g_iPauseState = Ignore__Unpaused;
 
-		// TODO: Keep track of who unpaused, and if they're still in the server, then use their client! (for logs purposes)
-
-		for (new client = 1; client <= MaxClients; client++) {
-			if (IsClientValid(client)) {
-				CPrintToChatAll2("{lightgreen}[Pause] {default}Game is unpaused!");
-				FakeClientCommandEx(client, "pause");
-				break;
-			}
-		}
+		CPrintToChatAll2("{lightgreen}[Pause] {default}Game is unpaused!");
+		FirePauseCommand(g_iClientUnpausing);
 		
 		return Plugin_Stop;
 	} else {
@@ -300,6 +297,24 @@ public Action:Cmd_Say(client, const String:command[], args) {
 	}
 	
 	return Plugin_Continue;
+}
+
+static void FirePauseCommand(int client) {
+	if (!IsClientInGame(client)) {
+		for (new other = 1; other <= MaxClients; other++) {
+			if (IsClientInGame(other)) {
+				client = other;
+				break;
+			}
+		}
+
+		if (!IsClientInGame(client)) {
+			LogError("Could not find a client for pausing the game");
+			return;
+		}
+	}
+
+	FakeClientCommandEx(client, "pause");
 }
 
 static void StoreUbercharges() {
