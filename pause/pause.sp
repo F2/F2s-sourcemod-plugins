@@ -39,6 +39,7 @@ Release notes:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
+#pragma newdecls required
 
 #define PLUGIN_VERSION "1.5.0"
 #define UPDATE_URL		"http://sourcemod.krus.dk/pause/update.txt"
@@ -57,17 +58,17 @@ enum PauseState {
 
 ConVar g_cvarPausable = null;
 ConVar g_cvarAllowHibernation = null;
-new PauseState:g_iPauseState;
-new Float:g_fLastPause;
+PauseState g_iPauseState;
+float g_fLastPause;
 int g_iClientUnpausing;
-new g_iCountdown;
-new Handle:g_hCountdownTimer = INVALID_HANDLE;
-new Handle:g_hPauseTimeTimer = INVALID_HANDLE;
-new g_iPauseTimeMinutes;
-new Handle:g_cvarPauseChat = INVALID_HANDLE;
+int g_iCountdown;
+Handle g_hCountdownTimer = null;
+Handle g_hPauseTimeTimer = null;
+int g_iPauseTimeMinutes;
+ConVar g_cvarPauseChat = null;
 float g_fChargeLevel[MAXPLAYERS+1];
 
-public Plugin:myinfo = {
+public Plugin myinfo = {
 	name = "Improved Pause Command",
 	author = "F2",
 	description = "Avoids accidental unpausing and shows a countdown when unpausing",
@@ -76,8 +77,7 @@ public Plugin:myinfo = {
 };
 
 
-public OnPluginStart() {
-	
+public void OnPluginStart() {
 	AddCommandListener(Cmd_Pause, "pause");
 	AddCommandListener(Cmd_Pause, "setpause");
 	AddCommandListener(Cmd_Pause, "unpause");
@@ -95,16 +95,15 @@ public OnPluginStart() {
 	// Set up auto updater
 	if (LibraryExists("updater"))
 		Updater_AddPlugin(UPDATE_URL);
-
 }
 
-public OnLibraryAdded(const String:name[]) {
+public void OnLibraryAdded(const char[] name) {
 	// Set up auto updater
 	if (StrEqual(name, "updater"))
 		Updater_AddPlugin(UPDATE_URL);
 }
 
-public OnMapStart() {
+public void OnMapStart() {
 	// Be aware that this is also called upon Plugin Start.
 
 	g_fLastPause = -10.0;
@@ -158,7 +157,7 @@ public void OnClientDisconnect_Post(int client) {
 	}
 }
 
-public Action:Cmd_UnpausePause(client, const String:command[], args) {
+public Action Cmd_UnpausePause(int client, const char[] command, int args) {
 	// Let the game handle the "off" situations
 	if (!g_cvarPausable.BoolValue)
 		return Plugin_Continue;
@@ -176,11 +175,11 @@ public Action:Cmd_UnpausePause(client, const String:command[], args) {
 	return Plugin_Handled;
 }
 
-public Action:Timer_Repause(Handle:timer, any:client) {
+public Action Timer_Repause(Handle timer, int client) {
 	FirePauseCommand(client);
 }
 
-public Action:Cmd_Pause(client, const String:command[], args) {
+public Action Cmd_Pause(int client, const char[] command, int args) {
 	// Let the game handle the "off" situations
 	if (!g_cvarPausable.BoolValue)
 		return Plugin_Continue;
@@ -212,12 +211,12 @@ public Action:Cmd_Pause(client, const String:command[], args) {
 		g_iPauseState = Paused;
 	} else if (g_iPauseState == Unpaused || g_iPauseState == AboutToUnpause) {
 		g_fLastPause = GetTickedTime();
-		if (g_hCountdownTimer != INVALID_HANDLE) {
+		if (g_hCountdownTimer != null) {
 			KillTimer(g_hCountdownTimer);
-			g_hCountdownTimer = INVALID_HANDLE;
+			g_hCountdownTimer = null;
 		}
 		
-		new PauseState:oldState = g_iPauseState;
+		PauseState oldState = g_iPauseState;
 		g_iPauseState = Paused;
 
 		CPrintToChatAllEx2(client, "{lightgreen}[Pause] {default}Game was paused by {teamcolor}%N", client);
@@ -233,9 +232,9 @@ public Action:Cmd_Pause(client, const String:command[], args) {
 			g_iPauseTimeMinutes = 0;
 		}
 	} else { // Paused
-		new Float:timeSinceLastPause = GetTickedTime() - g_fLastPause;
+		float timeSinceLastPause = GetTickedTime() - g_fLastPause;
 		if (timeSinceLastPause < PAUSE_UNPAUSE_TIME) {
-			new Float:waitTime = PAUSE_UNPAUSE_TIME - timeSinceLastPause;
+			float waitTime = PAUSE_UNPAUSE_TIME - timeSinceLastPause;
 			CPrintToChat2(client, "{lightgreen}[Pause] {default}To prevent accidental unpauses, you have to wait %.1f second%s before unpausing.", waitTime, (waitTime >= 0.95 && waitTime < 1.05) ? "" : "s");
 			return Plugin_Handled;
 		}
@@ -255,9 +254,9 @@ public Action:Cmd_Pause(client, const String:command[], args) {
 	return Plugin_Continue;
 }
 
-public Action:Timer_Countdown(Handle:timer) {
+public Action Timer_Countdown(Handle timer) {
 	if (g_iCountdown == 0) {
-		g_hCountdownTimer = INVALID_HANDLE;
+		g_hCountdownTimer = null;
 		
 		if (g_hPauseTimeTimer != null) {
 			KillTimer(g_hPauseTimeTimer);
@@ -278,22 +277,22 @@ public Action:Timer_Countdown(Handle:timer) {
 	}
 }
 
-public Action:Timer_PauseTime(Handle:timer) {
+public Action Timer_PauseTime(Handle timer) {
 	g_iPauseTimeMinutes++;
 	if (g_iPauseState != AboutToUnpause)
 		CPrintToChatAll2("{lightgreen}[Pause] {default}Game has been paused for %i minute%s", g_iPauseTimeMinutes, g_iPauseTimeMinutes == 1 ? "" : "s");
 	return Plugin_Continue;
 }
 
-public Action:Cmd_Say(client, const String:command[], args) {
+public Action Cmd_Say(int client, const char[] command, int args) {
 	if (client == 0)
 		return Plugin_Continue;
 	
 	if (g_iPauseState == Paused || g_iPauseState == AboutToUnpause) {
-		if (!GetConVarBool(g_cvarPauseChat))
+		if (!g_cvarPauseChat.BoolValue)
 			return Plugin_Continue;
 		
-		decl String:buffer[256];
+		char buffer[256];
 		GetCmdArgString(buffer, sizeof(buffer));
 		if (buffer[0] != '\0') {
 			if (buffer[strlen(buffer)-1] == '"')
@@ -301,10 +300,10 @@ public Action:Cmd_Say(client, const String:command[], args) {
 			if (buffer[0] == '"')
 				strcopy(buffer, sizeof(buffer), buffer[1]);
 			
-			decl String:dead[16] = "";
-			if (GetClientTeam(client) == _:TFTeam_Spectator)
+			char dead[16] = "";
+			if (TF2_GetClientTeam(client) == TFTeam_Spectator)
 				dead = "*SPEC* ";
-			else if ((GetClientTeam(client) == _:TFTeam_Red || GetClientTeam(client) == _:TFTeam_Blue) && !IsPlayerAlive(client))
+			else if ((TF2_GetClientTeam(client) == TFTeam_Red || TF2_GetClientTeam(client) == TFTeam_Blue) && !IsPlayerAlive(client))
 				dead = "*DEAD* ";
 			
 			CPrintToChatAllEx2(client, "%s{teamcolor}%N{default} :  %s", dead, client, buffer);
@@ -318,7 +317,7 @@ public Action:Cmd_Say(client, const String:command[], args) {
 
 static void FirePauseCommand(int client) {
 	if (!IsClientInGame(client)) {
-		for (new other = 1; other <= MaxClients; other++) {
+		for (int other = 1; other <= MaxClients; other++) {
 			if (IsClientInGame(other)) {
 				client = other;
 				break;
