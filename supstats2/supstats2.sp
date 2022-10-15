@@ -70,7 +70,7 @@ Release notes:
 
 
 ---- 2.5.0 (15/10/2022) ----
-- Added logs for crossbow airshots
+- Added logs for crossbow airshots - by TheBv
 
 
 
