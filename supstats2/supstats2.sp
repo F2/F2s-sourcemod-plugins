@@ -69,6 +69,10 @@ Release notes:
 - Fixed SM error logs when picking up medpacks
 
 
+---- 2.5.0 (15/10/2022) ----
+- Added logs for crossbow airshots
+
+
 
 TODO:
 - Use GetGameTime() instead of GetEngineTime()?
@@ -89,7 +93,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.4.0"
+#define PLUGIN_VERSION "2.5.0"
 #define UPDATE_URL		"http://sourcemod.krus.dk/supstats2/update.txt"
 
 #define NAMELEN 64
@@ -104,7 +108,7 @@ public Plugin:myinfo = {
 	author = "F2 (v1 by Jean-Denis Caron)",
 	description = "Logs additional information about the game.",
 	version = PLUGIN_VERSION,
-	url = "http://sourcemod.krus.dk/"
+	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
 
@@ -890,9 +894,7 @@ public OnEntityCreated(entity, const String:classname[]) {
 				g_iRocketCreatedNext = 0;
 		}
 	} else if (shotType == SHOT_HEALINGBOLT) {
-		if (g_bEnableAccuracy) {
-			SDKHook(entity, SDKHook_Touch, OnHealArrowTouch); // Detecting when a healing arrow hits
-		}
+		SDKHook(entity, SDKHook_Touch, OnHealArrowTouch); // Detecting when a healing arrow hits
 	}
 }
 
@@ -901,26 +903,26 @@ public OnHealArrowTouch(entity, other) {
 		new TFTeam:team = TFTeam:GetClientTeam(other);
 		if (team == TFTeam_Red || team == TFTeam_Blue) { // Ignore if we hit a spectator. (This check might not be necessary.)
 			new owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
-			if (IsClientValid(owner)) {
+			if (IsClientValid(owner) && TF2_GetPlayerClass(owner) == TFClass_Medic) {
 				new weapon = GetEntPropEnt(entity, Prop_Send, "m_hLauncher");
 				if (IsValidEntity(weapon)) {
-					new healing, defid, bool:postHumousDamage;
-					decl String:weap[64];
-					weap[0] = '\0';
-					if (GetWeaponLogName(weap, sizeof(weap), owner, weapon, healing, defid, postHumousDamage, entity)) {
-						LogHit(owner, weap);
-						
-						// Enables logging of airshots for healing arrows
-						lastAirshot[owner] = false;
-						if (StrEqual(weap, "crusaders_crossbow") && TF2_GetPlayerClass(owner) == TFClass_Medic) {
-							if ((GetEntityFlags(other) & (FL_ONGROUND | FL_INWATER)) == 0) {
-								// The victim is in the air
+					// Enables logging of airshots for healing arrows
+					lastAirshot[owner] = false;
+					if ((GetEntityFlags(other) & (FL_ONGROUND | FL_INWATER)) == 0) {
+						// The victim is in the air
 
-								new Float:dist = DistanceAboveGround(other);
-								if (dist >= 170.0) {
-									lastAirshot[owner] = true;
-								}
-							}
+						new Float:dist = DistanceAboveGround(other);
+						if (dist >= 170.0) {
+							lastAirshot[owner] = true;
+						}
+					}
+
+					if (g_bEnableAccuracy) {
+						new healing, defid, bool:postHumousDamage;
+						decl String:weap[64];
+						weap[0] = '\0';
+						if (GetWeaponLogName(weap, sizeof(weap), owner, weapon, healing, defid, postHumousDamage, entity)) {
+							LogHit(owner, weap);
 						}
 					}
 				}
