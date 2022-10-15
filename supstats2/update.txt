@@ -8,7 +8,7 @@
 		}
 		
 		"Notes"	"Changes in 2.5.0:"
-		"Notes"	"- Added logs for crossbow airshots"
+		"Notes"	"- Added logs for crossbow airshots - by Bv"
 	}
 	
 	"Files"
