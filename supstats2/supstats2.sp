@@ -69,13 +69,16 @@ Release notes:
 - Fixed SM error logs when picking up medpacks
 
 
+---- 2.5.0 (15/10/2022) ----
+- Added logs for crossbow airshots - by Bv
+
+
 
 TODO:
 - Use GetGameTime() instead of GetEngineTime()?
 - Write comments in code :D
 - Make a separate file that deals with special weapon log-names
 - It might be possible to detect the owner of a rocket using m_hOwnerEntity
-- Log airshots with crossbow
 - Log Blackbox healing more precisely (perhaps use player_healonhit instead)
 */
 
@@ -90,7 +93,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.4.0"
+#define PLUGIN_VERSION "2.5.0"
 #define UPDATE_URL		"http://sourcemod.krus.dk/supstats2/update.txt"
 
 #define NAMELEN 64
@@ -105,7 +108,7 @@ public Plugin:myinfo = {
 	author = "F2 (v1 by Jean-Denis Caron)",
 	description = "Logs additional information about the game.",
 	version = PLUGIN_VERSION,
-	url = "http://sourcemod.krus.dk/"
+	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
 
@@ -116,7 +119,7 @@ new String:g_sBlockLog[64];
 new	String:lastWeaponDamage[MAXPLAYERS+1][MAXWEPNAMELEN], 
 	String:lastPostHumousWeaponDamage[MAXPLAYERS+1][MAXWEPNAMELEN], 
 	Float:lastPostHumousWeaponDamageTime[MAXPLAYERS+1], 
-	lastHealth[MAXPLAYERS+1], 
+	lastHealth[MAXPLAYERS+1],
 	lastHealingOnHit[MAXPLAYERS+1], 
 	bool:lastHeadshot[MAXPLAYERS+1], 
 	bool:lastAirshot[MAXPLAYERS+1], 
@@ -220,7 +223,7 @@ public OnPluginStart() {
 	
 	HookEvent("player_chargedeployed", EventPre_player_chargedeployed, EventHookMode_Pre);
 	HookEvent("player_chargedeployed", Event_player_chargedeployed);
-	
+
 	AddCommandListener(Listener_Pause, "pause");
 	
 	
@@ -265,7 +268,7 @@ public OnPluginEnd() {
 			SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 		}
 	}
-	
+
 	RemoveGameLogHook(GameLog);
 }
 
@@ -324,7 +327,7 @@ public Action CheckPause(Handle timer, int client) {
 		LogToGame("\"%N<%d><%s><%s>\" triggered \"matchunpause\"", client, userId, userSteamId, userTeam);
 		LogToGame("World triggered \"Pause_Length\" (seconds \"%.2f\")", pauseDuration);
 	}
-	
+
 	g_bIsPaused = isPaused;
 }
 
@@ -335,19 +338,25 @@ public Action:Event_PlayerHealed(Handle:event, const String:name[], bool:dontBro
 	decl String:healerSteamId[64];
 	decl String:patientTeam[64];
 	decl String:healerTeam[64];
-	
+	decl String:strAirshot[32] = "";
+
 	new patientId = GetEventInt(event, "patient");
 	new healerId = GetEventInt(event, "healer");
 	new patient = GetClientOfUserId(patientId);
 	new healer = GetClientOfUserId(healerId);
 	new amount = GetEventInt(event, "amount");
 	
+	if (lastAirshot[healer]) {
+		strcopy(strAirshot, sizeof(strAirshot), " (airshot \"1\")");
+		lastAirshot[healer] = false;
+	}
+
 	if (healer == 0 && patient != 0) {
 		// Healed by a medpack
 		medpackHealAmount[patient] = amount;
 		return Plugin_Continue;
 	}
-	
+
 	if (patient == 0 || healer == 0) {
 		// This has been observed to happen by http://www.teamfortress.tv/post/631052/medicstats-sourcemod-plugin
 		LogMessage("Wrong player-healed event detected: patient=%i/%i, healer=%i/%i, amount=%i", patientId, patient, healerId, healer, amount);
@@ -367,7 +376,7 @@ public Action:Event_PlayerHealed(Handle:event, const String:name[], bool:dontBro
 	GetPlayerTeamStr(GetClientTeam(patient), patientTeam, sizeof(patientTeam));
 	GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
 	
-	LogToGame("\"%s<%d><%s><%s>\" triggered \"healed\" against \"%s<%d><%s><%s>\" (healing \"%d\")",
+	LogToGame("\"%s<%d><%s><%s>\" triggered \"healed\" against \"%s<%d><%s><%s>\" (healing \"%d\")%s",
 		healerName,
 		healerId,
 		healerSteamId,
@@ -376,7 +385,8 @@ public Action:Event_PlayerHealed(Handle:event, const String:name[], bool:dontBro
 		patientId,
 		patientSteamId,
 		patientTeam,
-		amount);
+		amount,
+		strAirshot);
 	
 	return Plugin_Continue;
 }
@@ -647,6 +657,19 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 			}
 		}
 		
+		if (attackerClass == TFClass_Medic && GetPlayerWeaponSlot(attacker, 0) == weapon) {
+			if (StrEqual(lastWeaponDamage[attacker], "crusaders_crossbow")) {
+				if ((GetEntityFlags(victim) & (FL_ONGROUND | FL_INWATER)) == 0) {
+					// The victim is in the air
+
+					new Float:dist = DistanceAboveGround(victim);
+					if (dist >= 170.0) {
+						lastAirshot[attacker] = true;
+					}
+				}
+			}
+		}
+
 		if (postHumousDamage) {
 			// Sometimes these "Post Humous Damage" weapons can do damage AFTER you die or change class (like Boston Basher, Flamethrower, etc.)
 			// Remember the weapon, and if we deal damage from an unknown weapon, then credit it to the last Post Humous Damage weapon.
@@ -871,9 +894,7 @@ public OnEntityCreated(entity, const String:classname[]) {
 				g_iRocketCreatedNext = 0;
 		}
 	} else if (shotType == SHOT_HEALINGBOLT) {
-		if (g_bEnableAccuracy) {
-			SDKHook(entity, SDKHook_Touch, OnHealArrowTouch); // Detecting when a healing arrow hits
-		}
+		SDKHook(entity, SDKHook_Touch, OnHealArrowTouch); // Detecting when a healing arrow hits
 	}
 }
 
@@ -882,14 +903,27 @@ public OnHealArrowTouch(entity, other) {
 		new TFTeam:team = TFTeam:GetClientTeam(other);
 		if (team == TFTeam_Red || team == TFTeam_Blue) { // Ignore if we hit a spectator. (This check might not be necessary.)
 			new owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
-			if (IsClientValid(owner)) {
+			if (IsClientValid(owner) && TF2_GetPlayerClass(owner) == TFClass_Medic) {
 				new weapon = GetEntPropEnt(entity, Prop_Send, "m_hLauncher");
 				if (IsValidEntity(weapon)) {
-					new healing, defid, bool:postHumousDamage;
-					decl String:weap[64];
-					weap[0] = '\0';
-					if (GetWeaponLogName(weap, sizeof(weap), owner, weapon, healing, defid, postHumousDamage, entity)) {
-						LogHit(owner, weap);
+					// Enables logging of airshots for healing arrows
+					lastAirshot[owner] = false;
+					if ((GetEntityFlags(other) & (FL_ONGROUND | FL_INWATER)) == 0) {
+						// The victim is in the air
+
+						new Float:dist = DistanceAboveGround(other);
+						if (dist >= 170.0) {
+							lastAirshot[owner] = true;
+						}
+					}
+
+					if (g_bEnableAccuracy) {
+						new healing, defid, bool:postHumousDamage;
+						decl String:weap[64];
+						weap[0] = '\0';
+						if (GetWeaponLogName(weap, sizeof(weap), owner, weapon, healing, defid, postHumousDamage, entity)) {
+							LogHit(owner, weap);
+						}
 					}
 				}
 			}
