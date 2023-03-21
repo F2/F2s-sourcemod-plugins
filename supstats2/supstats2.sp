@@ -72,7 +72,9 @@ Release notes:
 ---- 2.5.0 (15/10/2022) ----
 - Added logs for crossbow airshots - by Bv
 
-
+---- 2.5.1 (21/03/2023) ----
+- Added height prop to airshots
+- Switched to using HullRayTracing to eliminate edge-cases
 
 TODO:
 - Use GetGameTime() instead of GetEngineTime()?
@@ -93,7 +95,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.5.0"
+#define PLUGIN_VERSION "2.5.1"
 #define UPDATE_URL		"http://sourcemod.krus.dk/supstats2/update.txt"
 
 #define NAMELEN 64
@@ -123,6 +125,7 @@ new	String:lastWeaponDamage[MAXPLAYERS+1][MAXWEPNAMELEN],
 	lastHealingOnHit[MAXPLAYERS+1], 
 	bool:lastHeadshot[MAXPLAYERS+1], 
 	bool:lastAirshot[MAXPLAYERS+1], 
+	lastAirshotHeight[MAXPLAYERS+1],
 	bool:g_bPlayerTakenDirectHit[MAXPLAYERS+1];
 int medpackHealAmount[MAXPLAYERS+1];
 float g_fPauseStartTime;
@@ -339,6 +342,7 @@ public Action:Event_PlayerHealed(Handle:event, const String:name[], bool:dontBro
 	decl String:patientTeam[64];
 	decl String:healerTeam[64];
 	decl String:strAirshot[32] = "";
+	char strAirshotHeight[32] = "";
 
 	new patientId = GetEventInt(event, "patient");
 	new healerId = GetEventInt(event, "healer");
@@ -348,7 +352,10 @@ public Action:Event_PlayerHealed(Handle:event, const String:name[], bool:dontBro
 	
 	if (lastAirshot[healer]) {
 		strcopy(strAirshot, sizeof(strAirshot), " (airshot \"1\")");
+		if (lastAirshotHeight[healer])
+			Format(strAirshotHeight, sizeof(strAirshotHeight), " (height \"%d\")", lastAirshotHeight[healer]);
 		lastAirshot[healer] = false;
+		lastAirshotHeight[healer] = 0;
 	}
 
 	if (healer == 0 && patient != 0) {
@@ -376,7 +383,7 @@ public Action:Event_PlayerHealed(Handle:event, const String:name[], bool:dontBro
 	GetPlayerTeamStr(GetClientTeam(patient), patientTeam, sizeof(patientTeam));
 	GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
 	
-	LogToGame("\"%s<%d><%s><%s>\" triggered \"healed\" against \"%s<%d><%s><%s>\" (healing \"%d\")%s",
+	LogToGame("\"%s<%d><%s><%s>\" triggered \"healed\" against \"%s<%d><%s><%s>\" (healing \"%d\")%s%s",
 		healerName,
 		healerId,
 		healerSteamId,
@@ -386,7 +393,8 @@ public Action:Event_PlayerHealed(Handle:event, const String:name[], bool:dontBro
 		patientSteamId,
 		patientTeam,
 		amount,
-		strAirshot);
+		strAirshot,
+		strAirshotHeight);
 	
 	return Plugin_Continue;
 }
@@ -592,7 +600,8 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 	lastHealth[attacker] = GetClientHealth(attacker);
 	lastHeadshot[attacker] = false;
 	lastAirshot[attacker] = false;
-	
+	lastAirshotHeight[attacker] = 0;
+
 	lastWeaponDamage[attacker][0] = '\0';
 	
 	
@@ -647,26 +656,12 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 		}
 		
 		if (wasDirect && (attackerClass == TFClass_Soldier || attackerClass == TFClass_DemoMan) && GetPlayerWeaponSlot(attacker, 0) == weapon) {
-			if ((GetEntityFlags(victim) & (FL_ONGROUND | FL_INWATER)) == 0) {
-				// The victim is in the air
-				
-				new Float:dist = DistanceAboveGround(victim);
-				if (dist >= 170.0) {
-					lastAirshot[attacker] = true;
-				}
-			}
+			GetAirshot(attacker, victim);
 		}
 		
 		if (attackerClass == TFClass_Medic && GetPlayerWeaponSlot(attacker, 0) == weapon) {
 			if (StrEqual(lastWeaponDamage[attacker], "crusaders_crossbow")) {
-				if ((GetEntityFlags(victim) & (FL_ONGROUND | FL_INWATER)) == 0) {
-					// The victim is in the air
-
-					new Float:dist = DistanceAboveGround(victim);
-					if (dist >= 170.0) {
-						lastAirshot[attacker] = true;
-					}
-				}
+				GetAirshot(attacker, victim);
 			}
 		}
 
@@ -791,7 +786,8 @@ public Event_PlayerHurt(Handle:event, const String:name[], bool:dontBroadcast) {
 		decl String:strRealDamage[32] = "";
 		decl String:strHeadshot[32] = "";
 		decl String:strAirshot[32] = "";
-		
+		char strAirshotHeight[32] = "";
+
 		new healing = lastHealingOnHit[attacker];
 		if (healing != 0 && IsPlayerAlive(attacker))
 			FormatEx(strHealing, sizeof(strHealing), " (healing \"%i\")", healing);
@@ -813,12 +809,18 @@ public Event_PlayerHurt(Handle:event, const String:name[], bool:dontBroadcast) {
 		if (lastHeadshot[attacker])
 			strcopy(strHeadshot, sizeof(strHeadshot), " (headshot \"1\")");
 		
-		if (lastAirshot[attacker])
+		if (lastAirshot[attacker]) {
 			strcopy(strAirshot, sizeof(strAirshot), " (airshot \"1\")");
-		
+		}
+
+		if (lastAirshotHeight[attacker]) {
+			Format(strAirshotHeight, sizeof(strAirshotHeight), " (height \"%i\")", lastAirshotHeight[attacker]);
+			lastAirshotHeight[attacker] = 0;
+		}
+
 		// Remember: The attacker can be dead!
 		
-		LogToGame("\"%s<%d><%s><%s>\" triggered \"damage\" against \"%s<%d><%s><%s>\" (damage \"%d\")%s (weapon \"%s\")%s%s%s%s",
+		LogToGame("\"%s<%d><%s><%s>\" triggered \"damage\" against \"%s<%d><%s><%s>\" (damage \"%d\")%s (weapon \"%s\")%s%s%s%s%s",
 			attackerName,
 			attackerid,
 			attackerSteamID,
@@ -833,6 +835,7 @@ public Event_PlayerHurt(Handle:event, const String:name[], bool:dontBroadcast) {
 			strHealing,
 			strCrit,
 			strAirshot,
+			strAirshotHeight,
 			strHeadshot);
 	}
 }
@@ -910,11 +913,7 @@ public OnHealArrowTouch(entity, other) {
 					lastAirshot[owner] = false;
 					if ((GetEntityFlags(other) & (FL_ONGROUND | FL_INWATER)) == 0) {
 						// The victim is in the air
-
-						new Float:dist = DistanceAboveGround(other);
-						if (dist >= 170.0) {
-							lastAirshot[owner] = true;
-						}
+						GetAirshot(owner, other);
 					}
 
 					if (g_bEnableAccuracy) {
@@ -1113,23 +1112,33 @@ LogHit(attacker, const String:weapon[]) {
 // ---- ACCURACY ----
 
 
+float GetAirshot(attacker, victim) {
+	if ((GetEntityFlags(victim) & (FL_ONGROUND | FL_INWATER)) == 0) {
+		// The victim is in the air
+		float distance = DistanceAboveGroundBox(victim);
+		if (distance >= 170.0) {
+			lastAirshot[attacker] = true;
+			lastAirshotHeight[attacker] = RoundToFloor(distance);
+		}
+		return distance;
+	}
+	return 0.0;
+}
 
 
-
-
-
-
-
-
-// DistanceAboveGround from mgemod.sp
-Float:DistanceAboveGround(victim) {
-	decl Float:vStart[3];
-	decl Float:vEnd[3];
-	new Float:vAngles[3] = {90.0, 0.0, 0.0};
-	GetClientAbsOrigin(victim, vStart);
-	new Handle:trace = TR_TraceRayFilterEx(vStart, vAngles, MASK_PLAYERSOLID, RayType_Infinite, TraceEntityFilterPlayer);
+float DistanceAboveGroundBox(victim) {
+	float vStart[3];
+	float vDirection[3] = { 0.0, 0.0, -16384.0};
+	float vHullMins[3]  = { -24.0, -24.0, 0.0};
+	float vHullMaxs[3]  = { 24.0, 24.0, 0.0};
 	
-	new Float:distance = -1.0;
+	GetClientAbsOrigin(victim, vStart);
+	float vEnd[3];
+	AddVectors(vDirection, vStart, vEnd);
+
+	new Handle:trace = TR_TraceHullFilterEx(vStart, vEnd, vHullMins, vHullMaxs, MASK_PLAYERSOLID, TraceEntityFilterPlayer);
+	
+	float distance = -1.0;
 	if (TR_DidHit(trace)) {
 		TR_GetEndPosition(vEnd, trace);
 		distance = GetVectorDistance(vStart, vEnd, false);
