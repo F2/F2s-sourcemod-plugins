@@ -72,9 +72,11 @@ Release notes:
 ---- 2.5.0 (15/10/2022) ----
 - Added logs for crossbow airshots - by Bv
 
+
 ---- 2.5.1 (21/03/2023) ----
-- Added height prop to airshots
-- Switched to using HullRayTracing to eliminate edge-cases
+- Added height prop to airshot logs - by Bv
+- Switched to using HullRayTracing to eliminate edge-cases - by Bv
+
 
 TODO:
 - Use GetGameTime() instead of GetEngineTime()?
@@ -96,7 +98,7 @@ TODO:
 #include <updater>
 
 #define PLUGIN_VERSION "2.5.1"
-#define UPDATE_URL		"http://sourcemod.krus.dk/supstats2/update.txt"
+#define UPDATE_URL		"https://sourcemod.krus.dk/supstats2/update.txt"
 
 #define NAMELEN 64
 
@@ -341,8 +343,7 @@ public Action:Event_PlayerHealed(Handle:event, const String:name[], bool:dontBro
 	decl String:healerSteamId[64];
 	decl String:patientTeam[64];
 	decl String:healerTeam[64];
-	decl String:strAirshot[32] = "";
-	char strAirshotHeight[32] = "";
+	char strAirshot[64] = "";
 
 	new patientId = GetEventInt(event, "patient");
 	new healerId = GetEventInt(event, "healer");
@@ -351,11 +352,8 @@ public Action:Event_PlayerHealed(Handle:event, const String:name[], bool:dontBro
 	new amount = GetEventInt(event, "amount");
 	
 	if (lastAirshot[healer]) {
-		strcopy(strAirshot, sizeof(strAirshot), " (airshot \"1\")");
-		if (lastAirshotHeight[healer])
-			Format(strAirshotHeight, sizeof(strAirshotHeight), " (height \"%d\")", lastAirshotHeight[healer]);
+		Format(strAirshot, sizeof(strAirshot), " (airshot \"1\") (height \"%i\")", lastAirshotHeight[healer]);
 		lastAirshot[healer] = false;
-		lastAirshotHeight[healer] = 0;
 	}
 
 	if (healer == 0 && patient != 0) {
@@ -383,7 +381,7 @@ public Action:Event_PlayerHealed(Handle:event, const String:name[], bool:dontBro
 	GetPlayerTeamStr(GetClientTeam(patient), patientTeam, sizeof(patientTeam));
 	GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
 	
-	LogToGame("\"%s<%d><%s><%s>\" triggered \"healed\" against \"%s<%d><%s><%s>\" (healing \"%d\")%s%s",
+	LogToGame("\"%s<%d><%s><%s>\" triggered \"healed\" against \"%s<%d><%s><%s>\" (healing \"%d\")%s",
 		healerName,
 		healerId,
 		healerSteamId,
@@ -393,8 +391,7 @@ public Action:Event_PlayerHealed(Handle:event, const String:name[], bool:dontBro
 		patientSteamId,
 		patientTeam,
 		amount,
-		strAirshot,
-		strAirshotHeight);
+		strAirshot);
 	
 	return Plugin_Continue;
 }
@@ -600,7 +597,6 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 	lastHealth[attacker] = GetClientHealth(attacker);
 	lastHeadshot[attacker] = false;
 	lastAirshot[attacker] = false;
-	lastAirshotHeight[attacker] = 0;
 
 	lastWeaponDamage[attacker][0] = '\0';
 	
@@ -656,12 +652,12 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 		}
 		
 		if (wasDirect && (attackerClass == TFClass_Soldier || attackerClass == TFClass_DemoMan) && GetPlayerWeaponSlot(attacker, 0) == weapon) {
-			GetAirshot(attacker, victim);
+			SetLastAirshotValues(attacker, victim);
 		}
 		
 		if (attackerClass == TFClass_Medic && GetPlayerWeaponSlot(attacker, 0) == weapon) {
 			if (StrEqual(lastWeaponDamage[attacker], "crusaders_crossbow")) {
-				GetAirshot(attacker, victim);
+				SetLastAirshotValues(attacker, victim);
 			}
 		}
 
@@ -785,8 +781,7 @@ public Event_PlayerHurt(Handle:event, const String:name[], bool:dontBroadcast) {
 		decl String:strCrit[32] = "";
 		decl String:strRealDamage[32] = "";
 		decl String:strHeadshot[32] = "";
-		decl String:strAirshot[32] = "";
-		char strAirshotHeight[32] = "";
+		char strAirshot[64] = "";
 
 		new healing = lastHealingOnHit[attacker];
 		if (healing != 0 && IsPlayerAlive(attacker))
@@ -810,17 +805,13 @@ public Event_PlayerHurt(Handle:event, const String:name[], bool:dontBroadcast) {
 			strcopy(strHeadshot, sizeof(strHeadshot), " (headshot \"1\")");
 		
 		if (lastAirshot[attacker]) {
-			strcopy(strAirshot, sizeof(strAirshot), " (airshot \"1\")");
-		}
-
-		if (lastAirshotHeight[attacker]) {
-			Format(strAirshotHeight, sizeof(strAirshotHeight), " (height \"%i\")", lastAirshotHeight[attacker]);
-			lastAirshotHeight[attacker] = 0;
+			Format(strAirshot, sizeof(strAirshot), " (airshot \"1\") (height \"%i\")", lastAirshotHeight[attacker]);
+			lastAirshot[attacker] = false;
 		}
 
 		// Remember: The attacker can be dead!
 		
-		LogToGame("\"%s<%d><%s><%s>\" triggered \"damage\" against \"%s<%d><%s><%s>\" (damage \"%d\")%s (weapon \"%s\")%s%s%s%s%s",
+		LogToGame("\"%s<%d><%s><%s>\" triggered \"damage\" against \"%s<%d><%s><%s>\" (damage \"%d\")%s (weapon \"%s\")%s%s%s%s",
 			attackerName,
 			attackerid,
 			attackerSteamID,
@@ -835,7 +826,6 @@ public Event_PlayerHurt(Handle:event, const String:name[], bool:dontBroadcast) {
 			strHealing,
 			strCrit,
 			strAirshot,
-			strAirshotHeight,
 			strHeadshot);
 	}
 }
@@ -911,10 +901,7 @@ public OnHealArrowTouch(entity, other) {
 				if (IsValidEntity(weapon)) {
 					// Enables logging of airshots for healing arrows
 					lastAirshot[owner] = false;
-					if ((GetEntityFlags(other) & (FL_ONGROUND | FL_INWATER)) == 0) {
-						// The victim is in the air
-						GetAirshot(owner, other);
-					}
+					SetLastAirshotValues(owner, other);
 
 					if (g_bEnableAccuracy) {
 						new healing, defid, bool:postHumousDamage;
@@ -1112,7 +1099,7 @@ LogHit(attacker, const String:weapon[]) {
 // ---- ACCURACY ----
 
 
-float GetAirshot(attacker, victim) {
+void SetLastAirshotValues(attacker, victim) {
 	if ((GetEntityFlags(victim) & (FL_ONGROUND | FL_INWATER)) == 0) {
 		// The victim is in the air
 		float distance = DistanceAboveGroundBox(victim);
@@ -1120,17 +1107,15 @@ float GetAirshot(attacker, victim) {
 			lastAirshot[attacker] = true;
 			lastAirshotHeight[attacker] = RoundToFloor(distance);
 		}
-		return distance;
 	}
-	return 0.0;
 }
 
 
 float DistanceAboveGroundBox(victim) {
 	float vStart[3];
-	float vDirection[3] = { 0.0, 0.0, -16384.0};
-	float vHullMins[3]  = { -24.0, -24.0, 0.0};
-	float vHullMaxs[3]  = { 24.0, 24.0, 0.0};
+	float vDirection[3] = { 0.0, 0.0, -16384.0 };
+	float vHullMins[3]  = { -24.0, -24.0, 0.0 };
+	float vHullMaxs[3]  = { 24.0, 24.0, 0.0 };
 	
 	GetClientAbsOrigin(victim, vStart);
 	float vEnd[3];

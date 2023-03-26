@@ -4,11 +4,12 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.5.0"
+			"Latest"	"2.5.1"
 		}
 		
-		"Notes"	"Changes in 2.5.0:"
-		"Notes"	"- Added logs for crossbow airshots - by Bv"
+		"Notes"	"Changes in 2.5.1:"
+		"Notes"	"- Added height prop to airshot logs - by Bv"
+		"Notes"	"- Switched to using HullRayTracing to eliminate edge-cases - by Bv"
 	}
 	
 	"Files"
