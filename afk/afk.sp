@@ -34,7 +34,7 @@ public Plugin:myinfo = {
 	author = "F2",
 	description = "Shows which players are AFK in warmup",
 	version = PLUGIN_VERSION,
-	url = "http://sourcemod.krus.dk/"
+	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
 #define DEFANG0 -1.0
@@ -161,7 +161,7 @@ StartMatch() {
 						continue;
 					if (TFTeam:GetClientTeam(other) != clientTeam)
 						continue;
-					CPrintToChat(other, "{lightgreen}[AFK] {green}WARNING! These players are AFK:");
+					MC_PrintToChat(other, "{lightgreen}[AFK] {green}WARNING! These players are AFK:");
 				}
 			}
 			

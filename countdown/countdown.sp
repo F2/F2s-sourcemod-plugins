@@ -27,7 +27,7 @@ public Plugin:myinfo = {
 	author = "F2",
 	description = "Counts down with a custom text",
 	version = PLUGIN_VERSION,
-	url = "http://www.sourcemod.net/"
+	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
 
@@ -73,7 +73,7 @@ public Action:Command_say(client, args) {
 	
 		if (StrEqual(text, "!countdown", false) || StrEqual(text, "!startcountdown", false)) {
 			// When user writes !countdown, show the syntax help.
-			CPrintToChat(client, "{red}%s", "Please specify a duration, for example: !countdown 2m");
+			MC_PrintToChat(client, "{red}%s", "Please specify a duration, for example: !countdown 2m");
 			return Plugin_Handled;
 		} else if (StrContains(text, "!countdown ", false) == 0 || StrContains(text, "!startcountdown ", false) == 0) {
 			// When a user writes !countdown and some more, parse the message.
@@ -86,7 +86,7 @@ public Action:Command_say(client, args) {
 				time = ParseDuration(buffers[1]);
 			
 			if (time == -1) {
-				CPrintToChat(client, "{red}%s", "Please specify a proper duration, for example: !countdown 2m");
+				MC_PrintToChat(client, "{red}%s", "Please specify a proper duration, for example: !countdown 2m");
 			} else {
 				decl String:reason[REASON_LEN];
 				GetConVarString(g_hCvarReason, reason, sizeof(reason));
@@ -94,7 +94,7 @@ public Action:Command_say(client, args) {
 					strcopy(reason, sizeof(reason), buffers[2]);
 				
 				if (StrContains(reason, "%time", false) == -1) {
-					CPrintToChat(client, "{red}%s%s%s", "Please specify a the reason with a %time: !countdown ", buffers[1], " Exploding in %time");
+					MC_PrintToChat(client, "{red}%s%s%s", "Please specify a the reason with a %time: !countdown ", buffers[1], " Exploding in %time");
 				} else {
 					g_iTimeleft = time;
 					strcopy(g_sReason, sizeof(g_sReason), reason);

@@ -46,7 +46,7 @@ public Plugin:myinfo = {
 	author = "F2",
 	description = "Waits for STV when changing map",
 	version = PLUGIN_VERSION,
-	url = "http://sourcemod.krus.dk/"
+	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
 
@@ -84,6 +84,10 @@ public OnMapStart() {
 	g_bMatchPlayed = false;
 	g_hCountdownTimer = INVALID_HANDLE;
 	g_iStvCountdown = 0;
+}
+
+public OnMapEnd() {
+	Match_OnMapEnd();
 }
 
 StartMatch() {
