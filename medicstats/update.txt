@@ -4,12 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"1.4.0"
+			"Latest"	"1.4.1"
 		}
 		
-		"Notes"	"Changes in 1.4.0:"
-		"Notes"	"- Fixed SM error logs when picking up medpacks"
-		"Notes"	"- Implemented stephanie's colored STV Stats messages"
+		"Notes"	"Changes in 1.4.1:"
+		"Notes"	"- Internal updates - by Leigh MacDonald"
 	}
 	
 	"Files"

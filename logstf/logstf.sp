@@ -91,6 +91,10 @@ Release notes:
 - Added cvar 'logstf_suppresschat'
 
 
+---- 2.5.1 (23/04/2023) ----
+- Internal updates
+
+
 
 TODO:
 - Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log and -partial files have dynamic names, and don't forget to clean them up.
@@ -113,7 +117,7 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION	"2.5.0"
+#define PLUGIN_VERSION	"2.5.1"
 #define UPDATE_URL		"http://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"

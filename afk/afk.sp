@@ -12,6 +12,10 @@ Release notes:
 - AFK time is more fine-grained
 - Support for new ready-up behaviour
 
+
+---- 1.1.1 (23/04/2023) ----
+- Internal updates
+
 */
 
 #pragma semicolon 1
@@ -24,7 +28,7 @@ Release notes:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.1.0"
+#define PLUGIN_VERSION "1.1.1"
 #define UPDATE_URL		"http://sourcemod.krus.dk/afk/update.txt"
 
 

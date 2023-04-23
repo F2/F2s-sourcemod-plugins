@@ -5,6 +5,10 @@ Release notes:
 - Shows a countdown in the middle of the screen, when an admin writes: !countdown 2m
 - !stopcountdown
 
+
+---- 1.0.1 (23/04/2023) ----
+- Internal updates
+
 */
 
 #pragma semicolon 1
@@ -17,7 +21,7 @@ Release notes:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION 	"1.0.0"
+#define PLUGIN_VERSION 	"1.0.1"
 #define UPDATE_URL		"http://sourcemod.krus.dk/countdown/update.txt"
 #define REASON_LEN 		256
 

@@ -78,6 +78,11 @@ Release notes:
 - Switched to using HullRayTracing to eliminate edge-cases - by Bv
 
 
+---- 2.5.2 (23/04/2023) ----
+- Removed 'spawned as unknown' log
+- Internal updates - by Leigh MacDonald
+
+
 TODO:
 - Use GetGameTime() instead of GetEngineTime()?
 - Write comments in code :D
@@ -98,7 +103,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.5.1"
+#define PLUGIN_VERSION "2.5.2"
 #define UPDATE_URL		"https://sourcemod.krus.dk/supstats2/update.txt"
 
 #define NAMELEN 64

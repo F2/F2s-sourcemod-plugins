@@ -53,6 +53,10 @@ Release notes:
 - Implemented stephanie's colored STV Stats messages
 
 
+---- 1.4.1 (23/04/2023) ----
+- Internal updates - by Leigh MacDonald
+
+
 
 TODO:
 - The log lines should include which medigun is wielded
@@ -74,7 +78,7 @@ Known Bugs:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.4.0"
+#define PLUGIN_VERSION "1.4.1"
 #define UPDATE_URL "http://sourcemod.krus.dk/medicstats/update.txt"
 #define TIMER_TICK 0.15
 
