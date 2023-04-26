@@ -39,6 +39,7 @@ TODO:
 #undef REQUIRE_EXTENSIONS
 #include <cURL>
 #include <SteamWorks>
+#include <anyhttp_file>
 #if defined ANYHTTP_REQUIRE_EXTENSIONS
     #define REQUIRE_EXTENSIONS
 #endif
@@ -140,6 +141,15 @@ methodmap AnyHttpRequest {
     public void GetFileName(char[] filename, int size) {
         strcopy(filename, size, requests[this.Id].filename);
     }
+    
+    public void PutString(const char[] name, const char[] value) {
+        Handle kv = this.Fields;
+
+        int id = KvizGetNum(kv, 0, ":count") + 1;
+        KvizSetString(kv, name, "%i.name", id);
+        KvizSetString(kv, "string", "%i.type", id);
+        KvizSetString(kv, value, "%i.value", id);
+    }
 
     public void PutFile(const char[] name, const char[] filepath) {
         Handle kv = this.Fields;
@@ -161,29 +171,65 @@ methodmap AnyHttpRequest {
         } else {
             tempFilepath[posOfDirSeparator + 1] = '\0';
         }
+
         char tempFilename[128];
         GenerateUniqueFilename(tempFilename, sizeof(tempFilename));
         StrCat(tempFilepath, sizeof(tempFilepath), tempFilename);
 
-        if (!CopyFile(filepath, tempFilepath)) {
-            LogError("Could not copy file from %s to %s", filepath, tempFilepath);
-            strcopy(tempFilepath, sizeof(tempFilepath), filepath);
-            KvizSetString(kv, "false", "%i.cleanup",  id);
-        }
-    
         KvizSetString(kv, tempFilepath, "%i.value", id);
-    }
-    
-    public void PutString(const char[] name, const char[] value) {
-        Handle kv = this.Fields;
+        KvizSetNum(kv, 0, "%i.ready", id);
+        KvizSetString(kv, filepath, "%i.originalPath", id);
 
-        int id = KvizGetNum(kv, 0, ":count") + 1;
-        KvizSetString(kv, name, "%i.name", id);
-        KvizSetString(kv, "string", "%i.type", id);
-        KvizSetString(kv, value, "%i.value", id);
+        // We copy the file in the background. 
+        // Copying files directly lags the server, which reveals a round-end to SourceTV viewers.
+
+        DataPack pack = CreateDataPack();
+        pack.WriteCell(kv);
+        pack.WriteCell(id);
+        AnyHttp_CopyFile(filepath, tempFilepath, AnyHttp_PutFile_Finished, pack);
+    }
+
+    public bool IsReadyToSend() {
+        // Checks that all files are ready to be sent.
+
+        if (this.Fields != null) {
+            char type[64];
+            for (int i = 1; KvizGetStringExact(this.Fields, type, sizeof(type), "%i.type", i); i++) {
+                if (StrEqual(type, "file")) {
+                    int ready = 0;
+                    if (!KvizGetNumExact(this.Fields, ready, "%i.ready", i))
+                        ThrowError("'ready' should always be present - %i", i);
+                    
+                    if (ready == 0)
+                        return false;
+                }
+            }
+        }
+
+        return true;
     }
 };
 static AnyHttpRequest InvalidRequest = view_as<AnyHttpRequest>(-1);
+
+
+public void AnyHttp_PutFile_Finished(bool success, DataPack pack) {
+    pack.Reset();
+    Handle kv = pack.ReadCell();
+    int id = pack.ReadCell();
+    delete pack;
+
+    if (!success) {
+        char originalFilepath[128], tempFilepath[128];
+        KvizGetStringExact(kv, originalFilepath, sizeof(originalFilepath), "%i.originalPath", id);
+        KvizGetStringExact(kv, tempFilepath, sizeof(tempFilepath), "%i.value", id);
+        KvizSetString(kv, originalFilepath, "%i.value", id);
+        KvizSetString(kv, "false", "%i.cleanup", id);
+
+        LogError("Could not copy file from %s to %s", originalFilepath, tempFilepath);
+    }
+
+    KvizSetNum(kv, 1, "%i.ready", id);
+}
 
 
 enum struct AnyHttpClass {
@@ -244,20 +290,40 @@ enum struct AnyHttpClass {
         }
     }
     
-    bool Send(AnyHttpRequest request, AnyHttp_Result callback) {
+    void Send(AnyHttpRequest request, AnyHttp_Result callback) {
         request.Callback = callback;
 
-        if (this.Extension == UseSteamWorks) {
-            return SteamWorks_SendPostForm(request);
-        } else if (this.Extension == UseCURL) {
-            return cURL_SendPostForm(request);
-        } else {
-            ThrowError("Unknown extension");
-            return false; // Avoid compiler warning
-        }
+        AnyHttp_SendWhenReady(null, request);
     }
 }
 stock AnyHttpClass AnyHttp;
+
+public Action AnyHttp_SendWhenReady(Handle timer, AnyHttpRequest request) {
+    if (!request.IsReadyToSend()) {
+        CreateTimer(0.5, AnyHttp_SendWhenReady, request);
+        return Plugin_Stop;
+    }
+
+    bool success = false;
+    if (AnyHttp.Extension == UseSteamWorks) {
+        success = SteamWorks_SendPostForm(request);
+    } else if (AnyHttp.Extension == UseCURL) {
+        success = cURL_SendPostForm(request);
+    } else {
+        ThrowError("Unknown extension");
+    }
+
+    if (!success) {
+        Call_StartFunction(null, request.Callback);
+        Call_PushCell(false);
+        Call_PushString("");
+        Call_PushCell(0);
+        Call_PushCell(request.MetaData);
+        CleanUpRequest(request);
+        Call_Finish();
+    }
+    return Plugin_Stop;
+}
 
 
 
@@ -410,33 +476,6 @@ static int CopyBytes(char[] dest, int destSize, const char[] src, int destPos, i
     if (bytesCopied < bytes)
         ThrowError("AnyHttp: Not enough space allocated");
     return bytesCopied;
-}
-
-static bool CopyFile(const char[] sourceFile, const char[] targetFile)
-{
-	File hr = OpenFile(sourceFile, "rb", false);	
-    if (hr == null)
-        return false;
-
-    File hw = OpenFile(targetFile, "wb", false);	
-    if (hw == null) {
-        hr.Close();
-        return false;
-    }
-    
-    int bytesRead, buff[1024];
-    bool success = true;
-    while (!hr.EndOfFile()) {
-        bytesRead = hr.Read(buff, sizeof(buff), 1);
-        if (bytesRead == -1 || !hw.Write(buff, bytesRead, 1)) {
-            success = false;
-            break;
-        }
-    }
-
-    hw.Close();
-    hr.Close();
-    return success;
 }
 
 static void GenerateUniqueFilename(char[] filename, int maxsize) {

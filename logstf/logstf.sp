@@ -709,10 +709,7 @@ void UploadLog(bool partial) {
 	if (g_sCurrentLogID[0] != '\0')
 		req.PutString("updatelog", g_sCurrentLogID);
     
-	if (!AnyHttp.Send(req, UploadLog_Complete)) {
-		char[] noContents = "";
-		UploadLog_Complete(false, noContents, 0);
-	}
+	AnyHttp.Send(req, UploadLog_Complete);
 }
 
 public void UploadLog_Complete(bool success, const char[] contents, int responseCode) {
