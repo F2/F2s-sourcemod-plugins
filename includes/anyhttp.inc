@@ -40,6 +40,7 @@ TODO:
 #include <cURL>
 #include <SteamWorks>
 #include <anyhttp_file>
+#include <anyhttp_stringbuilder>
 #if defined ANYHTTP_REQUIRE_EXTENSIONS
     #define REQUIRE_EXTENSIONS
 #endif

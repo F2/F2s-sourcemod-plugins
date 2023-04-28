@@ -9,20 +9,12 @@ By F2
 #define _anyhttp_stringbuilder_included
 
 
-methodmap AnyHttpStringBuilder < Handle {
-    property int Health {
-        public native get();
-        public native set(int health);
-    }
-}
-
-
 enum struct AnyHttpStringBuilder {
     DataPack pack;
     int length;
 
     void Init() {
-        this.pack = new Init();
+        this.pack = new DataPack();
         this.length = 0;
     }
     
@@ -31,16 +23,25 @@ enum struct AnyHttpStringBuilder {
         this.length += strlen(str);
     }
 
-    property bool Length {
-        public get() {
-            return this.length;
-        }
+    int Length() {
+        return this.length;
     }
 
-    void ToString(char[] str, int maxLength) {
+    bool CopyToString(char[] str, int maxLength) {
+        if (maxLength <= this.length)
+            return false;
+        
         int pos = 0;
-
         this.pack.Reset();
+        str[0] = '\0';
+
+        char[] buffer = new char[this.length + 1];
+        while (this.pack.IsReadable()) {
+            this.pack.ReadString(buffer, this.length + 1);    
+            StrCat(str, maxLength, buffer);
+        }
+
+        return true;
     }
 
     void Dispose() {
@@ -48,3 +49,4 @@ enum struct AnyHttpStringBuilder {
         this.pack = null;
     }
 }
+
