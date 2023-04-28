@@ -73,6 +73,7 @@ enum struct AnyHttpRequestData {
     any metadata;
     char filename[128];
     Handle filehandle;
+    AnyHttpStringBuilder httpBody;
 
     Handle fields;
     /*  - type (string / file)
@@ -347,6 +348,7 @@ static AnyHttpRequest NewRequest() {
     request.Fields = KvizCreate("field");
     request.SetFileName("");
     request.FileHandle = null;
+    requests[request.Id].httpBody.Dispose();
 
     return request;
 }
@@ -516,15 +518,13 @@ static AnyHttpRequest SteamWorks_CreatePostForm(const char[] url, any metadata =
 }
 
 static bool SteamWorks_SendPostForm(AnyHttpRequest request) {
-    int length = SteamWorks_SendPostForm_Internal(request, 0);
-    if (length < 0 || SteamWorks_SendPostForm_Internal(request, length) < 0) { 
-        CleanUpRequest(request);
-        return false;
-    }
+    requests[request.Id].httpBody.Init();
+
+    SteamWorks_SendPostForm_Internal(request);
     return true;
 }
 
-static int SteamWorks_SendPostForm_Internal(AnyHttpRequest request, int bufferSize) {
+static void SteamWorks_SendPostForm_Internal(AnyHttpRequest request) {
     char type[64];
     char[] buffer = new char[bufferSize];
     int bufferPos = 0;

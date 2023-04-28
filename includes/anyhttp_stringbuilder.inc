@@ -45,8 +45,10 @@ enum struct AnyHttpStringBuilder {
     }
 
     void Dispose() {
-        delete this.pack;
-        this.pack = null;
+        if (this.pack != null) {
+            delete this.pack;
+            this.pack = null;
+        }
     }
 }
 
