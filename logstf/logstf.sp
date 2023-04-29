@@ -91,6 +91,10 @@ Release notes:
 - Added cvar 'logstf_suppresschat'
 
 
+---- 2.5.1 (23/04/2023) ----
+- Internal updates
+
+
 
 TODO:
 - Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log and -partial files have dynamic names, and don't forget to clean them up.
@@ -113,7 +117,7 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION	"2.5.0"
+#define PLUGIN_VERSION	"2.5.1"
 #define UPDATE_URL		"http://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
@@ -129,7 +133,7 @@ public Plugin myinfo = {
 	author = "F2",
 	description = "Logs.TF log uploader",
 	version = PLUGIN_VERSION,
-	url = "http://sourcemod.krus.dk/"
+	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
 #define TFMAXPLAYERS 33
@@ -369,7 +373,7 @@ void AnnounceLogReady() {
 			continue;
 		char nickname[32];
 		GetClientName(client, nickname, sizeof(nickname));
-		CPrintToChat(client, "%s%s%s", "{lightgreen}[LogsTF] {blue}", nickname, ": To upload logs, type: {yellow}!ul");
+		MC_PrintToChat(client, "%s%s%s", "{lightgreen}[LogsTF] {blue}", nickname, ": To upload logs, type: {yellow}!ul");
 	}
 }
 
@@ -440,7 +444,7 @@ public Action Event_PlayerDeath(Handle event, const char[] name, bool dontBroadc
 		return Plugin_Continue;
 	
 	g_bPartialUploadNotice[client] = false;
-	CPrintToChat(client, "%s%s", "{lightgreen}[LogsTF] {blue}To see the stats from the previous rounds, type: {yellow}", g_sDefaultTrigger);
+	MC_PrintToChat(client, "%s%s", "{lightgreen}[LogsTF] {blue}To see the stats from the previous rounds, type: {yellow}", g_sDefaultTrigger);
 
 	return Plugin_Continue;
 }
@@ -472,9 +476,9 @@ public Action Command_say(int client, int args) {
 			char nickname[32];
 			GetClientName(client, nickname, sizeof(nickname));
 			if (g_bIsUploading && g_bLogReady == false) {
-				CPrintToChat(client, "%s%s%s", "{lightgreen}[LogsTF] {blue}", nickname, ": Log is already being uploaded...");
+				MC_PrintToChat(client, "%s%s%s", "{lightgreen}[LogsTF] {blue}", nickname, ": Log is already being uploaded...");
 			} else if (g_bLogReady == false) {
-				CPrintToChat(client, "%s%s%s", "{lightgreen}[LogsTF] {red}", nickname, ": There are no logs ready to be uploaded.");
+				MC_PrintToChat(client, "%s%s%s", "{lightgreen}[LogsTF] {red}", nickname, ": There are no logs ready to be uploaded.");
 			} else if (g_bLogReady == true) {
 				UploadLog(false);
 			}
@@ -515,7 +519,7 @@ public void QueryConVar_DisableHtmlMotd(QueryCookie cookie, int client, ConVarQu
 			char nickname[32];
 			GetClientName(client, nickname, sizeof(nickname));
 			
-			CPrintToChat(client, "%s%s%s", "{lightgreen}[LogsTF] {default}", nickname, ": To see logs in-game, you need to set: {aqua}cl_disablehtmlmotd 0");
+			MC_PrintToChat(client, "%s%s%s", "{lightgreen}[LogsTF] {default}", nickname, ": To see logs in-game, you need to set: {aqua}cl_disablehtmlmotd 0");
 			return;
 		}
 	}
@@ -650,7 +654,7 @@ void UploadLog(bool partial) {
 	TrimString(apiKey);
 	if (strlen(apiKey) == 0) {
 		if (!partial)
-			CPrintToChatAll("%s", "{lightgreen}[LogsTF] {red}To upload logs, please\nset {green}logstf_apikey {red}to your logs.tf API key.\nPut it in server.cfg");
+			MC_PrintToChatAll("%s", "{lightgreen}[LogsTF] {red}To upload logs, please\nset {green}logstf_apikey {red}to your logs.tf API key.\nPut it in server.cfg");
 		return;
 	}
 	
@@ -696,7 +700,7 @@ void UploadLog(bool partial) {
 	}
 	
 	if (!partial)
-		CPrintToChatAll("%s", "{lightgreen}[LogsTF] {blue}Uploading logs...");
+		MC_PrintToChatAll("%s", "{lightgreen}[LogsTF] {blue}Uploading logs...");
 	
 	AnyHttpRequest req = AnyHttp.CreatePost("http://logs.tf/upload");
 	
@@ -719,7 +723,7 @@ public void UploadLog_Complete(bool success, const char[] contents, int response
 		success = ParseLogsResponse(contents);
 	} else {
 		if (!g_bIsPartialUpload)
-			CPrintToChatAll("%s", "{lightgreen}[LogsTF] {red}Error occurred when uploading logs :(");
+			MC_PrintToChatAll("%s", "{lightgreen}[LogsTF] {red}Error occurred when uploading logs :(");
 		LogError("Error uploading %slogs", g_bIsPartialUpload ? "partial " : "");
 	}
 	
@@ -748,7 +752,7 @@ public void UploadLog_Complete(bool success, const char[] contents, int response
 		if (g_iUploadAttempt < 3) {
 			int waittime = (g_iUploadAttempt - 1) * 10 + 5;
 			if (!g_bIsPartialUpload)
-				CPrintToChatAll("%s%i%s", "{lightgreen}[LogsTF] {red}Retrying upload in ", waittime, " seconds...");
+				MC_PrintToChatAll("%s%i%s", "{lightgreen}[LogsTF] {red}Retrying upload in ", waittime, " seconds...");
 			g_iUploadAttempt++;
 			g_bIsUploading = true;
 			CreateTimer(float(waittime), RetryUploadLog);
@@ -770,14 +774,14 @@ public bool ParseLogsResponse(const char[] contents) {
 	char url[64], success[16];
 	if (FindJsonValue(resBuff, "success", success, sizeof(success)) && StrEqual(success, "true", false) && FindJsonValue(resBuff, "url", url, sizeof(url))) {
 		if (!FindJsonValue(resBuff, "log_id", g_sCurrentLogID, sizeof(g_sCurrentLogID))) {
-			CPrintToChatAll("%s", "{lightgreen}[LogsTF] {blue}log_id not found");
+			MC_PrintToChatAll("%s", "{lightgreen}[LogsTF] {blue}log_id not found");
 			return false;
 		}
 		
 		FormatEx(g_sLastLogURL, sizeof(g_sLastLogURL), "%s%s", "logs.tf", url);
 		if (!g_bIsPartialUpload) {
-			CPrintToChatAll("%s%s", "{lightgreen}[LogsTF] {blue}Logs were uploaded to: ", g_sLastLogURL);
-			CPrintToChatAll("%s%s", "{lightgreen}[LogsTF] {blue}To see the stats, type: {yellow}", g_sDefaultTrigger);
+			MC_PrintToChatAll("%s%s", "{lightgreen}[LogsTF] {blue}Logs were uploaded to: ", g_sLastLogURL);
+			MC_PrintToChatAll("%s%s", "{lightgreen}[LogsTF] {blue}To see the stats, type: {yellow}", g_sDefaultTrigger);
 		}
 		Format(g_sLastLogURL, sizeof(g_sLastLogURL), "%s%s", "http://", g_sLastLogURL);
 		
@@ -801,7 +805,7 @@ public bool ParseLogsResponse(const char[] contents) {
 		String_Trim(error, error, size);
 		
 		if (!g_bIsPartialUpload)
-			CPrintToChatAll("%s%s", "{lightgreen}[LogsTF] {red}Unsuccesful upload: ", error);
+			MC_PrintToChatAll("%s%s", "{lightgreen}[LogsTF] {red}Unsuccesful upload: ", error);
 		LogError("Error uploading %slogs: %s", g_bIsPartialUpload ? "partial " : "", error);
 		if (StrContains(error, "Invalid log file", false) != -1 || StrContains(error, "Not enough", false) != -1)
 			return true; // Retrying won't help

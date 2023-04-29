@@ -167,7 +167,7 @@ stock void KvizEscape(char[] dest, int destLen, const char[] src) {
  * @param name  The name of the root node.
  * @return      A new Kvizzle handle, or null in case of error.
  */
-stock Handle KvizCreate(const char[] name) {
+stock KeyValues KvizCreate(const char[] name) {
     if (!Kviz_bInited) {
         KvizInit();
     }
@@ -190,7 +190,7 @@ stock Handle KvizCreate(const char[] name) {
  * @param file  The path for the KeyValues file.
  * @return      A new Kvizzle handle, or null in case of error.
  */
-stock Handle KvizCreateFromFile(const char[] name, const char[] file) {
+stock KeyValues KvizCreateFromFile(const char[] name, const char[] file) {
     if (!Kviz_bInited) {
         KvizInit();
     }
