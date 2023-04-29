@@ -65,7 +65,7 @@ stock void AnyHttp_CreateMultipartRequest(KeyValues fields, AnyHttp_Multipart_Re
     RequestFrame(AnyHttp_CreateMultipartRequest_Process, data.Export());
 }
 
-public void AnyHttp_CreateMultipartRequest_Process(DataPack pack) {
+static void AnyHttp_CreateMultipartRequest_Process(DataPack pack) {
     AnyHttpMultipartData data;
     data.Import(pack);
 
@@ -118,7 +118,7 @@ public void AnyHttp_CreateMultipartRequest_Process(DataPack pack) {
     RequestFrame(AnyHttp_CreateMultipartRequest_Process, data.Export());
 }
 
-public void AnyHttp_CreateMultipartRequest_Finish(DataPack pack) {
+static void AnyHttp_CreateMultipartRequest_Finish(DataPack pack) {
     AnyHttpMultipartData data;
     data.Import(pack);
 

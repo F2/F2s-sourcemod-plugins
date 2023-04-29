@@ -62,7 +62,7 @@ stock void AnyHttp_CopyFile(const char[] sourceFile, const char[] targetFile, An
     RequestFrame(AnyHttp_CopyFile_Process, data.Export());
 }
 
-public void AnyHttp_CopyFile_Process(DataPack pack) {
+static void AnyHttp_CopyFile_Process(DataPack pack) {
     AnyHttpCopyFileData data;
     data.Import(pack);
 
@@ -87,8 +87,7 @@ public void AnyHttp_CopyFile_Process(DataPack pack) {
     RequestFrame(AnyHttp_CopyFile_Process, data.Export());
 }
 
-// TODO: Can this be static?
-public void AnyHttp_CopyFile_Finish(DataPack pack) {
+static void AnyHttp_CopyFile_Finish(DataPack pack) {
     AnyHttpCopyFileData data;
     data.Import(pack);
 
