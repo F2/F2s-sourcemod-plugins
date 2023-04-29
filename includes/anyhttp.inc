@@ -42,11 +42,12 @@ TODO:
     #define REQUIRE_EXTENSIONS
 #endif
 
+#include <kvizzle_newdecls>
 #include <anyhttp_file>
 #include <anyhttp_stringbuilder>
-#include <kvizzle>
+#include <anyhttp_multipart>
 
-#define ANYHTTP_VERSION		     "2.1.0"
+#define ANYHTTP_VERSION		     "3.0.0"
 #define SimultaneousConnections  16
 
 #pragma dynamic 5242880 // Make sure we can allocate enough space for uploading files. Here's 20MB.
@@ -330,8 +331,6 @@ public Action AnyHttp_SendWhenReady(Handle timer, AnyHttpRequest request) {
 
 // Common private functions
 
-static const char MultiPartBoundary[] = "--------------------AnyHttp--AnyHttp--h7doWqx7m--";
-
 static AnyHttpRequest NewRequest() {
     int id = (nextConnection++) % SimultaneousConnections;
     AnyHttpRequest request = view_as<AnyHttpRequest>(id);
@@ -347,7 +346,7 @@ static AnyHttpRequest NewRequest() {
     request.Fields = KvizCreate("field");
     request.SetFileName("");
     request.FileHandle = null;
-    requests[request.Id].httpBody.Dispose();
+    requests[request.Id].httpBody.Init();
 
     return request;
 }
@@ -383,6 +382,7 @@ static void CleanUpRequest(AnyHttpRequest request) {
         KvizClose(request.Fields);
         request.Fields = null;
     }
+    requests[request.Id].httpBody.Dispose();
 }
 
 static bool FindRequestByHandle(Handle handle, AnyHttpRequest &request) {
@@ -398,87 +398,6 @@ static bool FindRequestByHandle(Handle handle, AnyHttpRequest &request) {
     return false;
 }
 
-static void GetFileName(char[] filename, int maxsize, const char[] filepath) {
-    int lastBackSlash = FindCharInString(filepath, '\\', true);
-    int lastForwardSlash = FindCharInString(filepath, '/', true);
-    if (lastBackSlash == -1 && lastForwardSlash == -1) {
-        strcopy(filename, maxsize, filepath);
-    } else {
-        int pos = lastBackSlash > lastForwardSlash ? lastBackSlash : lastForwardSlash;
-        strcopy(filename, maxsize, filepath[pos + 1]);
-    }
-}
-
-static void AppendMultipartString(char[] buffer, int &bufferPos, int maxsize, const char[] name, const char[] contents, bool computeLength) {
-    bufferPos += CopyBytes(buffer, maxsize, "--", bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, MultiPartBoundary, bufferPos, 0, computeLength);
-    
-    bufferPos += CopyBytes(buffer, maxsize, "\nContent-Disposition: form-data; name=\"", bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, name, bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, "\"\n\n", bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, contents, bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, "\n", bufferPos, 0, computeLength);
-}
-
-static bool AppendMultipartFile(char[] buffer, int &bufferPos, int maxsize, const char[] name, const char[] filepath, bool computeLength) {
-    char filename[PLATFORM_MAX_PATH];
-    GetFileName(filename, sizeof(filename), filepath);
-        
-    bufferPos += CopyBytes(buffer, maxsize, "--", bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, MultiPartBoundary, bufferPos, 0, computeLength);
-    
-    bufferPos += CopyBytes(buffer, maxsize, "\nContent-Disposition: form-data; name=\"", bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, name, bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, "\"; filename=\"", bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, filename, bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, "\"\n\n", bufferPos, 0, computeLength);
-    
-    int filesize = FileSize(filepath);
-    if (computeLength) {
-        bufferPos += filesize;
-    } else {
-        File filehandle = OpenFile(filepath, "rb");
-        if (filehandle == null) {
-            LogError("AppendMultipartFile: Could not open file for reading %s", filepath);
-            return false;
-        }
-        
-        for (int i = 0; i < filesize; i++) {
-            int byte;
-            if (!filehandle.ReadUint8(byte)) {
-                LogError("AppendMultipartFile: Could not read byte from %s", filepath);
-                filehandle.Close();
-                return false;
-            }
-            buffer[bufferPos++] = view_as<char>(byte);
-        }
-        filehandle.Close();
-    }
-    
-    bufferPos += CopyBytes(buffer, maxsize, "\n", bufferPos, 0, computeLength);
-    return true;
-}
-
-static void AppendMultipartEnd(char[] buffer, int &bufferPos, int maxsize, bool computeLength) {
-    bufferPos += CopyBytes(buffer, maxsize, "--", bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, MultiPartBoundary, bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, "--", bufferPos, 0, computeLength);
-}
-
-static int CopyBytes(char[] dest, int destSize, const char[] src, int destPos, int srcPos, bool computeLength, int bytes = -1) {
-    int bytesCopied = 0;
-    if (bytes == -1)
-        bytes = strlen(src);
-    if (computeLength)
-        return bytes;
-    while (destPos < destSize && bytesCopied < bytes) {
-        dest[destPos++] = src[srcPos++];
-        bytesCopied++;
-    }
-    if (bytesCopied < bytes)
-        ThrowError("AnyHttp: Not enough space allocated");
-    return bytesCopied;
-}
 
 static void GenerateUniqueFilename(char[] filename, int maxsize) {
     GetPluginFilename(GetMyHandle(), filename, maxsize);
@@ -524,44 +443,24 @@ static bool SteamWorks_SendPostForm(AnyHttpRequest request) {
 }
 
 static void SteamWorks_SendPostForm_Internal(AnyHttpRequest request) {
-    char type[64];
-    int bufferPos = 0;
-    
-    for (int i = 1; KvizGetStringExact(request.Fields, type, sizeof(type), "%i.type", i); i++) {
-        if (StrEqual(type, "string")) {
-            char name[1024];
-            KvizGetStringExact(request.Fields, name, sizeof(name), "%i.name", i);
-            char contents[1024];
-            KvizGetStringExact(request.Fields, contents, sizeof(contents), "%i.value", i);
-            AppendMultipartString(buffer, bufferPos, bufferSize, name, contents, bufferSize == 0);
-        } else if (StrEqual(type, "file")) {
-            char name[1024];
-            KvizGetStringExact(request.Fields, name, sizeof(name), "%i.name", i);
-            char filepath[1024];
-            KvizGetStringExact(request.Fields, filepath, sizeof(filepath), "%i.value", i);
-            if (!AppendMultipartFile(buffer, bufferPos, bufferSize, name, filepath, bufferSize == 0))
-                return -1;
-        } else {
-            ThrowError("Unknown type");
-        }
-    }
-    AppendMultipartEnd(buffer, bufferPos, bufferSize, bufferSize == 0);
-    
-    if (bufferSize == 0) {
-        return bufferPos;
-    }
-    
+    AnyHttp_CreateMultipartRequest(request.Fields, SteamWorks_SendPostForm_Internal_RequestCreated, request);
+}
+
+static void SteamWorks_SendPostForm_Internal_RequestCreated(bool success, AnyHttpStringBuilder sb, AnyHttpRequest request) {
     char contentType[256] = "multipart/form-data; boundary=";
-    StrCat(contentType, sizeof(contentType), MultiPartBoundary);
+    StrCat(contentType, sizeof(contentType), AnyHttp_MultiPartBoundary);
+
+    int len = sb.Length();
+    char[] buffer = new char[len + 1];
+    sb.CopyToString(buffer, len + 1);
+    sb.Dispose();
     
-    if (!SteamWorks_SetHTTPRequestRawPostBody(request.ExtensionHandle, contentType, buffer, bufferPos) ||
+    if (!SteamWorks_SetHTTPRequestRawPostBody(request.ExtensionHandle, contentType, buffer, len) ||
         !SteamWorks_SetHTTPCallbacks(request.ExtensionHandle, SteamWorks_Done) || 
         !SteamWorks_SendHTTPRequest(request.ExtensionHandle)) 
     {
-        return -1;
+        SteamWorks_Done(request.ExtensionHandle, true, false, k_EHTTPStatusCodeInvalid);
     }
-    
-    return bufferPos;
 }
 
 static void SteamWorks_Done(Handle HTTPRequest, bool bFailure, bool requestSuccessful, EHTTPStatusCode statusCode) {

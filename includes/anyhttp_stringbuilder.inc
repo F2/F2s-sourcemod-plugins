@@ -14,6 +14,8 @@ enum struct AnyHttpStringBuilder {
     int length;
 
     void Init() {
+        this.Dispose();
+
         this.pack = new DataPack();
         this.length = 0;
     }
@@ -31,14 +33,12 @@ enum struct AnyHttpStringBuilder {
         if (maxLength <= this.length)
             return false;
         
-        int pos = 0;
         this.pack.Reset();
         str[0] = '\0';
 
-        char[] buffer = new char[this.length + 1];
         while (this.pack.IsReadable()) {
-            this.pack.ReadString(buffer, this.length + 1);    
-            StrCat(str, maxLength, buffer);
+            int len = strlen(str);
+            this.pack.ReadString(str[len], maxLength - len);
         }
 
         return true;
@@ -49,6 +49,16 @@ enum struct AnyHttpStringBuilder {
             delete this.pack;
             this.pack = null;
         }
+    }
+
+    void AddToDataPack(DataPack pack) {
+        pack.WriteCell(this.pack);
+        pack.WriteCell(this.length);
+    }
+
+    void ReadFromDataPack(DataPack pack) {
+        this.pack = pack.ReadCell();
+        this.length = pack.ReadCell();
     }
 }
 

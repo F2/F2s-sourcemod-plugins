@@ -36,7 +36,6 @@ enum struct AnyHttpCopyFileData {
         this.callback = view_as<AnyHttp_CopyFile_Result>(pack.ReadFunction());
         this.metadata = pack.ReadCell();
         this.success = pack.ReadCell();
-
         delete pack;
     }
 }
@@ -63,17 +62,6 @@ stock void AnyHttp_CopyFile(const char[] sourceFile, const char[] targetFile, An
     RequestFrame(AnyHttp_CopyFile_Process, data.Export());
 }
 
-// TODO: Can this be static?
-public void AnyHttp_CopyFile_Finish(DataPack pack) {
-    AnyHttpCopyFileData data;
-    data.Import(pack);
-
-    Call_StartFunction(null, data.callback);
-    Call_PushCell(data.success);
-    Call_PushCell(data.metadata);
-    Call_Finish();
-}
-
 public void AnyHttp_CopyFile_Process(DataPack pack) {
     AnyHttpCopyFileData data;
     data.Import(pack);
@@ -96,4 +84,15 @@ public void AnyHttp_CopyFile_Process(DataPack pack) {
     }
 
     RequestFrame(AnyHttp_CopyFile_Process, data.Export());
+}
+
+// TODO: Can this be static?
+public void AnyHttp_CopyFile_Finish(DataPack pack) {
+    AnyHttpCopyFileData data;
+    data.Import(pack);
+
+    Call_StartFunction(null, data.callback);
+    Call_PushCell(data.success);
+    Call_PushCell(data.metadata);
+    Call_Finish();
 }

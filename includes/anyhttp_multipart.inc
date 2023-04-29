@@ -1,0 +1,175 @@
+/*
+AnyHttp - HTTP Multipart Request Generator
+By F2
+*/
+
+#if defined _anyhttp_multipart_included
+ #endinput
+#endif
+#define _anyhttp_multipart_included
+
+#include <anyhttp_stringbuilder>
+#include <kvizzle_newdecls>
+
+
+stock const char AnyHttp_MultiPartBoundary[] = "--------------------AnyHttp--AnyHttp--h7doWqx7m--";
+
+typeset AnyHttp_Multipart_Result {
+    function void (bool success, AnyHttpStringBuilder sb, any metadata);
+};
+
+enum struct AnyHttpMultipartData {
+    KeyValues fields;
+    AnyHttpStringBuilder sb;
+    AnyHttp_Multipart_Result callback;
+    any metadata;
+    bool success;
+    
+    int currentField;
+
+    DataPack Export() {
+        DataPack pack = CreateDataPack();
+        pack.WriteCell(this.fields);
+        this.sb.AddToDataPack(pack);
+        pack.WriteFunction(this.callback);
+        pack.WriteCell(this.metadata);
+        pack.WriteCell(this.success);
+        pack.WriteCell(this.currentField);
+        return pack;
+    }
+
+    void Import(DataPack pack) {
+        pack.Reset();
+        this.fields = pack.ReadCell();
+        this.sb.ReadFromDataPack(pack);
+        this.callback = view_as<AnyHttp_Multipart_Result>(pack.ReadFunction());
+        this.metadata = pack.ReadCell();
+        this.success = pack.ReadCell();
+        this.currentField = pack.ReadCell();
+        delete pack;
+    }
+}
+
+stock void AnyHttp_CreateMultipartRequest(KeyValues fields, AnyHttp_Multipart_Result callback, any metadata = 0) {
+    AnyHttpMultipartData data;
+    data.fields = fields;
+    data.sb.Init();
+    data.callback = callback;
+    data.metadata = metadata;
+    data.success = false;
+    data.currentField = 1;
+    
+    RequestFrame(AnyHttp_CreateMultipartRequest_Process, data.Export());
+}
+
+public void AnyHttp_CreateMultipartRequest_Process(DataPack pack) {
+    AnyHttpMultipartData data;
+    data.Import(pack);
+
+    char type[64];
+    if (!KvizGetStringExact(data.fields, type, sizeof(type), "%i.type", data.currentField)) {
+        data.success = true;
+        RequestFrame(AnyHttp_CreateMultipartRequest_Finish, data.Export());
+        return;
+    }
+
+    if (StrEqual(type, "string")) {
+        char name[1024];
+        KvizGetStringExact(data.fields, name, sizeof(name), "%i.name", data.currentField);
+        char contents[1024];
+        KvizGetStringExact(data.fields, contents, sizeof(contents), "%i.value", data.currentField);
+        AppendMultipartString(data.sb, name, contents);
+    } else if (StrEqual(type, "file")) {
+        char name[1024];
+        KvizGetStringExact(data.fields, name, sizeof(name), "%i.name", data.currentField);
+        char filepath[1024];
+        KvizGetStringExact(data.fields, filepath, sizeof(filepath), "%i.value", data.currentField);
+        if (!AppendMultipartFile(data.sb, name, filepath)) {
+            RequestFrame(AnyHttp_CreateMultipartRequest_Finish, data.Export());
+            return;
+        }
+    } else {
+        ThrowError("Unknown type");
+    }
+
+    data.currentField++;
+    RequestFrame(AnyHttp_CreateMultipartRequest_Process, data.Export());
+}
+
+public void AnyHttp_CreateMultipartRequest_Finish(DataPack pack) {
+    AnyHttpMultipartData data;
+    data.Import(pack);
+
+    if (data.success) {
+        AppendMultipartEnd(data.sb);
+    }
+
+    Call_StartFunction(null, data.callback);
+    Call_PushCell(data.success);
+    Call_PushArray(data.sb, sizeof(data.sb));
+    Call_PushCell(data.metadata);
+    Call_Finish();
+}
+
+
+
+static void AppendMultipartString(AnyHttpStringBuilder sb, const char[] name, const char[] contents) {
+    sb.Append("--");
+    sb.Append(AnyHttp_MultiPartBoundary);
+    sb.Append("\nContent-Disposition: form-data; name=\"");
+    sb.Append(name);
+    sb.Append("\"\n\n");
+    sb.Append(contents);
+    sb.Append("\n");
+}
+
+static bool AppendMultipartFile(AnyHttpStringBuilder sb, const char[] name, const char[] filepath) {
+    char filename[PLATFORM_MAX_PATH];
+    GetFileName(filename, sizeof(filename), filepath);
+        
+    sb.Append("--");
+    sb.Append(AnyHttp_MultiPartBoundary);
+    
+    sb.Append("\nContent-Disposition: form-data; name=\"");
+    sb.Append(name);
+    sb.Append("\"; filename=\"");
+    sb.Append(filename);
+    sb.Append("\"\n\n");
+    
+    char buffer[100 * 1024];
+    File filehandle = OpenFile(filepath, "r");
+    if (filehandle == null) {
+        LogError("AppendMultipartFile: Could not open file for reading %s", filepath);
+        return false;
+    }
+    
+    while (!filehandle.EndOfFile()) {
+        if (filehandle.ReadString(buffer, sizeof(buffer)) == -1) {
+            LogError("AppendMultipartFile: Could not read string %s", filepath);
+            return false;
+        }
+        sb.Append(buffer);
+    }
+    filehandle.Close();
+
+    sb.Append("\n");
+    
+    return true;
+}
+
+static void AppendMultipartEnd(AnyHttpStringBuilder sb) {
+    sb.Append("--");
+    sb.Append(AnyHttp_MultiPartBoundary);
+    sb.Append("--");
+}
+
+static void GetFileName(char[] filename, int maxsize, const char[] filepath) {
+    int lastBackSlash = FindCharInString(filepath, '\\', true);
+    int lastForwardSlash = FindCharInString(filepath, '/', true);
+    if (lastBackSlash == -1 && lastForwardSlash == -1) {
+        strcopy(filename, maxsize, filepath);
+    } else {
+        int pos = lastBackSlash > lastForwardSlash ? lastBackSlash : lastForwardSlash;
+        strcopy(filename, maxsize, filepath[pos + 1]);
+    }
+}
