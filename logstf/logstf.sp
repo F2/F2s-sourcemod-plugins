@@ -95,6 +95,10 @@ Release notes:
 - Internal updates
 
 
+---- 2.6.0 (29/04/2023) ----
+- Reduced lag during log upload
+
+
 
 TODO:
 - Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log and -partial files have dynamic names, and don't forget to clean them up.
@@ -117,7 +121,7 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION	"2.5.1"
+#define PLUGIN_VERSION	"2.6.0"
 #define UPDATE_URL		"http://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
