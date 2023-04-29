@@ -29,7 +29,7 @@ enum struct AnyHttpMultipartData {
     File currentFile;
 
     DataPack Export() {
-        DataPack pack = CreateDataPack();
+        DataPack pack = new DataPack();
         pack.WriteCell(this.fields);
         this.sb.AddToDataPack(pack);
         pack.WriteFunction(this.callback);
@@ -76,7 +76,6 @@ static void AnyHttp_CreateMultipartRequest_Process(DataPack pack) {
         return;
     }
 
-
     if (StrEqual(type, "string")) {
         char name[1024];
         KvizGetStringExact(data.fields, name, sizeof(name), "%i.name", data.currentField);
@@ -108,7 +107,12 @@ static void AnyHttp_CreateMultipartRequest_Process(DataPack pack) {
                 data.currentFile = null;
                 data.currentField++;
             } else {
-                AppendMultipartFile_Process(data);
+                if (!AppendMultipartFile_Process(data)) {
+                    data.currentFile.Close();
+                    LogError("AppendMultipartFile: Could not read string from file");
+                    RequestFrame(AnyHttp_CreateMultipartRequest_Finish, data.Export());
+                    return;
+                }
             }
         }
     } else {
@@ -131,6 +135,8 @@ static void AnyHttp_CreateMultipartRequest_Finish(DataPack pack) {
     Call_PushArray(data.sb, sizeof(data.sb));
     Call_PushCell(data.metadata);
     Call_Finish();
+
+    data.sb.Dispose();
 }
 
 
@@ -162,8 +168,6 @@ static void AppendMultipartFile_Init(AnyHttpStringBuilder sb, const char[] name,
 static bool AppendMultipartFile_Process(AnyHttpMultipartData data) {
     char buffer[100 * 1024];
     if (data.currentFile.ReadString(buffer, sizeof(buffer)) == -1) {
-        data.currentFile.Close();
-        LogError("AppendMultipartFile: Could not read string from file");
         return false;
     }
     

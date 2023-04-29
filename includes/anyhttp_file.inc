@@ -20,7 +20,7 @@ enum struct AnyHttpCopyFileData {
     bool success;
 
     DataPack Export() {
-        DataPack pack = CreateDataPack();
+        DataPack pack = new DataPack();
         pack.WriteCell(this.source);
         pack.WriteCell(this.target);
         pack.WriteFunction(this.callback);
