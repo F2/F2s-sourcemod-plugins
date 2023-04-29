@@ -185,7 +185,7 @@ methodmap AnyHttpRequest {
         // We copy the file in the background. 
         // Copying files directly lags the server, which reveals a round-end to SourceTV viewers.
 
-        DataPack pack = CreateDataPack();
+        DataPack pack = new DataPack();
         pack.WriteCell(kv);
         pack.WriteCell(id);
         AnyHttp_CopyFile(filepath, tempFilepath, AnyHttp_PutFile_Finished, pack);
