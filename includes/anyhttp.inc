@@ -35,19 +35,18 @@ TODO:
 #if defined REQUIRE_EXTENSIONS
     #define ANYHTTP_REQUIRE_EXTENSIONS
 #endif
-
 #undef REQUIRE_EXTENSIONS
 #include <cURL>
 #include <SteamWorks>
-#include <anyhttp_file>
-#include <anyhttp_stringbuilder>
 #if defined ANYHTTP_REQUIRE_EXTENSIONS
     #define REQUIRE_EXTENSIONS
 #endif
 
+#include <anyhttp_file>
+#include <anyhttp_stringbuilder>
 #include <kvizzle>
 
-#define ANYHTTP_VERSION		     "2.0.0"
+#define ANYHTTP_VERSION		     "2.1.0"
 #define SimultaneousConnections  16
 
 #pragma dynamic 5242880 // Make sure we can allocate enough space for uploading files. Here's 20MB.
@@ -75,7 +74,7 @@ enum struct AnyHttpRequestData {
     Handle filehandle;
     AnyHttpStringBuilder httpBody;
 
-    Handle fields;
+    KeyValues fields;
     /*  - type (string / file)
         - name
         - value
@@ -122,9 +121,9 @@ methodmap AnyHttpRequest {
         }
     }
 
-    property Handle Fields {
+    property KeyValues Fields {
         public get() { return requests[this.Id].fields; }
-        public set(Handle fields) {
+        public set(KeyValues fields) {
             requests[this.Id].fields = fields;
         }
     }
@@ -145,7 +144,7 @@ methodmap AnyHttpRequest {
     }
     
     public void PutString(const char[] name, const char[] value) {
-        Handle kv = this.Fields;
+        KeyValues kv = this.Fields;
 
         int id = KvizGetNum(kv, 0, ":count") + 1;
         KvizSetString(kv, name, "%i.name", id);
@@ -154,7 +153,7 @@ methodmap AnyHttpRequest {
     }
 
     public void PutFile(const char[] name, const char[] filepath) {
-        Handle kv = this.Fields;
+        KeyValues kv = this.Fields;
 
         int id = KvizGetNum(kv, 0, ":count") + 1;
         KvizSetString(kv, name, "%i.name", id);
@@ -216,7 +215,7 @@ static AnyHttpRequest InvalidRequest = view_as<AnyHttpRequest>(-1);
 
 public void AnyHttp_PutFile_Finished(bool success, DataPack pack) {
     pack.Reset();
-    Handle kv = pack.ReadCell();
+    KeyValues kv = pack.ReadCell();
     int id = pack.ReadCell();
     delete pack;
 
@@ -526,7 +525,6 @@ static bool SteamWorks_SendPostForm(AnyHttpRequest request) {
 
 static void SteamWorks_SendPostForm_Internal(AnyHttpRequest request) {
     char type[64];
-    char[] buffer = new char[bufferSize];
     int bufferPos = 0;
     
     for (int i = 1; KvizGetStringExact(request.Fields, type, sizeof(type), "%i.type", i); i++) {
