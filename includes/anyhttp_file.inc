@@ -46,13 +46,13 @@ stock void AnyHttp_CopyFile(const char[] sourceFile, const char[] targetFile, An
     data.metadata = metadata;
     data.success = false;
     
-	data.source = OpenFile(sourceFile, "rb", false);	
+	data.source = OpenFile(sourceFile, "r", false);	
     if (data.source == null) {
         RequestFrame(AnyHttp_CopyFile_Finish, data.Export());
         return;
     }
 
-    data.target = OpenFile(targetFile, "wb", false);	
+    data.target = OpenFile(targetFile, "w", false);	
     if (data.target == null) {
         data.source.Close();
         RequestFrame(AnyHttp_CopyFile_Finish, data.Export());
