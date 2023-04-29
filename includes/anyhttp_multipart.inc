@@ -160,7 +160,7 @@ static void AppendMultipartFile_Init(AnyHttpStringBuilder sb, const char[] name,
 }
 
 static bool AppendMultipartFile_Process(AnyHttpMultipartData data) {
-    char buffer[150 * 1024];
+    char buffer[100 * 1024];
     if (data.currentFile.ReadString(buffer, sizeof(buffer)) == -1) {
         data.currentFile.Close();
         LogError("AppendMultipartFile: Could not read string from file");
