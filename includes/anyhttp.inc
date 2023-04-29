@@ -308,7 +308,8 @@ public Action AnyHttp_SendWhenReady(Handle timer, AnyHttpRequest request) {
 
     bool success = false;
     if (AnyHttp.Extension == UseSteamWorks) {
-        success = SteamWorks_SendPostForm(request);
+        SteamWorks_SendPostForm(request);
+        success = true;
     } else if (AnyHttp.Extension == UseCURL) {
         success = cURL_SendPostForm(request);
     } else {
@@ -435,18 +436,11 @@ static AnyHttpRequest SteamWorks_CreatePostForm(const char[] url, any metadata =
     return request;
 }
 
-static bool SteamWorks_SendPostForm(AnyHttpRequest request) {
-    requests[request.Id].httpBody.Init();
-
-    SteamWorks_SendPostForm_Internal(request);
-    return true;
+static void SteamWorks_SendPostForm(AnyHttpRequest request) {
+    AnyHttp_CreateMultipartRequest(request.Fields, SteamWorks_SendPostForm_RequestCreated, request);
 }
 
-static void SteamWorks_SendPostForm_Internal(AnyHttpRequest request) {
-    AnyHttp_CreateMultipartRequest(request.Fields, SteamWorks_SendPostForm_Internal_RequestCreated, request);
-}
-
-static void SteamWorks_SendPostForm_Internal_RequestCreated(bool success, AnyHttpStringBuilder sb, AnyHttpRequest request) {
+static void SteamWorks_SendPostForm_RequestCreated(bool success, AnyHttpStringBuilder sb, AnyHttpRequest request) {
     char contentType[256] = "multipart/form-data; boundary=";
     StrCat(contentType, sizeof(contentType), AnyHttp_MultiPartBoundary);
 

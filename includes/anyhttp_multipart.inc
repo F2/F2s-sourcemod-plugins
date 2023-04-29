@@ -26,6 +26,7 @@ enum struct AnyHttpMultipartData {
     bool success;
     
     int currentField;
+    File currentFile;
 
     DataPack Export() {
         DataPack pack = CreateDataPack();
@@ -35,6 +36,7 @@ enum struct AnyHttpMultipartData {
         pack.WriteCell(this.metadata);
         pack.WriteCell(this.success);
         pack.WriteCell(this.currentField);
+        pack.WriteCell(this.currentFile);
         return pack;
     }
 
@@ -46,6 +48,7 @@ enum struct AnyHttpMultipartData {
         this.metadata = pack.ReadCell();
         this.success = pack.ReadCell();
         this.currentField = pack.ReadCell();
+        this.currentFile = pack.ReadCell();
         delete pack;
     }
 }
@@ -73,26 +76,45 @@ public void AnyHttp_CreateMultipartRequest_Process(DataPack pack) {
         return;
     }
 
+
     if (StrEqual(type, "string")) {
         char name[1024];
         KvizGetStringExact(data.fields, name, sizeof(name), "%i.name", data.currentField);
         char contents[1024];
         KvizGetStringExact(data.fields, contents, sizeof(contents), "%i.value", data.currentField);
         AppendMultipartString(data.sb, name, contents);
+
+        data.currentField++;
     } else if (StrEqual(type, "file")) {
-        char name[1024];
-        KvizGetStringExact(data.fields, name, sizeof(name), "%i.name", data.currentField);
-        char filepath[1024];
-        KvizGetStringExact(data.fields, filepath, sizeof(filepath), "%i.value", data.currentField);
-        if (!AppendMultipartFile(data.sb, name, filepath)) {
-            RequestFrame(AnyHttp_CreateMultipartRequest_Finish, data.Export());
-            return;
+        if (data.currentFile == null) {
+            char name[1024];
+            KvizGetStringExact(data.fields, name, sizeof(name), "%i.name", data.currentField);
+            char filepath[1024];
+            KvizGetStringExact(data.fields, filepath, sizeof(filepath), "%i.value", data.currentField);
+            AppendMultipartFile_Init(data.sb, name, filepath);
+            
+            File filehandle = OpenFile(filepath, "r");
+            if (filehandle == null) {
+                LogError("AppendMultipartFile: Could not open file for reading %s", filepath);
+                RequestFrame(AnyHttp_CreateMultipartRequest_Finish, data.Export());
+                return;
+            }
+
+            data.currentFile = filehandle;
+        } else {
+            if (data.currentFile.EndOfFile()) {
+                data.currentFile.Close();
+                data.sb.Append("\n");
+                data.currentFile = null;
+                data.currentField++;
+            } else {
+                AppendMultipartFile_Process(data);
+            }
         }
     } else {
         ThrowError("Unknown type");
     }
 
-    data.currentField++;
     RequestFrame(AnyHttp_CreateMultipartRequest_Process, data.Export());
 }
 
@@ -123,7 +145,7 @@ static void AppendMultipartString(AnyHttpStringBuilder sb, const char[] name, co
     sb.Append("\n");
 }
 
-static bool AppendMultipartFile(AnyHttpStringBuilder sb, const char[] name, const char[] filepath) {
+static void AppendMultipartFile_Init(AnyHttpStringBuilder sb, const char[] name, const char[] filepath) {
     char filename[PLATFORM_MAX_PATH];
     GetFileName(filename, sizeof(filename), filepath);
         
@@ -135,25 +157,17 @@ static bool AppendMultipartFile(AnyHttpStringBuilder sb, const char[] name, cons
     sb.Append("\"; filename=\"");
     sb.Append(filename);
     sb.Append("\"\n\n");
-    
-    char buffer[100 * 1024];
-    File filehandle = OpenFile(filepath, "r");
-    if (filehandle == null) {
-        LogError("AppendMultipartFile: Could not open file for reading %s", filepath);
+}
+
+static bool AppendMultipartFile_Process(AnyHttpMultipartData data) {
+    char buffer[150 * 1024];
+    if (data.currentFile.ReadString(buffer, sizeof(buffer)) == -1) {
+        data.currentFile.Close();
+        LogError("AppendMultipartFile: Could not read string from file");
         return false;
     }
     
-    while (!filehandle.EndOfFile()) {
-        if (filehandle.ReadString(buffer, sizeof(buffer)) == -1) {
-            LogError("AppendMultipartFile: Could not read string %s", filepath);
-            return false;
-        }
-        sb.Append(buffer);
-    }
-    filehandle.Close();
-
-    sb.Append("\n");
-    
+    data.sb.Append(buffer);
     return true;
 }
 
