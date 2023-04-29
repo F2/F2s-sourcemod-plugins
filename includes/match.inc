@@ -38,20 +38,20 @@ TODO:
 #include <f2stocks>
 
 
-new Handle:match_hCvarTimelimit, Handle:match_hCvarWinlimit, Handle:match_hCvarWindiff, Handle:match_hCvarMaxRounds, Handle:match_hCvarTournament;
-new bool:g_bInMatch = false;
-new Float:g_fMatchStartTime = 0.0, Float:g_fLastRoundEnd = 0.0;
-new bool:g_bIsBonusRoundTime = false;
-new bool:g_bFirstRoundStarted = false;
-new g_iRoundsPlayed = 0;
+ConVar match_hCvarTimelimit, match_hCvarWinlimit, match_hCvarWindiff, match_hCvarMaxRounds, match_hCvarTournament;
+bool g_bInMatch = false;
+float g_fMatchStartTime = 0.0, g_fLastRoundEnd = 0.0;
+bool g_bIsBonusRoundTime = false;
+bool g_bFirstRoundStarted = false;
+int g_iRoundsPlayed = 0;
 
-stock Match_dummy() {
+stock void Match_dummy() {
 	// To avoid warnings regarding these variables not being used
 	LogMessage("%i%f", g_bIsBonusRoundTime, g_fLastRoundEnd);
 }
 
 
-Match_OnPluginStart() {
+void Match_OnPluginStart() {
 	// The countdown starts
 	// Purpose: Call StartMatch
 	HookEvent("teamplay_round_restart_seconds", Match_Event_round_restart_seconds, EventHookMode_PostNoCopy);
@@ -94,7 +94,7 @@ Match_OnPluginStart() {
 	HookConVarChange(match_hCvarTournament, Match_TournamentModeChanged);
 }
 
-Match_OnMapStart() {
+void Match_OnMapStart() {
 	Match_ResetMatch();
 	
 	g_fLastRoundEnd = 0.0;
@@ -102,15 +102,15 @@ Match_OnMapStart() {
 	g_bFirstRoundStarted = false;
 }
 
-Match_OnMapEnd() {
+void Match_OnMapEnd() {
 	Match_ResetMatch();
 }
 
-public Match_Event_tournament_stateupdate(Handle:event, const String:name[], bool:dontBroadcast) {
+public void Match_Event_tournament_stateupdate(Event event, const char[] name, bool dontBroadcast) {
 	//new userid = GetEventInt(event, "userid");
 	//new team = GetClientTeam(userid);
-	new bool:nameChange = GetEventBool(event, "namechange");
-	new bool:readyState = GetEventBool(event, "readystate");
+	bool nameChange = GetEventBool(event, "namechange");
+	bool readyState = GetEventBool(event, "readystate");
 
 	if (nameChange)
 		return;
@@ -123,12 +123,12 @@ public Match_Event_tournament_stateupdate(Handle:event, const String:name[], boo
 	}
 }
 
-public Match_Event_round_restart_seconds(Handle:event, const String:name[], bool:dontBroadcast) {
+public void Match_Event_round_restart_seconds(Event event, const char[] name, bool dontBroadcast) {
 	Match_StartMatch();
 }
 
-public Match_Event_game_over(Handle:event, const String:name[], bool:dontBroadcast) {
-	decl String:map[64];
+public void Match_Event_game_over(Event event, const char[] name, bool dontBroadcast) {
+	char map[64];
 	GetCurrentMap(map, sizeof(map));
 	if (strncmp(map, "ctf_", 4, false) == 0) {
 		if ((GetEngineTime() - g_fLastRoundEnd) > 7.5)
@@ -145,12 +145,12 @@ public void Match_Event_game_over_post(any data) {
 	Match_EndMatch();
 }
 
-public Match_Event_restart_round(Handle:event, const String:name[], bool:dontBroadcast) { // This is called before Match_Event_round_start.
+public void Match_Event_restart_round(Event event, const char[] name, bool dontBroadcast) { // This is called before Match_Event_round_start.
 	if (!g_bInMatch)
 		Match_StartMatch();
 }
 
-public Match_Event_round_start(Handle:event, const String:name[], bool:dontBroadcast) {
+public void Match_Event_round_start(Event event, const char[] name, bool dontBroadcast) {
 	if (g_bInMatch) {
 		g_bIsBonusRoundTime = false;
 		
@@ -160,9 +160,9 @@ public Match_Event_round_start(Handle:event, const String:name[], bool:dontBroad
 	}
 }
 
-public Match_Event_round_end(Handle:event, const String:name[], bool:dontBroadcast) {
+public void Match_Event_round_end(Event event, const char[] name, bool dontBroadcast) {
 	if (g_bInMatch) {
-		new bool:fullRound = GetEventBool(event, "full_round");
+		bool fullRound = GetEventBool(event, "full_round");
 		
 		g_bIsBonusRoundTime = true;
 		g_fLastRoundEnd = GetEngineTime();
@@ -172,7 +172,7 @@ public Match_Event_round_end(Handle:event, const String:name[], bool:dontBroadca
 }
 
 
-public void Match_Event_player_team(Handle:event, const String:name[], bool:dontBroadcast) {
+public void Match_Event_player_team(Event event, const char[] name, bool dontBroadcast) {
 	//int userid = GetEventInt(event, "userid");
 	//int client = GetClientOfUserId(userid);
 	//TFTeam oldteam = view_as<TFTeam>(GetEventInt(event, "oldteam"));
@@ -185,7 +185,7 @@ public void Match_Event_player_team(Handle:event, const String:name[], bool:dont
 }
 
 public void Match_Event_player_team_post(any data) {
-	int playersInTeams = GetTeamClientCount(_:TFTeam_Blue) + GetTeamClientCount(_:TFTeam_Red);
+	int playersInTeams = GetTeamClientCount(view_as<int>(TFTeam_Blue)) + GetTeamClientCount(view_as<int>(TFTeam_Red));
 	if (g_bInMatch && playersInTeams == 0) {
 		// The server is really weird in this case.
 		// For example, if you go to spectator during countdown and then join a team, it will resume the countdown.
@@ -198,8 +198,8 @@ public void Match_Event_player_team_post(any data) {
 }
 
 
-public Match_Event_player_disconnect(Handle:event, const String:name[], bool:dontBroadcast) {
-	new count = GetRealPlayerCount();
+public void Match_Event_player_disconnect(Event event, const char[] name, bool dontBroadcast) {
+	int count = GetRealPlayerCount();
 	if (count <= 1) {
 		// The server is really weird in this case.
 		// If one team readies up, the server empties, and then you connect and join the other team and ready up, nothing happens.
@@ -216,7 +216,7 @@ public Match_Event_player_disconnect(Handle:event, const String:name[], bool:don
 	}
 }
 
-public Action:Match_Cmd_tournament_restart(args) {
+public Action Match_Cmd_tournament_restart(int args) {
 	Match_ResetMatch();
 	return Plugin_Continue;
 }
@@ -233,26 +233,26 @@ public void Match_TournamentModeChanged(ConVar convar, const char[] oldValue, co
 }
 
 
-stock bool:IsTournamentEnabled() {
+stock bool IsTournamentEnabled() {
 	return GetConVarBool(match_hCvarTournament);
 }
 
-stock bool:IsWinConditionMet(bool:ish = true) {
-	new timeleft = GetTimeLeft();
+stock bool IsWinConditionMet(bool ish = true) {
+	int timeleft = GetTimeLeft();
 	if (timeleft != -1 && timeleft <= (ish ? 10 : 0))
 		return true;
 	
-	new winlimit = GetConVarInt(match_hCvarWinlimit);
-	new blueScore = GetTeamScore(_:TFTeam_Blue);
-	new redScore = GetTeamScore(_:TFTeam_Red);
+	int winlimit = GetConVarInt(match_hCvarWinlimit);
+	int blueScore = GetTeamScore(view_as<int>(TFTeam_Blue));
+	int redScore = GetTeamScore(view_as<int>(TFTeam_Red));
 	if (winlimit > 0 && ((winlimit - blueScore) <= 0 || (winlimit - redScore) <= 0)) // Win limit hit
 		return true;
 	
-	new windiff = GetConVarInt(match_hCvarWindiff);
+	int windiff = GetConVarInt(match_hCvarWindiff);
 	if (windiff > 0 && (windiff - Math_Abs(redScore - blueScore)) <= 0) // Win difference limit hit
 		return true;
 	
-	new maxrounds = GetConVarInt(match_hCvarMaxRounds);
+	int maxrounds = GetConVarInt(match_hCvarMaxRounds);
 	if (maxrounds > 0 && (maxrounds - g_iRoundsPlayed) <= 0) // Max rounds hit
 		return true;
 	
@@ -262,7 +262,7 @@ stock bool:IsWinConditionMet(bool:ish = true) {
 
 
 
-Match_StartMatch() {
+void Match_StartMatch() {
 	if (g_bInMatch)
 		return;
 	if (!IsTournamentEnabled())
@@ -277,19 +277,19 @@ Match_StartMatch() {
 	StartMatch();
 }
 
-Match_ResetMatch() {
+void Match_ResetMatch() {
 	if (!g_bInMatch)
 		return;
 	
 	g_bIsBonusRoundTime = false;
 	
-	new bool:wasReset = true;
-	new timeleft = GetTimeLeft();
-	new winlimit = GetConVarInt(match_hCvarWinlimit);
-	new windiff = GetConVarInt(match_hCvarWindiff);
-	new maxrounds = GetConVarInt(match_hCvarMaxRounds);
-	new blueScore = GetTeamScore(_:TFTeam_Blue);
-	new redScore = GetTeamScore(_:TFTeam_Red);
+	bool wasReset = true;
+	int timeleft = GetTimeLeft();
+	int winlimit = GetConVarInt(match_hCvarWinlimit);
+	int windiff = GetConVarInt(match_hCvarWindiff);
+	int maxrounds = GetConVarInt(match_hCvarMaxRounds);
+	int blueScore = GetTeamScore(view_as<int>(TFTeam_Blue));
+	int redScore = GetTeamScore(view_as<int>(TFTeam_Red));
 	
 	if (GetEngineTime() - g_fMatchStartTime <= 30)
 		wasReset = true;
@@ -312,7 +312,7 @@ Match_ResetMatch() {
 	g_bInMatch = false;
 }
 
-Match_EndMatch() {
+void Match_EndMatch() {
 	if (!g_bInMatch)
 		return;
 	
@@ -326,15 +326,15 @@ GetMapTimeLeft(timeleft) can return 1, and set timeleft to a negative number.
 So when timeleft == -1 you can't know whether timelimit is disabled, or timelimit is enabled and the time is up.
 GetTimeLeft() will return -1 if timelimit is disabled (or we are not in a match), and otherwise it will return a non-negative number describing the time left in seconds.
 */
-stock GetTimeLeft() {
+stock int GetTimeLeft() {
 	if (!g_bInMatch || !g_bFirstRoundStarted)
 		return -1;
 	
-	new timelimit = GetConVarInt(match_hCvarTimelimit);
+	int timelimit = GetConVarInt(match_hCvarTimelimit);
 	if (timelimit <= 0)
 		return -1;
 	
-	new timeleft;
+	int timeleft;
 	if (!GetMapTimeLeft(timeleft))
 		return -1;
 	

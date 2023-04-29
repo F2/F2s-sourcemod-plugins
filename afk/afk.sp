@@ -12,6 +12,10 @@ Release notes:
 - AFK time is more fine-grained
 - Support for new ready-up behaviour
 
+
+---- 1.1.1 (23/04/2023) ----
+- Internal updates
+
 */
 
 #pragma semicolon 1
@@ -24,7 +28,7 @@ Release notes:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.1.0"
+#define PLUGIN_VERSION "1.1.1"
 #define UPDATE_URL		"http://sourcemod.krus.dk/afk/update.txt"
 
 
@@ -34,7 +38,7 @@ public Plugin:myinfo = {
 	author = "F2",
 	description = "Shows which players are AFK in warmup",
 	version = PLUGIN_VERSION,
-	url = "http://sourcemod.krus.dk/"
+	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
 #define DEFANG0 -1.0
@@ -161,7 +165,7 @@ StartMatch() {
 						continue;
 					if (TFTeam:GetClientTeam(other) != clientTeam)
 						continue;
-					CPrintToChat(other, "{lightgreen}[AFK] {green}WARNING! These players are AFK:");
+					MC_PrintToChat(other, "{lightgreen}[AFK] {green}WARNING! These players are AFK:");
 				}
 			}
 			

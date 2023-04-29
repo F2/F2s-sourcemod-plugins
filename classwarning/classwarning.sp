@@ -10,9 +10,14 @@ Release notes:
 - Now also works when configs are in /custom/ folder
 - Support for new ready-up behaviour
 
+
+---- 1.1.1 (23/04/2023) ----
+- Internal updates
+
 */
 
 #pragma semicolon 1
+#pragma newdecls required
 
 #include <sourcemod>
 #include <morecolors>
@@ -23,28 +28,27 @@ Release notes:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-
-#define PLUGIN_VERSION "1.1.0"
+#define PLUGIN_VERSION "1.1.1"
 #define UPDATE_URL		"http://sourcemod.krus.dk/classwarning/update.txt"
 
 
-public Plugin:myinfo = {
+public Plugin myinfo = {
 	name = "Class Warning",
 	author = "F2",
 	description = "Warns players that are breaking the class limits",
 	version = PLUGIN_VERSION,
-	url = "http://sourcemod.krus.dk/"
+	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
-new g_iClassLimits[TFClassType];
-new Handle:g_hCvarClassLimit[TFClassType];
-new Handle:g_hWarningTimer[MAXPLAYERS+1];
-new Float:g_fLastPosition[MAXPLAYERS+1][3];
-new Handle:g_hCvarAutoReset;
-new bool:g_bEnabled = false;
+int g_iClassLimits[10];
+ConVar g_hCvarClassLimit[10];
+Handle g_hWarningTimer[MAXPLAYERS+1];
+float g_fLastPosition[MAXPLAYERS+1][3];
+ConVar g_hCvarAutoReset;
+bool g_bEnabled = false;
 
 
-public OnPluginStart() {
+public void OnPluginStart() {
 	// Set up auto updater
 	if (LibraryExists("updater"))
 		Updater_AddPlugin(UPDATE_URL);
@@ -56,15 +60,15 @@ public OnPluginStart() {
 	
 	g_hCvarAutoReset = CreateConVar("sm_tournament_classlimit_autoreset", "1", "If 1, sets all class warning limits to -1 upon map start.", FCVAR_NONE);
 	
-	for (new class = 1; class <= 9; class++) {
-		decl String:cvarName[64], String:cvarDesc[128];
+	for (int class = 1; class <= 9; class++) {
+		char cvarName[64], cvarDesc[128];
 		Format(cvarName, sizeof(cvarName), "sm_tournament_classlimit_%s", g_sClassNames[class]);
 		String_ToLower(cvarName, cvarName, sizeof(cvarName));
 		Format(cvarDesc, sizeof(cvarDesc), "Class warning limit for %s", g_sClassNames[class]);
 		g_hCvarClassLimit[class] = CreateConVar(cvarName, "-1", cvarDesc, FCVAR_NONE);
-		HookConVarChange(g_hCvarClassLimit[class], CvarChange_ClassLimit);
-		decl String:cvarVal[32];
-		GetConVarString(g_hCvarClassLimit[class], cvarVal, sizeof(cvarVal));
+		g_hCvarClassLimit[class].AddChangeHook(CvarChange_ClassLimit);
+		char cvarVal[32];
+		g_hCvarClassLimit[class].GetString(cvarVal, sizeof(cvarVal));
 		g_iClassLimits[class] = StringToInt(cvarVal);
 	}
 	
@@ -74,15 +78,15 @@ public OnPluginStart() {
 	OnMapStart();
 }
 
-public OnLibraryAdded(const String:name[]) {
+public void OnLibraryAdded(const char[] name) {
 	// Set up auto updater
 	if (StrEqual(name, "updater"))
 		Updater_AddPlugin(UPDATE_URL);
 }
 
-CreateDefaultConfigs() {
-	decl String:path[128];
-	decl String:contents[1024];
+void CreateDefaultConfigs() {
+	char path[128];
+	char contents[1024];
 	
 	path = "cfg/etf2l_6v6_classwarning.cfg";
 	if (!FileExists(path, true)) {
@@ -117,11 +121,11 @@ CreateDefaultConfigs() {
 	}
 }
 
-public Action:Cmd_Exec(client, const String:command[], argc) {
+public Action Cmd_Exec(int client, const char[] command, int argc) {
 	if (argc < 1)
 		return Plugin_Continue;
 	
-	decl String:text[128];
+	char text[128];
 	GetCmdArg(1, text, sizeof(text));
 	
 	if (!CfgExists(text))
@@ -133,7 +137,7 @@ public Action:Cmd_Exec(client, const String:command[], argc) {
 	if (String_EndsWith(text, "_classwarning"))
 		return Plugin_Continue;
 	
-	decl String:path[128];
+	char path[128];
 	Format(path, sizeof(path), "%s_classwarning", text);
 	
 	if (!CfgExists(path))
@@ -143,8 +147,8 @@ public Action:Cmd_Exec(client, const String:command[], argc) {
 	return Plugin_Continue;
 }
 
-stock bool:CfgExists(const String:path[]) {
-	decl String:p[128];
+stock bool CfgExists(const char[] path) {
+	char p[128];
 	strcopy(p, sizeof(p), path);
 	if (!String_EndsWith(p, ".cfg"))
 		StrCat(p, sizeof(p), ".cfg");
@@ -155,21 +159,21 @@ stock bool:CfgExists(const String:path[]) {
 	return FileExists(p, true); // true, such that also looks in /custom/ folders
 }
 
-public OnMapStart() {
+public void OnMapStart() {
 	Match_OnMapStart();
 }
 
-public OnMapEnd() {
+public void OnMapEnd() {
 	Match_OnMapEnd();
 	
-	if (GetConVarBool(g_hCvarAutoReset)) {
-		for (new class = 1; class <= 9; class++) {
-			SetConVarInt(g_hCvarClassLimit[class], -1);
+	if (g_hCvarAutoReset.BoolValue) {
+		for (int class = 1; class <= 9; class++) {
+			g_hCvarClassLimit[class].SetInt(-1);
 		}
 	}
 }
 
-public OnClientDisconnect(client) {
+public void OnClientDisconnect(int client) {
 	StopWarning(client);
 }
 
@@ -178,22 +182,22 @@ public OnClientDisconnect(client) {
 // -----------------------------------
 
 
-StartMatch() {
+void StartMatch() {
 	EnablePlugin();
 }
 
-ResetMatch() {
+void ResetMatch() {
 	DisablePlugin();
 }
 
-EndMatch(bool:endedMidgame) {
+void EndMatch(bool endedMidgame) {
 	DisablePlugin();
 }
 
 // -----------------------------------
 
 
-EnablePlugin() {
+void EnablePlugin() {
 	if (g_bEnabled)
 		return;
 	g_bEnabled = true;
@@ -201,20 +205,20 @@ EnablePlugin() {
 	HookEvent("player_spawn", Event_player_spawn, EventHookMode_Post);
 }
 
-DisablePlugin() {
+void DisablePlugin() {
 	if (!g_bEnabled)
 		return;
 	g_bEnabled = false;
 	
 	UnhookEvent("player_spawn", Event_player_spawn, EventHookMode_Post);
 	
-	for (new client = 1; client <= MaxClients; client++) {
+	for (int client = 1; client <= MaxClients; client++) {
 		StopWarning(client);
 	}
 }
 
-public CvarChange_ClassLimit(Handle:cvar, const String:oldVal[], const String:newVal[]) {
-	for (new class = 1; class <= 9; class++) {
+public void CvarChange_ClassLimit(Handle cvar, const char[] oldVal, const char[] newVal) {
+	for (int class = 1; class <= 9; class++) {
 		if (g_hCvarClassLimit[class] == cvar) {
 			g_iClassLimits[class] = StringToInt(newVal);
 			
@@ -223,37 +227,37 @@ public CvarChange_ClassLimit(Handle:cvar, const String:oldVal[], const String:ne
 	}
 }
 
-public Event_player_spawn(Handle:event, const String:name[], bool:dontBroadcast) {
+public void Event_player_spawn(Handle event, const char[] name, bool dontBroadcast) {
 	if (!g_bEnabled)
 		return;
 	
 	if (GetEngineTime() - g_fMatchStartTime < 5.0)
 		return; // Don't report anything before the game starts
 	
-	new userid = GetEventInt(event, "userid");
-	new client = GetClientOfUserId(userid);
+	int userid = GetEventInt(event, "userid");
+	int client = GetClientOfUserId(userid);
 	
 	StartWarning(client);
 }
 
-StopWarning(client) {
-	if (g_hWarningTimer[client] != INVALID_HANDLE) {
+void StopWarning(int client) {
+	if (g_hWarningTimer[client] != null) {
 		KillTimer(g_hWarningTimer[client]);
-		g_hWarningTimer[client] = INVALID_HANDLE;
+		g_hWarningTimer[client] = null;
 	}
 }
 
-StartWarning(client) {
+void StartWarning(int client) {
 	StopWarning(client);
 	
 	GetClientAbsOrigin(client, g_fLastPosition[client]);
 	g_hWarningTimer[client] = CreateTimer(0.1, Timer_Warn, client, TIMER_REPEAT);
 }
 
-CountClass(TFTeam:team, TFClassType:class) {
-	new classCount = 0;
-	for (new client = 1; client <= MaxClients; client++) {
-		if (!IsClientValid2(client) || GetClientTeam(client) != _:team)
+int CountClass(TFTeam team, TFClassType class) {
+	int classCount = 0;
+	for (int client = 1; client <= MaxClients; client++) {
+		if (!IsClientValid2(client) || TF2_GetClientTeam(client) != team)
 			continue;
 		
 		if (IsPlayerAlive(client) && TF2_GetPlayerClass(client) == class)
@@ -262,34 +266,34 @@ CountClass(TFTeam:team, TFClassType:class) {
 	return classCount;
 }
 
-public Action:Timer_Warn(Handle:timer, any:client) {
+public Action Timer_Warn(Handle timer, any client) {
 	if (!IsRealPlayer2(client) || !IsPlayerAlive(client)) {
 		StopWarning(client);
 		return Plugin_Stop;
 	}
 	
-	decl Float:pos[3];
+	float pos[3];
 	GetClientAbsOrigin(client, pos);
 	if (GetVectorDistance(pos, g_fLastPosition[client], true) <= 100 * 100)
 		return Plugin_Continue;
 	
-	new TFClassType:class = TF2_GetPlayerClass(client);
-	if (g_iClassLimits[class] < 0) {
+	TFClassType class = TF2_GetPlayerClass(client);
+	if (g_iClassLimits[view_as<int>(class)] < 0) {
 		StopWarning(client);
 		return Plugin_Stop;
 	}
 	
-	new TFTeam:team = TFTeam:GetClientTeam(client);
-	new currentClassCount = CountClass(team, class);
+	TFTeam team = TF2_GetClientTeam(client);
+	int currentClassCount = CountClass(team, class);
 	
-	if (currentClassCount <= g_iClassLimits[class]) {
+	if (currentClassCount <= g_iClassLimits[view_as<int>(class)]) {
 		StopWarning(client);
 		return Plugin_Stop;
 	}
 	
-	CPrintToChat(client, "{red}------------------");
-	CPrintToChat(client, "{red}<<{yellow}WARNING{red}>> {yellow}You are breaking the %s limit of %i", g_sClassNames[class], g_iClassLimits[class]);
-	CPrintToChat(client, "{red}------------------");
+	MC_PrintToChat(client, "{red}------------------");
+	MC_PrintToChat(client, "{red}<<{yellow}WARNING{red}>> {yellow}You are breaking the %s limit of %i", g_sClassNames[view_as<int>(class)], g_iClassLimits[view_as<int>(class)]);
+	MC_PrintToChat(client, "{red}------------------");
 	
 	StopWarning(client);
 	return Plugin_Stop;

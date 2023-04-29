@@ -20,6 +20,10 @@ Release notes:
 - Support for new ready-up behaviour
 
 
+---- 1.1.1 (23/04/2023) ----
+- Internal updates
+
+
 BUG:
 - When using sm_map twice during a match, you cannot override the 90secs delay [Not a problem with waitforstv - ForceLevelChange simply doesn't call changelevel more than once per map.]
 
@@ -37,7 +41,7 @@ BUG:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.1.0"
+#define PLUGIN_VERSION "1.1.1"
 #define UPDATE_URL     "http://sourcemod.krus.dk/waitforstv/update.txt"
 
 
@@ -46,7 +50,7 @@ public Plugin:myinfo = {
 	author = "F2",
 	description = "Waits for STV when changing map",
 	version = PLUGIN_VERSION,
-	url = "http://sourcemod.krus.dk/"
+	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
 
@@ -84,6 +88,10 @@ public OnMapStart() {
 	g_bMatchPlayed = false;
 	g_hCountdownTimer = INVALID_HANDLE;
 	g_iStvCountdown = 0;
+}
+
+public OnMapEnd() {
+	Match_OnMapEnd();
 }
 
 StartMatch() {
