@@ -859,6 +859,8 @@ Action CallBlockLogLine(const char[] logline) {
 void GetLogPath(const char[] file, char[] destpath, int destpathLen) {
 	char logsdir[64];
 	GetConVarString(g_hCvarLogsDir, logsdir, sizeof(logsdir));
+	if (DirExists(logsdir) == false)
+		CreateDirectory(logsdir, 4 | 1 | 32 | 8 | 256 | 128 | 64, true);
 	if (logsdir[0] == '\0')
 		strcopy(destpath, destpathLen, file);
 	else
