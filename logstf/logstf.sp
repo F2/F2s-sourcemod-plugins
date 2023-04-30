@@ -95,8 +95,9 @@ Release notes:
 - Internal updates
 
 
----- 2.6.0 (29/04/2023) ----
+---- 2.6.0 (30/04/2023) ----
 - Reduced lag during log upload
+- Automatically create log directory if it doesn't exist - by Bv
 
 
 
@@ -860,6 +861,10 @@ Action CallBlockLogLine(const char[] logline) {
 void GetLogPath(const char[] file, char[] destpath, int destpathLen) {
 	char logsdir[64];
 	GetConVarString(g_hCvarLogsDir, logsdir, sizeof(logsdir));
+	if (DirExists(logsdir) == false) {
+		// Setting use_valve_fs=true somehow allows it true create nested directories.
+		CreateDirectory(logsdir, FPERM_O_READ|FPERM_O_EXEC|FPERM_G_READ|FPERM_G_EXEC|FPERM_U_READ|FPERM_U_WRITE|FPERM_U_EXEC, true);
+	}
 	if (logsdir[0] == '\0')
 		strcopy(destpath, destpathLen, file);
 	else
