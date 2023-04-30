@@ -132,7 +132,7 @@ static void AnyHttp_CreateMultipartRequest_Finish(DataPack pack) {
 
     Call_StartFunction(null, data.callback);
     Call_PushCell(data.success);
-    Call_PushArray(data.sb, sizeof(data.sb));
+    Call_PushArrayEx(data.sb, sizeof(data.sb), SM_PARAM_COPYBACK);
     Call_PushCell(data.metadata);
     Call_Finish();
 
