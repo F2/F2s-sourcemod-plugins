@@ -98,7 +98,8 @@ compile logstf
 
 If you would like to contribute, please follow this process:
 
-1. First confirm your idea with me.<br>This can be done by creating a github issue, or by contacting me on Steam.
+1. First confirm your idea with me.\
+   This can be done by creating a [github issue](https://github.com/F2/F2s-sourcemod-plugins/issues), or by contacting me on [Steam](https://steamcommunity.com/id/f2/).
 2. Create a fork+branch with your changes
 3. Test your changes
 4. Create a Pull Request describing your changes and how you have tested it
@@ -110,4 +111,5 @@ If you would like to contribute, please follow this process:
 **Duckeh** for making `LogUploader`, from which I borrowed code\
 **calm** for sponsoring LEGO, making it possible to test these plugins\
 **The LEGO Team** for helping test the plugins and give feedback\
-**zoob** for making logs.tf and cooperating in improving TF2 stats
+**zoob** for making logs.tf and cooperating in improving TF2 stats\
+**All contributors** for keeping these plugins alive 😁
