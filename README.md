@@ -84,7 +84,26 @@ Download all plugins in a zip file here: <a href="https://sourcemod.krus.dk/f2-s
 
 These plugins can automatically be updated by using <a href="https://forums.alliedmods.net/showthread.php?t=169095">Updater</a> by GoD-Tony.
 
-## Thanks to...
+## Contributing
+
+For building a plugin locally, run these commands in Powershell 6+:
+
+```powershell
+git clone https://github.com/F2/F2s-sourcemod-plugins.git
+cd F2s-sourcemod-plugins
+./setup.ps1
+
+compile logstf
+```
+
+If you would like to contribute, please follow this process:
+
+1. First confirm your idea with me.<br>This can be done by creating a github issue, or by contacting me on Steam.
+2. Create a fork+branch with your changes
+3. Test your changes
+4. Create a Pull Request describing your changes and how you have tested it
+
+## Acknowledgements
 
 **Lange** for making `soap_tf2dm` and mgemod, from which I borrowed code\
 **Jean-Denis Caron** for making `supstats`, from which I borrowed code\
