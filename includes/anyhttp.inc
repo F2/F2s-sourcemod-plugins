@@ -35,7 +35,6 @@ TODO:
 #if defined REQUIRE_EXTENSIONS
     #define ANYHTTP_REQUIRE_EXTENSIONS
 #endif
-
 #undef REQUIRE_EXTENSIONS
 #include <cURL>
 #include <SteamWorks>
@@ -43,9 +42,12 @@ TODO:
     #define REQUIRE_EXTENSIONS
 #endif
 
-#include <kvizzle>
+#include <kvizzle_newdecls>
+#include <anyhttp_file>
+#include <anyhttp_stringbuilder>
+#include <anyhttp_multipart>
 
-#define ANYHTTP_VERSION		     "2.0.0"
+#define ANYHTTP_VERSION		     "3.0.0"
 #define SimultaneousConnections  16
 
 #pragma dynamic 5242880 // Make sure we can allocate enough space for uploading files. Here's 20MB.
@@ -71,8 +73,9 @@ enum struct AnyHttpRequestData {
     any metadata;
     char filename[128];
     Handle filehandle;
+    AnyHttpStringBuilder httpBody;
 
-    Handle fields;
+    KeyValues fields;
     /*  - type (string / file)
         - name
         - value
@@ -119,9 +122,9 @@ methodmap AnyHttpRequest {
         }
     }
 
-    property Handle Fields {
+    property KeyValues Fields {
         public get() { return requests[this.Id].fields; }
-        public set(Handle fields) {
+        public set(KeyValues fields) {
             requests[this.Id].fields = fields;
         }
     }
@@ -140,9 +143,18 @@ methodmap AnyHttpRequest {
     public void GetFileName(char[] filename, int size) {
         strcopy(filename, size, requests[this.Id].filename);
     }
+    
+    public void PutString(const char[] name, const char[] value) {
+        KeyValues kv = this.Fields;
+
+        int id = KvizGetNum(kv, 0, ":count") + 1;
+        KvizSetString(kv, name, "%i.name", id);
+        KvizSetString(kv, "string", "%i.type", id);
+        KvizSetString(kv, value, "%i.value", id);
+    }
 
     public void PutFile(const char[] name, const char[] filepath) {
-        Handle kv = this.Fields;
+        KeyValues kv = this.Fields;
 
         int id = KvizGetNum(kv, 0, ":count") + 1;
         KvizSetString(kv, name, "%i.name", id);
@@ -161,29 +173,65 @@ methodmap AnyHttpRequest {
         } else {
             tempFilepath[posOfDirSeparator + 1] = '\0';
         }
+
         char tempFilename[128];
         GenerateUniqueFilename(tempFilename, sizeof(tempFilename));
         StrCat(tempFilepath, sizeof(tempFilepath), tempFilename);
 
-        if (!CopyFile(filepath, tempFilepath)) {
-            LogError("Could not copy file from %s to %s", filepath, tempFilepath);
-            strcopy(tempFilepath, sizeof(tempFilepath), filepath);
-            KvizSetString(kv, "false", "%i.cleanup",  id);
-        }
-    
         KvizSetString(kv, tempFilepath, "%i.value", id);
-    }
-    
-    public void PutString(const char[] name, const char[] value) {
-        Handle kv = this.Fields;
+        KvizSetNum(kv, 0, "%i.ready", id);
+        KvizSetString(kv, filepath, "%i.originalPath", id);
 
-        int id = KvizGetNum(kv, 0, ":count") + 1;
-        KvizSetString(kv, name, "%i.name", id);
-        KvizSetString(kv, "string", "%i.type", id);
-        KvizSetString(kv, value, "%i.value", id);
+        // We copy the file in the background. 
+        // Copying files directly lags the server, which reveals a round-end to SourceTV viewers.
+
+        DataPack pack = new DataPack();
+        pack.WriteCell(kv);
+        pack.WriteCell(id);
+        AnyHttp_CopyFile(filepath, tempFilepath, AnyHttp_PutFile_Finished, pack);
+    }
+
+    public bool IsReadyToSend() {
+        // Checks that all files are ready to be sent.
+
+        if (this.Fields != null) {
+            char type[64];
+            for (int i = 1; KvizGetStringExact(this.Fields, type, sizeof(type), "%i.type", i); i++) {
+                if (StrEqual(type, "file")) {
+                    int ready = 0;
+                    if (!KvizGetNumExact(this.Fields, ready, "%i.ready", i))
+                        ThrowError("'ready' should always be present - %i", i);
+                    
+                    if (ready == 0)
+                        return false;
+                }
+            }
+        }
+
+        return true;
     }
 };
 static AnyHttpRequest InvalidRequest = view_as<AnyHttpRequest>(-1);
+
+
+public void AnyHttp_PutFile_Finished(bool success, DataPack pack) {
+    pack.Reset();
+    KeyValues kv = pack.ReadCell();
+    int id = pack.ReadCell();
+    delete pack;
+
+    if (!success) {
+        char originalFilepath[128], tempFilepath[128];
+        KvizGetStringExact(kv, originalFilepath, sizeof(originalFilepath), "%i.originalPath", id);
+        KvizGetStringExact(kv, tempFilepath, sizeof(tempFilepath), "%i.value", id);
+        KvizSetString(kv, originalFilepath, "%i.value", id);
+        KvizSetString(kv, "false", "%i.cleanup", id);
+
+        LogError("Could not copy file from %s to %s", originalFilepath, tempFilepath);
+    }
+
+    KvizSetNum(kv, 1, "%i.ready", id);
+}
 
 
 enum struct AnyHttpClass {
@@ -244,26 +292,45 @@ enum struct AnyHttpClass {
         }
     }
     
-    bool Send(AnyHttpRequest request, AnyHttp_Result callback) {
+    void Send(AnyHttpRequest request, AnyHttp_Result callback) {
         request.Callback = callback;
 
-        if (this.Extension == UseSteamWorks) {
-            return SteamWorks_SendPostForm(request);
-        } else if (this.Extension == UseCURL) {
-            return cURL_SendPostForm(request);
-        } else {
-            ThrowError("Unknown extension");
-            return false; // Avoid compiler warning
-        }
+        AnyHttp_SendWhenReady(null, request);
     }
 }
 stock AnyHttpClass AnyHttp;
 
+public Action AnyHttp_SendWhenReady(Handle timer, AnyHttpRequest request) {
+    if (!request.IsReadyToSend()) {
+        CreateTimer(0.5, AnyHttp_SendWhenReady, request);
+        return Plugin_Stop;
+    }
+
+    bool success = false;
+    if (AnyHttp.Extension == UseSteamWorks) {
+        SteamWorks_SendPostForm(request);
+        success = true;
+    } else if (AnyHttp.Extension == UseCURL) {
+        success = cURL_SendPostForm(request);
+    } else {
+        ThrowError("Unknown extension");
+    }
+
+    if (!success) {
+        Call_StartFunction(null, request.Callback);
+        Call_PushCell(false);
+        Call_PushString("");
+        Call_PushCell(0);
+        Call_PushCell(request.MetaData);
+        CleanUpRequest(request);
+        Call_Finish();
+    }
+    return Plugin_Stop;
+}
+
 
 
 // Common private functions
-
-static const char MultiPartBoundary[] = "--------------------AnyHttp--AnyHttp--h7doWqx7m--";
 
 static AnyHttpRequest NewRequest() {
     int id = (nextConnection++) % SimultaneousConnections;
@@ -280,6 +347,7 @@ static AnyHttpRequest NewRequest() {
     request.Fields = KvizCreate("field");
     request.SetFileName("");
     request.FileHandle = null;
+    requests[request.Id].httpBody.Init();
 
     return request;
 }
@@ -315,6 +383,7 @@ static void CleanUpRequest(AnyHttpRequest request) {
         KvizClose(request.Fields);
         request.Fields = null;
     }
+    requests[request.Id].httpBody.Dispose();
 }
 
 static bool FindRequestByHandle(Handle handle, AnyHttpRequest &request) {
@@ -330,114 +399,6 @@ static bool FindRequestByHandle(Handle handle, AnyHttpRequest &request) {
     return false;
 }
 
-static void GetFileName(char[] filename, int maxsize, const char[] filepath) {
-    int lastBackSlash = FindCharInString(filepath, '\\', true);
-    int lastForwardSlash = FindCharInString(filepath, '/', true);
-    if (lastBackSlash == -1 && lastForwardSlash == -1) {
-        strcopy(filename, maxsize, filepath);
-    } else {
-        int pos = lastBackSlash > lastForwardSlash ? lastBackSlash : lastForwardSlash;
-        strcopy(filename, maxsize, filepath[pos + 1]);
-    }
-}
-
-static void AppendMultipartString(char[] buffer, int &bufferPos, int maxsize, const char[] name, const char[] contents, bool computeLength) {
-    bufferPos += CopyBytes(buffer, maxsize, "--", bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, MultiPartBoundary, bufferPos, 0, computeLength);
-    
-    bufferPos += CopyBytes(buffer, maxsize, "\nContent-Disposition: form-data; name=\"", bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, name, bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, "\"\n\n", bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, contents, bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, "\n", bufferPos, 0, computeLength);
-}
-
-static bool AppendMultipartFile(char[] buffer, int &bufferPos, int maxsize, const char[] name, const char[] filepath, bool computeLength) {
-    char filename[PLATFORM_MAX_PATH];
-    GetFileName(filename, sizeof(filename), filepath);
-        
-    bufferPos += CopyBytes(buffer, maxsize, "--", bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, MultiPartBoundary, bufferPos, 0, computeLength);
-    
-    bufferPos += CopyBytes(buffer, maxsize, "\nContent-Disposition: form-data; name=\"", bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, name, bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, "\"; filename=\"", bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, filename, bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, "\"\n\n", bufferPos, 0, computeLength);
-    
-    int filesize = FileSize(filepath);
-    if (computeLength) {
-        bufferPos += filesize;
-    } else {
-        File filehandle = OpenFile(filepath, "rb");
-        if (filehandle == null) {
-            LogError("AppendMultipartFile: Could not open file for reading %s", filepath);
-            return false;
-        }
-        
-        for (int i = 0; i < filesize; i++) {
-            int byte;
-            if (!filehandle.ReadUint8(byte)) {
-                LogError("AppendMultipartFile: Could not read byte from %s", filepath);
-                filehandle.Close();
-                return false;
-            }
-            buffer[bufferPos++] = view_as<char>(byte);
-        }
-        filehandle.Close();
-    }
-    
-    bufferPos += CopyBytes(buffer, maxsize, "\n", bufferPos, 0, computeLength);
-    return true;
-}
-
-static void AppendMultipartEnd(char[] buffer, int &bufferPos, int maxsize, bool computeLength) {
-    bufferPos += CopyBytes(buffer, maxsize, "--", bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, MultiPartBoundary, bufferPos, 0, computeLength);
-    bufferPos += CopyBytes(buffer, maxsize, "--", bufferPos, 0, computeLength);
-}
-
-static int CopyBytes(char[] dest, int destSize, const char[] src, int destPos, int srcPos, bool computeLength, int bytes = -1) {
-    int bytesCopied = 0;
-    if (bytes == -1)
-        bytes = strlen(src);
-    if (computeLength)
-        return bytes;
-    while (destPos < destSize && bytesCopied < bytes) {
-        dest[destPos++] = src[srcPos++];
-        bytesCopied++;
-    }
-    if (bytesCopied < bytes)
-        ThrowError("AnyHttp: Not enough space allocated");
-    return bytesCopied;
-}
-
-static bool CopyFile(const char[] sourceFile, const char[] targetFile)
-{
-	File hr = OpenFile(sourceFile, "rb", false);	
-    if (hr == null)
-        return false;
-
-    File hw = OpenFile(targetFile, "wb", false);	
-    if (hw == null) {
-        hr.Close();
-        return false;
-    }
-    
-    int bytesRead, buff[1024];
-    bool success = true;
-    while (!hr.EndOfFile()) {
-        bytesRead = hr.Read(buff, sizeof(buff), 1);
-        if (bytesRead == -1 || !hw.Write(buff, bytesRead, 1)) {
-            success = false;
-            break;
-        }
-    }
-
-    hw.Close();
-    hr.Close();
-    return success;
-}
 
 static void GenerateUniqueFilename(char[] filename, int maxsize) {
     GetPluginFilename(GetMyHandle(), filename, maxsize);
@@ -475,55 +436,25 @@ static AnyHttpRequest SteamWorks_CreatePostForm(const char[] url, any metadata =
     return request;
 }
 
-static bool SteamWorks_SendPostForm(AnyHttpRequest request) {
-    int length = SteamWorks_SendPostForm_Internal(request, 0);
-    if (length < 0 || SteamWorks_SendPostForm_Internal(request, length) < 0) { 
-        CleanUpRequest(request);
-        return false;
-    }
-    return true;
+static void SteamWorks_SendPostForm(AnyHttpRequest request) {
+    AnyHttp_CreateMultipartRequest(request.Fields, SteamWorks_SendPostForm_RequestCreated, request);
 }
 
-static int SteamWorks_SendPostForm_Internal(AnyHttpRequest request, int bufferSize) {
-    char type[64];
-    char[] buffer = new char[bufferSize];
-    int bufferPos = 0;
-    
-    for (int i = 1; KvizGetStringExact(request.Fields, type, sizeof(type), "%i.type", i); i++) {
-        if (StrEqual(type, "string")) {
-            char name[1024];
-            KvizGetStringExact(request.Fields, name, sizeof(name), "%i.name", i);
-            char contents[1024];
-            KvizGetStringExact(request.Fields, contents, sizeof(contents), "%i.value", i);
-            AppendMultipartString(buffer, bufferPos, bufferSize, name, contents, bufferSize == 0);
-        } else if (StrEqual(type, "file")) {
-            char name[1024];
-            KvizGetStringExact(request.Fields, name, sizeof(name), "%i.name", i);
-            char filepath[1024];
-            KvizGetStringExact(request.Fields, filepath, sizeof(filepath), "%i.value", i);
-            if (!AppendMultipartFile(buffer, bufferPos, bufferSize, name, filepath, bufferSize == 0))
-                return -1;
-        } else {
-            ThrowError("Unknown type");
-        }
-    }
-    AppendMultipartEnd(buffer, bufferPos, bufferSize, bufferSize == 0);
-    
-    if (bufferSize == 0) {
-        return bufferPos;
-    }
-    
+static void SteamWorks_SendPostForm_RequestCreated(bool success, AnyHttpStringBuilder sb, AnyHttpRequest request) {
     char contentType[256] = "multipart/form-data; boundary=";
-    StrCat(contentType, sizeof(contentType), MultiPartBoundary);
+    StrCat(contentType, sizeof(contentType), AnyHttp_MultiPartBoundary);
+
+    int len = sb.Length();
+    char[] buffer = new char[len + 1];
+    sb.CopyToString(buffer, len + 1);
+    sb.Dispose();
     
-    if (!SteamWorks_SetHTTPRequestRawPostBody(request.ExtensionHandle, contentType, buffer, bufferPos) ||
+    if (!SteamWorks_SetHTTPRequestRawPostBody(request.ExtensionHandle, contentType, buffer, len) ||
         !SteamWorks_SetHTTPCallbacks(request.ExtensionHandle, SteamWorks_Done) || 
         !SteamWorks_SendHTTPRequest(request.ExtensionHandle)) 
     {
-        return -1;
+        SteamWorks_Done(request.ExtensionHandle, true, false, k_EHTTPStatusCodeInvalid);
     }
-    
-    return bufferPos;
 }
 
 static void SteamWorks_Done(Handle HTTPRequest, bool bFailure, bool requestSuccessful, EHTTPStatusCode statusCode) {

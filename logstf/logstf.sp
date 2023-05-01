@@ -95,6 +95,11 @@ Release notes:
 - Internal updates
 
 
+---- 2.6.0 (30/04/2023) ----
+- Reduced lag during log upload
+- Automatically create log directory if it doesn't exist - by Bv
+
+
 
 TODO:
 - Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log and -partial files have dynamic names, and don't forget to clean them up.
@@ -117,7 +122,7 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION	"2.5.1"
+#define PLUGIN_VERSION	"2.6.0"
 #define UPDATE_URL		"http://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
@@ -713,10 +718,7 @@ void UploadLog(bool partial) {
 	if (g_sCurrentLogID[0] != '\0')
 		req.PutString("updatelog", g_sCurrentLogID);
     
-	if (!AnyHttp.Send(req, UploadLog_Complete)) {
-		char[] noContents = "";
-		UploadLog_Complete(false, noContents, 0);
-	}
+	AnyHttp.Send(req, UploadLog_Complete);
 }
 
 public void UploadLog_Complete(bool success, const char[] contents, int responseCode) {
@@ -859,6 +861,10 @@ Action CallBlockLogLine(const char[] logline) {
 void GetLogPath(const char[] file, char[] destpath, int destpathLen) {
 	char logsdir[64];
 	GetConVarString(g_hCvarLogsDir, logsdir, sizeof(logsdir));
+	if (DirExists(logsdir) == false) {
+		// Setting use_valve_fs=true somehow allows it true create nested directories.
+		CreateDirectory(logsdir, FPERM_O_READ|FPERM_O_EXEC|FPERM_G_READ|FPERM_G_EXEC|FPERM_U_READ|FPERM_U_WRITE|FPERM_U_EXEC, true);
+	}
 	if (logsdir[0] == '\0')
 		strcopy(destpath, destpathLen, file);
 	else

@@ -4,11 +4,12 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.5.1"
+			"Latest"	"2.6.0"
 		}
 		
-		"Notes"	"Changes in 2.5.1:"
-		"Notes"	"- Internal updates"
+		"Notes"	"Changes in 2.6.0:"
+		"Notes"	"- Reduced lag during log upload"
+		"Notes"	"- Automatically create log directory if it doesn't exist - by Bv"
 	}
 	
 	"Files"

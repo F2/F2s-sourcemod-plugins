@@ -18,9 +18,9 @@ Public functions:
 
 - KvizEscape(char[] dest, destLen, const char[] src)
 
-- Handle KvizCreate(const char[] name)
-- Handle KvizCreateFromFile(const char[] name, const char[] file)
-- Handle KvizCreateFromString(const char[] name, const char[] data)
+- KeyValues KvizCreate(const char[] name)
+- KeyValues KvizCreateFromFile(const char[] name, const char[] file)
+- KeyValues KvizCreateFromString(const char[] name, const char[] data)
 - bool KvizToFile(KeyValues kv, const char[] file, const char[] kvizPath = "", any ...)
 - bool KvizClose(KeyValues kv) {
 
@@ -113,7 +113,7 @@ const KVIZ_ACTION_VALUEORSECTION = 34;
 
 
 enum struct KvizData {
-    Handle Kviz_hKv;
+    KeyValues Kviz_hKv;
     int Kviz_iPositionPathCount;
 
     int Kviz_iTraversalStack[Kviz_iMaxTraversalStack];
@@ -217,7 +217,7 @@ stock KeyValues KvizCreateFromFile(const char[] name, const char[] file) {
  * @param data  The string containing the KeyValues data.
  * @return      A new Kvizzle handle, or null in case of error.
  */
-stock Handle KvizCreateFromString(const char[] name, const char[] data) {
+stock KeyValues KvizCreateFromString(const char[] name, const char[] data) {
     if (!Kviz_bInited) {
         KvizInit();
     }
@@ -1537,7 +1537,7 @@ stock bool KvizSwitchContext(KeyValues kv, bool mayCreate = false) {
 stock bool KvizSwitchFromArchive(KeyValues kv) {
     int archiveLen = Kviz_hArchiveKv.Length;
     for (int i = 0; i < archiveLen; i++) {
-        Handle archiveKv = view_as<Handle>(Kviz_hArchiveKv.Get(i));
+        KeyValues archiveKv = view_as<KeyValues>(Kviz_hArchiveKv.Get(i));
         if (archiveKv == kv) {
             int context = KvizGetFreeContext();
 
