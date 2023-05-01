@@ -25,7 +25,10 @@ else {
         $sourcemodFilename = "sourcemod-1.10.0-git6545-linux.tar.gz"
         $sourcemodUrl = "https://sm.alliedmods.net/smdrop/1.10/" + $sourcemodFilename
         Invoke-WebRequest $sourcemodUrl -OutFile $sourcemodFilename
+        mkdir sourcemod-binaries
+        if (!$?) { exit $LASTEXITCODE }
         tar -xzf "$sourcemodFilename" -C "sourcemod-binaries"
+        if (!$?) { exit $LASTEXITCODE }
         Remove-Item $sourcemodFilename
     }
     else {
