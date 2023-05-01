@@ -23,6 +23,6 @@ if (-not (Test-Path $filename -PathType Leaf)) {
     }
 }
 
-& "spcomp.exe" "$filename" "-i" "$PSScriptRoot\includes"
+& "spcomp" "$filename" "-i" "$PSScriptRoot\includes"
 
 Pop-Location
