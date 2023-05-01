@@ -46,7 +46,7 @@ stock void AnyHttp_CopyFile(const char[] sourceFile, const char[] targetFile, An
     data.metadata = metadata;
     data.success = false;
     
-	data.source = OpenFile(sourceFile, "r", false);	
+    data.source = OpenFile(sourceFile, "r", false);	
     if (data.source == null) {
         RequestFrame(AnyHttp_CopyFile_Finish, data.Export());
         return;

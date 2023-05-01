@@ -38,7 +38,7 @@ public Plugin:myinfo = {
 	author = "F2",
 	description = "Restores the score of a player when reconnecting",
 	version = PLUGIN_VERSION,
-	url = "http://sourcemod.krus.dk/"
+	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
 new bool:g_bHookActivated = false;
@@ -161,8 +161,8 @@ StartHook() {
 		return;
 	g_bHookActivated = true;
 	new iIndex = FindEntityByClassname(-1, "tf_player_manager");
-    if (iIndex == -1)
-        SetFailState("Unable to find tf_player_manager entity");
+	if (iIndex == -1)
+		SetFailState("Unable to find tf_player_manager entity");
 	
 	SDKHook(iIndex, SDKHook_ThinkPost, Hook_OnThinkPost);
 }
@@ -172,8 +172,8 @@ StopHook() {
 		return;
 	g_bHookActivated = false;
 	new iIndex = FindEntityByClassname(-1, "tf_player_manager");
-    if (iIndex == -1)
-        SetFailState("Unable to find tf_player_manager entity");
+	if (iIndex == -1)
+		SetFailState("Unable to find tf_player_manager entity");
 	
 	SDKUnhook(iIndex, SDKHook_ThinkPost, Hook_OnThinkPost);
 }

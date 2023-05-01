@@ -217,7 +217,7 @@ void DisablePlugin() {
 	}
 }
 
-public void CvarChange_ClassLimit(Handle cvar, const char[] oldVal, const char[] newVal) {
+public void CvarChange_ClassLimit(ConVar cvar, const char[] oldVal, const char[] newVal) {
 	for (int class = 1; class <= 9; class++) {
 		if (g_hCvarClassLimit[class] == cvar) {
 			g_iClassLimits[class] = StringToInt(newVal);

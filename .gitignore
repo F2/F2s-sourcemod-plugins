@@ -4,4 +4,6 @@ dist*
 private-*
 
 *.ps1
+!setup.ps1
 !prepare-publish.ps1
+!compile.ps1

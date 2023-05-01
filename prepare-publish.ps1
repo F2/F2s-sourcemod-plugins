@@ -3,26 +3,22 @@
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-function ZipFiles($zipfilename, $sourcedir)
-{
-   Add-Type -Assembly System.IO.Compression.FileSystem
-   $compressionLevel = [System.IO.Compression.CompressionLevel]::Optimal
-   [System.IO.Compression.ZipFile]::CreateFromDirectory($sourcedir, $zipfilename, $compressionLevel, $false)
-   MarkFilesInZipAsReadableOnLinux $zipfilename
+function ZipFiles($zipfilename, $sourcedir) {
+    Add-Type -Assembly System.IO.Compression.FileSystem
+    $compressionLevel = [System.IO.Compression.CompressionLevel]::Optimal
+    [System.IO.Compression.ZipFile]::CreateFromDirectory($sourcedir, $zipfilename, $compressionLevel, $false)
+    MarkFilesInZipAsReadableOnLinux $zipfilename
 }
 
-function MarkFilesInZipAsReadableOnLinux($zipfilename)
-{
+function MarkFilesInZipAsReadableOnLinux($zipfilename) {
     $zip = [System.IO.Compression.ZipFile]::Open($zipfilename, [System.IO.Compression.ZipArchiveMode]::Update)
-    foreach ($entry in $zip.Entries) 
-    {
+    foreach ($entry in $zip.Entries) {
         $entry.ExternalAttributes = $entry.ExternalAttributes -bor ([Convert]::ToInt32("444", 8) -shl 16)
     }
     $zip.Dispose();
 }
 
-function ZipFile($zipfilename, $sourcefile)
-{
+function ZipFile($zipfilename, $sourcefile) {
     $sourceDir = Split-Path (Resolve-Path $sourcefile)
     $tempDir = Join-Path $sourceDir "tempZipDir/"
     New-Item $tempDir -ItemType Directory
@@ -46,7 +42,7 @@ $plugins = @("waitforstv", "medicstats", "supstats2", "logstf", "restorescore", 
 
 foreach ($p in $plugins) {
     Write-Host "Compiling $p..."
-    & "spcomp" "$p.sp" "-i" (Join-Path ".." "includes") "-D" $p "-w217"
+    & "spcomp" "$p.sp" "-i" (Join-Path ".." "includes") "-D" $p
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Failed compilation of $p"
