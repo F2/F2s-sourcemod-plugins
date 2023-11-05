@@ -43,6 +43,7 @@ TODO:
 #endif
 
 #include <kvizzle_newdecls>
+#include <f2stocks>
 #include <anyhttp_file>
 #include <anyhttp_stringbuilder>
 #include <anyhttp_multipart>
@@ -401,8 +402,11 @@ static bool FindRequestByHandle(Handle handle, AnyHttpRequest &request) {
 
 
 static void GenerateUniqueFilename(char[] filename, int maxsize) {
-    GetPluginFilename(GetMyHandle(), filename, maxsize);
-    Format(filename, maxsize, "%s.%i.%i.txt", filename, GetSysTickCount(), GetRandomInt(0, 100000));
+    char pluginFilepath[PLATFORM_MAX_PATH];
+    GetPluginFilename(GetMyHandle(), pluginFilepath, sizeof(pluginFilepath));
+    char pluginFilename[PLATFORM_MAX_PATH];
+    F2_GetFileName(pluginFilename, sizeof(pluginFilename), pluginFilepath);
+    Format(filename, maxsize, "%s.%i.%i.txt", pluginFilename, GetSysTickCount(), GetRandomInt(0, 100000));
 }
 
 

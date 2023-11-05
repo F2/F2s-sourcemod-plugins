@@ -4,12 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.6.0"
+			"Latest"	"2.6.1"
 		}
 		
-		"Notes"	"Changes in 2.6.0:"
-		"Notes"	"- Reduced lag during log upload"
-		"Notes"	"- Automatically create log directory if it doesn't exist - by Bv"
+		"Notes"	"Changes in 2.6.1:"
+		"Notes"	"- Fixed error when plugin is located in a subdirectory"
 	}
 	
 	"Files"
