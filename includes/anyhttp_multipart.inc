@@ -10,6 +10,7 @@ By F2
 
 #include <anyhttp_stringbuilder>
 #include <kvizzle_newdecls>
+#include <f2stocks>
 
 
 stock const char AnyHttp_MultiPartBoundary[] = "--------------------AnyHttp--AnyHttp--h7doWqx7m--";
@@ -153,7 +154,7 @@ static void AppendMultipartString(AnyHttpStringBuilder sb, const char[] name, co
 
 static void AppendMultipartFile_Init(AnyHttpStringBuilder sb, const char[] name, const char[] filepath) {
     char filename[PLATFORM_MAX_PATH];
-    GetFileName(filename, sizeof(filename), filepath);
+    F2_GetFileName(filename, sizeof(filename), filepath);
         
     sb.Append("--");
     sb.Append(AnyHttp_MultiPartBoundary);
@@ -179,15 +180,4 @@ static void AppendMultipartEnd(AnyHttpStringBuilder sb) {
     sb.Append("--");
     sb.Append(AnyHttp_MultiPartBoundary);
     sb.Append("--");
-}
-
-static void GetFileName(char[] filename, int maxsize, const char[] filepath) {
-    int lastBackSlash = FindCharInString(filepath, '\\', true);
-    int lastForwardSlash = FindCharInString(filepath, '/', true);
-    if (lastBackSlash == -1 && lastForwardSlash == -1) {
-        strcopy(filename, maxsize, filepath);
-    } else {
-        int pos = lastBackSlash > lastForwardSlash ? lastBackSlash : lastForwardSlash;
-        strcopy(filename, maxsize, filepath[pos + 1]);
-    }
 }

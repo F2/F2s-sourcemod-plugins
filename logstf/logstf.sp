@@ -100,6 +100,10 @@ Release notes:
 - Automatically create log directory if it doesn't exist - by Bv
 
 
+---- 2.6.1 (05/11/2023) ----
+- Fixed error when plugin is located in a subdirectory
+
+
 
 TODO:
 - Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log and -partial files have dynamic names, and don't forget to clean them up.
@@ -122,7 +126,7 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION	"2.6.0"
+#define PLUGIN_VERSION	"2.6.1"
 #define UPDATE_URL		"http://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"

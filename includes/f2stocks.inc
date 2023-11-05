@@ -396,6 +396,17 @@ stock bool F2_String_EndsWith(const char[] haystack, const char[] needle, bool c
 	return true;
 }
 
+stock void F2_GetFileName(char[] filename, int maxsize, const char[] filepath) {
+    int lastBackSlash = FindCharInString(filepath, '\\', true);
+    int lastForwardSlash = FindCharInString(filepath, '/', true);
+    if (lastBackSlash == -1 && lastForwardSlash == -1) {
+        strcopy(filename, maxsize, filepath);
+    } else {
+        int pos = lastBackSlash > lastForwardSlash ? lastBackSlash : lastForwardSlash;
+        strcopy(filename, maxsize, filepath[pos + 1]);
+    }
+}
+
 stock bool SteamID_Equal(const char[] id1, const char[] id2) {
 	// Compares two SteamIDs in the form of STEAM_0:X:YYYY, [U:1:ZZZZ] or X:YYYY
 	
