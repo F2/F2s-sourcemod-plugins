@@ -733,7 +733,10 @@ public void UploadLog_Complete(bool success, const char[] contents, int response
 	} else {
 		if (!g_bIsPartialUpload)
 			MC_PrintToChatAll("%s", "{lightgreen}[LogsTF] {red}Error occurred when uploading logs :(");
-		LogError("Error uploading %slogs", g_bIsPartialUpload ? "partial " : "");
+		
+		char truncatedContents[512];
+		strcopy(truncatedContents, sizeof(truncatedContents), contents);
+		LogError("Error uploading %slogs (HTTP %i)\n%s", g_bIsPartialUpload ? "partial " : "", responseCode, truncatedContents);
 	}
 	
 	if (!g_bIsPartialUpload && success) {
