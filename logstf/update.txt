@@ -4,11 +4,12 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.6.1"
+			"Latest"	"2.6.2"
 		}
 		
-		"Notes"	"Changes in 2.6.1:"
-		"Notes"	"- Fixed error when plugin is located in a subdirectory"
+		"Notes"	"Changes in 2.6.2:"
+		"Notes"	"- Use !log as default trigger"
+		"Notes"	"- Better error logs"
 	}
 	
 	"Files"
