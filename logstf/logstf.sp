@@ -104,6 +104,11 @@ Release notes:
 - Fixed error when plugin is located in a subdirectory
 
 
+---- 2.6.2 (29/12/2023) ----
+- Use !log as default trigger
+- Better error logs
+
+
 
 TODO:
 - Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log and -partial files have dynamic names, and don't forget to clean them up.
@@ -126,7 +131,7 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION	"2.6.1"
+#define PLUGIN_VERSION	"2.6.2"
 #define UPDATE_URL		"http://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
@@ -148,7 +153,7 @@ public Plugin myinfo = {
 #define TFMAXPLAYERS 33
 
 char g_sPluginVersion[32];
-char g_sDefaultTrigger[8] = ".ss";
+char g_sDefaultTrigger[8] = "!log";
 char g_sClassNamesLower[][16] = { "undefined", "scout", "sniper", "soldier", "demoman", "medic", "heavyweapons", "pyro", "spy", "engineer" };
 
 char g_sLogBuffer[LOG_BUFFERCNT][LOG_BUFFERSIZE];
@@ -237,7 +242,6 @@ public void OnPluginStart() {
 	Handle sizz_stats_version = FindConVar("sizz_stats_version");
 	if (sizz_stats_version != null) {
 		g_bDisableSS = true;
-		g_sDefaultTrigger = "!log";
 	}
 	
 	// Simulate a map start
@@ -733,7 +737,10 @@ public void UploadLog_Complete(bool success, const char[] contents, int response
 	} else {
 		if (!g_bIsPartialUpload)
 			MC_PrintToChatAll("%s", "{lightgreen}[LogsTF] {red}Error occurred when uploading logs :(");
-		LogError("Error uploading %slogs", g_bIsPartialUpload ? "partial " : "");
+		
+		char truncatedContents[512];
+		strcopy(truncatedContents, sizeof(truncatedContents), contents);
+		LogError("Error uploading %slogs (HTTP %i)\n%s", g_bIsPartialUpload ? "partial " : "", responseCode, truncatedContents);
 	}
 	
 	if (!g_bIsPartialUpload && success) {
