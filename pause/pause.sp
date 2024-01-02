@@ -114,9 +114,9 @@ public void OnPluginStart() {
 
 	g_cvarPauseChat = CreateConVar("pause_enablechat", "1", "Enable people to chat as much as they want during a pause.", FCVAR_NONE);
 
-	g_cvarRestorePos = CreateConVar("pause_restore_pos", "1", "Restore player positions, angles, and velocities when unpausing.", FCVAR_NONE);
-	g_cvarRestoreHealth = CreateConVar("pause_restore_health", "1", "Restore player health when unpausing.", FCVAR_NONE);
-	g_cvarRestoreCloak = CreateConVar("pause_restore_cloak", "1", "Restore player cloak when unpausing.", FCVAR_NONE);
+	g_cvarRestorePos = CreateConVar("pause_restore_pos", "0", "Restore player positions, angles, and velocities when unpausing.", FCVAR_NONE);
+	g_cvarRestoreHealth = CreateConVar("pause_restore_health", "0", "Restore player health when unpausing.", FCVAR_NONE);
+	g_cvarRestoreCloak = CreateConVar("pause_restore_cloak", "0", "Restore player cloak when unpausing.", FCVAR_NONE);
 	AddCommandListener(Cmd_Say, "say");
 
 	// Set up auto updater
