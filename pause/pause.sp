@@ -36,6 +36,11 @@ Release notes:
   to where they would be if the pause never occurred. For example, players in free fall during pause
   would suddenly find themselves grounded on unpause.
 - Also saved and restored player health along side this, incase fall damage still applied
+
+---- 1.6.1 (02/01/2024) ----
+- Added support for restoring spy cloak after pause, much like how uber is restored. - by Shigbeard
+  This resolves an issue where spies would be uncloaked after unpausing.
+  This is achieved by setting any spy's cloak meter to a very large number, effectively making it permanent.
 */
 
 #pragma semicolon 1
@@ -43,13 +48,14 @@ Release notes:
 #include <sourcemod>
 #include <morecolors>
 #include <f2stocks>
+#include <tf2_stocks>
 #include <sdktools_functions> // Required to restore Player positions.
 #undef REQUIRE_PLUGIN
 #include <updater>
 
 #pragma newdecls required
 
-#define PLUGIN_VERSION "1.6.0"
+#define PLUGIN_VERSION "1.6.1"
 #define UPDATE_URL		"http://sourcemod.krus.dk/pause/update.txt"
 
 #define PAUSE_UNPAUSE_TIME 2.0
@@ -76,12 +82,14 @@ int g_iPauseTimeMinutes;
 ConVar g_cvarPauseChat = null;
 ConVar g_cvarRestorePos = null;
 ConVar g_cvarRestoreHealth = null;
+ConVar g_cvarRestoreCloak = null;
 float g_fChargeLevel[MAXPLAYERS+1];
 float g_fPlayerPos[MAXPLAYERS+1][3];
 float g_fPlayerAng[MAXPLAYERS+1][3];
 float g_fPlayerVel[MAXPLAYERS+1][3];
 int g_iPlayerHealth[MAXPLAYERS+1];
-// float g_fPlayerTrajectory[MAXPLAYERS+1][3];
+
+float g_fCloakLevel[MAXPLAYERS+1];
 
 public Plugin myinfo = {
 	name = "Improved Pause Command",
@@ -108,6 +116,7 @@ public void OnPluginStart() {
 
 	g_cvarRestorePos = CreateConVar("pause_restore_pos", "1", "Restore player positions, angles, and velocities when unpausing.", FCVAR_NONE);
 	g_cvarRestoreHealth = CreateConVar("pause_restore_health", "1", "Restore player health when unpausing.", FCVAR_NONE);
+	g_cvarRestoreCloak = CreateConVar("pause_restore_cloak", "1", "Restore player cloak when unpausing.", FCVAR_NONE);
 	AddCommandListener(Cmd_Say, "say");
 
 	// Set up auto updater
@@ -131,6 +140,7 @@ public void OnMapStart() {
 		g_fChargeLevel[client] = -1.0;
 		ResetClientPosition(client);
 		g_iPlayerHealth[client] = 0;
+		g_fCloakLevel[client] = 0.0;
 	}
 
 	// The game is automatically unpaused during a map change
@@ -143,6 +153,7 @@ public void OnMapStart() {
 		if (!g_cvarAllowHibernation.BoolValue || (g_cvarAllowHibernation.BoolValue && !isServerEmpty)) {
 			g_iPauseState = Paused;
 			g_fLastPause = GetTickedTime();
+			StorePlayerCloak(true);
 			StoreUbercharges();
 			StorePlayerPositions();
 			StorePlayerHealth();
@@ -171,6 +182,7 @@ public void OnClientConnected(int client) {
 	g_fChargeLevel[client] = -1.0;
 	ResetClientPosition(client);
 	g_iPlayerHealth[client] = 0;
+	g_fCloakLevel[client] = 0.0;
 }
 
 
@@ -243,6 +255,9 @@ public Action Cmd_Pause(int client, const char[] command, int args) {
 		if (g_cvarRestoreHealth.BoolValue) {
 			RestorePlayerHealth();
 		}
+		if (g_cvarRestoreCloak.BoolValue) {
+			RestorePlayerCloak();
+		}
 		g_iPauseState = Unpaused;
 	} else if (g_iPauseState == Ignore__Repause1) {
 		// Let the game become unpaused
@@ -252,10 +267,14 @@ public Action Cmd_Pause(int client, const char[] command, int args) {
 		if (g_cvarRestoreHealth.BoolValue) {
 			RestorePlayerHealth();
 		}
+		if (g_cvarRestoreCloak.BoolValue) {
+			RestorePlayerCloak();
+		}
 		RestoreUbercharges();
 		g_iPauseState = Ignore__Repause2;
 	} else if (g_iPauseState == Ignore__Repause2) {
 		// Let the game become paused
+		StorePlayerCloak(!g_cvarRestoreCloak.BoolValue);
 		StorePlayerPositions(); // Store them regardless of setting, incase we later decide we want to restore them
 		StorePlayerHealth();
 		StoreUbercharges();
@@ -279,7 +298,9 @@ public Action Cmd_Pause(int client, const char[] command, int args) {
 			if (g_cvarRestoreHealth.BoolValue) {
 				CPrintToChatAll2("{lightgreen}[Pause] {default}Player Health saved");
 			}
+			// Don't annouce cloak, it may effect gameplay by prompting teams to think about spies.
 		}
+		StorePlayerCloak(!g_cvarRestoreCloak.BoolValue);
 		StorePlayerPositions();
 		StorePlayerHealth();
 		StoreUbercharges();
@@ -422,9 +443,29 @@ static void StorePlayerPositions() {
 
 static void StorePlayerHealth() {
 	for (int client = 1; client <= MaxClients; client++) {
+		g_iPlayerHealth[client] = 0;
 		if (IsClientInGame(client)) {
 			if (IsPlayerAlive(client)) {
 				g_iPlayerHealth[client] = GetClientHealth(client);
+			}
+		}
+	}
+}
+
+static void StorePlayerCloak(bool noInfinite = false) {
+	for (int client = 1; client <= MaxClients; client++) {
+		g_fCloakLevel[client] = 0.0;
+		if (IsClientInGame(client)) {
+			if (TF2_GetPlayerClass(client) == TFClass_Spy) {
+				int weapon = GetPlayerWeaponSlot(client, 4); // Invisiwatch
+				if (weapon != -1) {
+					g_fCloakLevel[client] = GetEntPropFloat(client, Prop_Send, "m_flCloakMeter");
+
+					// We need to make the cloak permanent.
+					if (!noInfinite) { // Unless this isn't a pause.
+						SetEntPropFloat(client, Prop_Send, "m_flCloakMeter", 99999999999.0); // Set to some ungodly large number
+					}
+				}
 			}
 		}
 	}
@@ -464,5 +505,22 @@ static void RestorePlayerHealth() {
 				SetEntityHealth(client, g_iPlayerHealth[client]);
 			}
 		}
+		g_iPlayerHealth[client] = 0;
+	}
+}
+
+static void RestorePlayerCloak() {
+	for (int client = 1; client <= MaxClients; client++) {
+		if (IsClientInGame(client)) {
+			if (TF2_GetPlayerClass(client) == TFClass_Spy) {
+				int weapon = GetPlayerWeaponSlot(client, 4);
+				if (weapon != -1) {
+					// g_fCloakLevel[client] = GetEntPropFloat(client, Prop_Send, "m_flCloakMeter");
+					// g_bCloaked[client] = TF2_IsPlayerInCondition(client, TFCond_Cloaked);
+					SetEntPropFloat(client, Prop_Send, "m_flCloakMeter", g_fCloakLevel[client]);
+				}
+			}
+		}
+		g_fCloakLevel[client] = 0.0;
 	}
 }
