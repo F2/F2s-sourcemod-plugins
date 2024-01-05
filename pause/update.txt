@@ -4,14 +4,14 @@
 	{
 		"Version"
 		{
-			"Latest"	"1.5.1"
+			"Latest"	"1.6.2"
 		}
 		
-		"Notes"	"Changes in 1.5.1:"
-		"Notes" "- Added notification to use 'repause' command when someone joins during a pause"
-		"Notes"	"- Fixed building ubercharge during pause glitch - by Aad | hl.RGL.gg"
-		"Notes" "- When unpausing, fixed wrong name being logged"
-		"Notes" "- Fixed bug when all players leave the server during a pause"
+		"Notes"	"Changes in 1.6.2:"
+		"Notes"	"- Added support for restoring player positions, angles, and velocities when unpausing - by Shigbeard"
+		"Notes"	"- Also saved and restored player health along side this, incase fall damage still applied - by Shigbeard"
+		"Notes"	"- Added support for restoring spy cloak after pause, much like how uber is restored - by Shigbeard"
+		"Notes"	"- Improved handling of map changes and reloading the plugin"
 	}
 	
 	"Files"
