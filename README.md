@@ -49,6 +49,9 @@ Download all plugins in a zip file here: <a href="https://sourcemod.krus.dk/f2-s
 - Allows everyone to chat as much as they want during the pause
 - Unpause protection (if two people write pause at the same time, it doesn't accidentally unpause)
 - Restores uber percentages when unpausing
+- Option to restore player healths when unpausing
+- Option to restore player positions when unpausing
+- Option to restore cloak meters when unpausing
 
 ### ClassWarning <a href="https://sourcemod.krus.dk/classwarning.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
 
