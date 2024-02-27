@@ -218,7 +218,7 @@ public void OnPluginStart() {
 	
 	// Create LogsTF cvars
 	g_hCvarApikey = CreateConVar("logstf_apikey", "", "Your logs.tf API key", FCVAR_PROTECTED);
-	g_hCvarTitle = CreateConVar("logstf_title", "{server}: {red} vs {blu}", "Title to use on logs.tf", FCVAR_NONE);
+	g_hCvarTitle = CreateConVar("logstf_title", "{server}: {blu} vs {red}", "Title to use on logs.tf", FCVAR_NONE);
 	g_hCvarAutoUpload = CreateConVar("logstf_autoupload", "2", "Set to 2 to upload logs from all matches. (default)\n - Set to 1 to upload logs from matches with at least 4 players.\n - Set to 0 to disable automatic upload. Admins can still upload logs by typing !ul", FCVAR_NONE);
 	g_hCvarMidGameUpload = CreateConVar("logstf_midgameupload", "1", "Set to 0 to upload logs after the match has finished.\n - Set to 1 to upload the logs after each round.", FCVAR_NONE);
 	g_hCvarMidGameNotice = CreateConVar("logstf_midgamenotice", "1", "Set to 1 to notice players about midgame logs.\n - Set to 0 to disable it.", FCVAR_NONE);
