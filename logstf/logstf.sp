@@ -109,6 +109,10 @@ Release notes:
 - Better error logs
 
 
+---- 2.6.3 (28/02/2024) ----
+- Changed default value for logstf_title to match team order on logs.tf - by agrastiOs
+
+
 
 TODO:
 - Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log and -partial files have dynamic names, and don't forget to clean them up.
@@ -131,7 +135,7 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION	"2.6.2"
+#define PLUGIN_VERSION	"2.6.3"
 #define UPDATE_URL		"http://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
@@ -218,7 +222,7 @@ public void OnPluginStart() {
 	
 	// Create LogsTF cvars
 	g_hCvarApikey = CreateConVar("logstf_apikey", "", "Your logs.tf API key", FCVAR_PROTECTED);
-	g_hCvarTitle = CreateConVar("logstf_title", "{server}: {red} vs {blu}", "Title to use on logs.tf", FCVAR_NONE);
+	g_hCvarTitle = CreateConVar("logstf_title", "{server}: {blu} vs {red}", "Title to use on logs.tf", FCVAR_NONE);
 	g_hCvarAutoUpload = CreateConVar("logstf_autoupload", "2", "Set to 2 to upload logs from all matches. (default)\n - Set to 1 to upload logs from matches with at least 4 players.\n - Set to 0 to disable automatic upload. Admins can still upload logs by typing !ul", FCVAR_NONE);
 	g_hCvarMidGameUpload = CreateConVar("logstf_midgameupload", "1", "Set to 0 to upload logs after the match has finished.\n - Set to 1 to upload the logs after each round.", FCVAR_NONE);
 	g_hCvarMidGameNotice = CreateConVar("logstf_midgamenotice", "1", "Set to 1 to notice players about midgame logs.\n - Set to 0 to disable it.", FCVAR_NONE);

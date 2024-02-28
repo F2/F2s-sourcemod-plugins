@@ -11,7 +11,7 @@ Features:
 | CVAR                          | Default                    | Description                                                                                                                                         |
 | ----------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `logstf_apikey <key>`         | (empty)                    | Sets your Logs.TF API key. Required for the plugin to work.                                                                                         |
-| `logstf_title <title>`        | `{server}: {red} vs {blu}` | Sets the title of the log.<br>Use `{server}` to insert the server title.<br>Use `{red}` or `{blu}` to insert team names.                            |
+| `logstf_title <title>`        | `{server}: {blu} vs {red}` | Sets the title of the log.<br>Use `{server}` to insert the server title.<br>Use `{blu}` or `{red}` to insert team names.                            |
 | `logstf_autoupload <0\|1\|2>` | `2`                        | Set to 2 to upload logs from all matches.<br>Set to 1 to upload logs from matches with at least 4 players.<br>Set to 0 to disable automatic upload. |
 | `logstf_midgameupload <0\|1>` | `1`                        | Set to 0 to upload logs after the match has finished.<br>Set to 1 to upload the logs after each round.                                              |
 | `logstf_midgamenotice <0\|1>` | `1`                        | Set to 1 to notice players about midgame logs.                                                                                                      |

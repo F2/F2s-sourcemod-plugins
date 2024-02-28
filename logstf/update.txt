@@ -4,12 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.6.2"
+			"Latest"	"2.6.3"
 		}
 		
-		"Notes"	"Changes in 2.6.2:"
-		"Notes"	"- Use !log as default trigger"
-		"Notes"	"- Better error logs"
+		"Notes"	"Changes in 2.6.3:"
+		"Notes"	"- Changed default value for logstf_title to match team order on logs.tf - by agrastiOs"
 	}
 	
 	"Files"
