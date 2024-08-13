@@ -1553,7 +1553,7 @@ public Action ImportWeaponDefinitionsChunk(Handle timer, int startId) {
 
 	if (itemId > lastId) {
 		CreateTimer(0.1, ImportWeaponDefinitionsChunk, itemId);
-		return Plugin_Continue;
+		return Plugin_Stop;
 	}
 
 	// Clean up
@@ -1570,7 +1570,7 @@ public Action ImportWeaponDefinitionsChunk(Handle timer, int startId) {
 
 	FinalizePluginInitialization();
 
-	return Plugin_Continue;
+	return Plugin_Stop;
 }
 
 void GetItemString(KeyValues kv, KeyValues kvPrefabs, const char[] key, char[] value, int valueLen, const char[] def = "") {
