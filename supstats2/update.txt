@@ -4,12 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.5.2"
+			"Latest"	"2.5.3"
 		}
 		
-		"Notes"	"Changes in 2.5.2:"
-		"Notes"	"- Removed 'spawned as unknown' log"
-		"Notes"	"- Internal updates - by Leigh MacDonald"
+		"Notes"	"Changes in 2.5.3:"
+		"Notes"	"- Prevent script execution timeout on startup"
 	}
 	
 	"Files"

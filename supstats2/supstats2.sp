@@ -83,6 +83,10 @@ Release notes:
 - Internal updates - by Leigh MacDonald
 
 
+---- 2.5.3 (13/08/2024) ----
+- Prevent script execution timeout on startup
+
+
 TODO:
 - Use GetGameTime() instead of GetEngineTime()?
 - Write comments in code :D
@@ -103,11 +107,12 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.5.2"
+#define PLUGIN_VERSION "2.5.3"
 #define UPDATE_URL		"https://sourcemod.krus.dk/supstats2/update.txt"
 
 #define NAMELEN 64
 
+#define ITEMS_TXT_PATH "scripts/items/items_game.txt"
 #define MAXWEAPONS 2048
 #define MAXWEPSLOTS 5
 #define MAXWEPNAMELEN 72
@@ -121,6 +126,8 @@ public Plugin myinfo = {
 	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
+
+bool g_bWeaponDataInitialized = false;
 
 bool g_bIsPaused;
 bool g_bBlockLog = false;
@@ -212,20 +219,24 @@ public void OnPluginStart() {
 	g_tShotTypes.SetValue("tf_weapon_sniperrifle", SHOT_HITSCAN);
 	g_tShotTypes.SetValue("tf_weapon_revolver", SHOT_HITSCAN);
 	
-	
-	
-	
-	AddGameLogHook(GameLog);
-	
-	ImportWeaponDefinitions();
-	
 	g_hCvarEnableAccuracy = CreateConVar("supstats_accuracy", "1", "Enable accuracy");
 	HookConVarChange(g_hCvarEnableAccuracy, CvarChange_EnableAccuracy);
 	char cvarEnableAccuracy[16];
 	GetConVarString(g_hCvarEnableAccuracy, cvarEnableAccuracy, sizeof(cvarEnableAccuracy));
 	CvarChange_EnableAccuracy(g_hCvarEnableAccuracy, cvarEnableAccuracy, cvarEnableAccuracy);
 	
-	
+	char map[64];
+	GetCurrentMap(map, sizeof(map));
+	LogToGame("Loading map \"%s\"", map);
+
+	g_fPauseStartTime = GetEngineTime(); // Just in case it is already paused
+
+	ImportWeaponDefinitions();
+}
+
+void FinalizePluginInitialization() {
+	AddGameLogHook(GameLog);
+
 	HookEvent("item_pickup", Event_ItemPickup);
 	HookEvent("player_hurt", Event_PlayerHurt);
 	HookEvent("player_healed", Event_PlayerHealed);
@@ -243,12 +254,10 @@ public void OnPluginStart() {
 			SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 		}
 	}
-	
-	char map[64];
-	GetCurrentMap(map, sizeof(map));
-	LogToGame("Loading map \"%s\"", map);
 
-	g_fPauseStartTime = GetEngineTime(); // Just in case it is already paused
+	g_bWeaponDataInitialized = true;
+
+	PrintToServer("supstats2 fully initialized");
 }
 
 public void OnLibraryAdded(const char[] name) {
@@ -269,6 +278,9 @@ public void OnMapStart() {
 }
 
 public void OnClientPutInServer(int client) {
+	if (!g_bWeaponDataInitialized)
+		return;
+	
 	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 	lastPostHumousWeaponDamage[client][0] = '\0';
 }
@@ -1252,6 +1264,9 @@ bool GetWeaponLogName(char[] logname, int lognameLen, int attacker, int weapon, 
 }
 
 // F2's Weapon Info Importer
+KeyValues g_kvPrefabs = null;
+KeyValues g_kvItems = null;
+
 ArrayList g_hAllWeaponsName = null; // names of all weapons saved in an Array
 int g_iAllWeaponsDefid[MAXWEAPONS]; // defids of all weapons
 int g_iAllWeaponsHealingOnHit[MAXWEAPONS];
@@ -1365,39 +1380,45 @@ void ImportWeaponDefinitions() {
 	g_hAllWeaponsName = CreateArray(MAXWEPNAMELEN);
 	g_iAllWeaponsCount = 0;
 	g_iSlotWeaponCount = 0;
-	
-	char path[] = "scripts/items/items_game.txt";
-	
-	if (!FileExists(path, true))
-		SetFailState("Could not find items_game.txt: %s", path);
+	if (!FileExists(ITEMS_TXT_PATH, true))
+		SetFailState("Could not find items_game.txt: %s", ITEMS_TXT_PATH);
 	
 	// Load items_game.txt for prefabs
-	KeyValues kvPrefabs = KvizCreateFromFile("items_game", path);
-	if (kvPrefabs == null)
+	g_kvPrefabs = KvizCreateFromFile("items_game", ITEMS_TXT_PATH);
+	if (g_kvPrefabs == null)
 		SetFailState("Could not load items_game.txt");
 	
 	// Go to prefabs section
-	if (!KvizJumpToKey(kvPrefabs, false, "prefabs"))
+	if (!KvizJumpToKey(g_kvPrefabs, false, "prefabs"))
 		SetFailState("items_game.txt: '%s' key not found", "prefabs");
 	
 	// Load items_game.txt for items traversal
-	KeyValues kv = KvizCreateFromFile("items_game", path);
-	if (kv == null)
+	g_kvItems = KvizCreateFromFile("items_game", ITEMS_TXT_PATH);
+	if (g_kvItems == null)
 		SetFailState("Could not load items_game.txt");
 	
 	// Go to items section
-	if (!KvizJumpToKey(kv, false, "items"))
+	if (!KvizJumpToKey(g_kvItems, false, "items"))
 		SetFailState("items_game.txt: '%s' key not found", "items");
 	
-	for (int itemId = 1; KvizJumpToKey(kv, false, ":nth-child(%i)", itemId); KvizGoBack(kv), itemId++) {
+	// To avoid script execution timeout, we need to import small chunks at a time
+	CreateTimer(0.1, ImportWeaponDefinitionsChunk, 1);
+}
+
+public Action ImportWeaponDefinitionsChunk(Handle timer, int startId) {
+	const int chunkSize = 500;
+	int itemId = startId;
+	int lastId = startId + (chunkSize - 1);
+
+	for (; itemId <= lastId && KvizJumpToKey(g_kvItems, false, ":nth-child(%i)", itemId); KvizGoBack(g_kvItems), itemId++) {
 		// Get the item defid
 		int defid;
-		if (!KvizGetNumExact(kv, defid, ":section-name"))
+		if (!KvizGetNumExact(g_kvItems, defid, ":section-name"))
 			continue;
 		
-		//if (KvizExist(kv, ":nth-child(%i).item_paintkit", itemId)) {
+		//if (KvizExist(g_kvItems, ":nth-child(%i).item_paintkit", itemId)) {
 		//	char prefab[64];
-		//	if (KvizGetStringExact(kv, ":nth-child(%i).prefab", itemId)) {
+		//	if (KvizGetStringExact(g_kvItems, ":nth-child(%i).prefab", itemId)) {
 		//		
 		//	}
 		//}
@@ -1408,11 +1429,11 @@ void ImportWeaponDefinitions() {
 		
 		// Get the craft class
 		char craftclass[32];
-		GetItemString(kv, kvPrefabs, "craft_class", craftclass, sizeof(craftclass), "");
+		GetItemString(g_kvItems, g_kvPrefabs, "craft_class", craftclass, sizeof(craftclass), "");
 		
 		// Get the slot for the item
 		char itemslot[32];
-		GetItemString(kv, kvPrefabs, "item_slot", itemslot, sizeof(itemslot));
+		GetItemString(g_kvItems, g_kvPrefabs, "item_slot", itemslot, sizeof(itemslot));
 		int slot = -1;
 		if (StrEqual(itemslot, "primary", false))
 			slot = 0;
@@ -1433,7 +1454,7 @@ void ImportWeaponDefinitions() {
 		
 		// Get the item class
 		char itemclass[MAXITEMCLASSLEN];
-		GetItemString(kv, kvPrefabs, "item_class", itemclass, sizeof(itemclass));
+		GetItemString(g_kvItems, g_kvPrefabs, "item_class", itemclass, sizeof(itemclass));
 		
 		// Check if the item is a weapon
 		bool isWeapon = (slot >= 0 && slot <= 4) && (StrEqual(craftclass, "weapon", false) == true || StrEqual(craftclass, "", false) == true);
@@ -1481,13 +1502,13 @@ void ImportWeaponDefinitions() {
 				strcopy(itemname, sizeof(itemname), "vaccinator");
 			} else if (isMedigun) {
 				// It is some other medigun. As of this writing, the only other possibility is a normal medigun (or skin of it). /F2, 21-10-2015
-				GetItemString(kv, kvPrefabs, "name", itemname, sizeof(itemname));
+				GetItemString(g_kvItems, g_kvPrefabs, "name", itemname, sizeof(itemname));
 				strcopy(itemname, sizeof(itemname), "medigun");
 			} else {
-				GetItemString(kv, kvPrefabs, "item_logname", itemname, sizeof(itemname));
+				GetItemString(g_kvItems, g_kvPrefabs, "item_logname", itemname, sizeof(itemname));
 				if (StrEqual(itemname, "")) {
 					if (isStockWeapon || isUpgradableStockWeapon || isMedigun)
-						GetItemString(kv, kvPrefabs, "name", itemname, sizeof(itemname));
+						GetItemString(g_kvItems, g_kvPrefabs, "name", itemname, sizeof(itemname));
 					
 					if (!StrEqual(itemname, "")) {
 						if (F2_String_StartsWith(itemname, "Upgradeable ", false))
@@ -1495,7 +1516,7 @@ void ImportWeaponDefinitions() {
 						if (F2_String_StartsWith(itemname, "tf_weapon_", false))
 							strcopy(itemname, sizeof(itemname), itemname[10]);
 					} else {
-						GetItemString(kv, kvPrefabs, "item_class", itemname, sizeof(itemname));
+						GetItemString(g_kvItems, g_kvPrefabs, "item_class", itemname, sizeof(itemname));
 					}
 					
 					if (!StrEqual(itemname, "")) {
@@ -1520,24 +1541,36 @@ void ImportWeaponDefinitions() {
 			g_iAllWeaponsDefid[g_iAllWeaponsCount] = defid;
 			g_iAllWeaponsHealingOnHit[g_iAllWeaponsCount] = 0;
 			char attr[16];
-			if (GetItemAttribute(kv, kvPrefabs, "add_onhit_addhealth", attr, sizeof(attr)) || GetItemAttribute(kv, kvPrefabs, "add_health_on_radius_damage", attr, sizeof(attr))) {
+			if (GetItemAttribute(g_kvItems, g_kvPrefabs, "add_onhit_addhealth", attr, sizeof(attr)) || GetItemAttribute(g_kvItems, g_kvPrefabs, "add_health_on_radius_damage", attr, sizeof(attr))) {
 				//PrintToChatAll("health on hit(%i) name(%s)", attr, itemname);
 				g_iAllWeaponsHealingOnHit[g_iAllWeaponsCount] = StringToInt(attr);
 			}
-			g_bAllWeaponsPostHumousDamage[g_iAllWeaponsCount] = GetItemTag(kv, kvPrefabs, "can_deal_posthumous_damage", false);
+			g_bAllWeaponsPostHumousDamage[g_iAllWeaponsCount] = GetItemTag(g_kvItems, g_kvPrefabs, "can_deal_posthumous_damage", false);
 			g_iAllWeaponsCount++;
 		
 		}
 	}
-	
+
+	if (itemId > lastId) {
+		CreateTimer(0.1, ImportWeaponDefinitionsChunk, itemId);
+		return Plugin_Continue;
+	}
+
 	// Clean up
-	KvizGoBack(kv); // items
-	KvizGoBack(kvPrefabs); // prefabs
+	KvizGoBack(g_kvItems);
+	KvizGoBack(g_kvPrefabs);
 	
-	KvizClose(kv);
-	KvizClose(kvPrefabs);
+	KvizClose(g_kvItems);
+	KvizClose(g_kvPrefabs);
+
+	g_kvItems = null;
+	g_kvPrefabs = null;
 	
 	InitWeaponCache();
+
+	FinalizePluginInitialization();
+
+	return Plugin_Continue;
 }
 
 void GetItemString(KeyValues kv, KeyValues kvPrefabs, const char[] key, char[] value, int valueLen, const char[] def = "") {
