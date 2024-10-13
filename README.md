@@ -73,7 +73,7 @@ Download all plugins in a zip file here: <a href="https://sourcemod.krus.dk/f2-s
 
 - If a player is AFK in warmup, it shows [a warning](https://sourcemod.krus.dk/afk-1.jpg) to all players on their team
 - If both teams ready up and there is an AFK player, it shows [a warning](https://sourcemod.krus.dk/afk-2.jpg) to the person's team
-- Works together with TF2DM... if a player is AFK, he will be moved back to spawn
+- Works together with TF2DM... if a player is AFK, they will be moved back to spawn
 
 ### RestoreScore <a href="https://sourcemod.krus.dk/restorescore.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
 
