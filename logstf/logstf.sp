@@ -113,6 +113,10 @@ Release notes:
 - Changed default value for logstf_title to match team order on logs.tf - by agrastiOs
 
 
+---- 2.6.4 (16/11/2024) ----
+- Fixed some logs having the wrong score count on logs.tf
+
+
 
 TODO:
 - Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log and -partial files have dynamic names, and don't forget to clean them up.
@@ -135,7 +139,7 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION	"2.6.3"
+#define PLUGIN_VERSION	"2.6.4"
 #define UPDATE_URL		"http://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
@@ -183,8 +187,8 @@ char g_sCachedHostname[64];
 char g_sCachedRedTeamName[32];
 char g_sCachedBluTeamName[32];
 char g_sCachedMap[32];
-Handle g_hLogUploaded;  // public LogUploaded(bool success, const char[] logid, const char[] url)
-Handle g_hBlockLogLine; // public Action BlockLogLine(const char[] logline)
+GlobalForward g_hLogUploaded;  // public void LogUploaded(bool success, const char[] logid, const char[] url)
+GlobalForward g_hBlockLogLine; // public Action BlockLogLine(const char[] logline)
 
 bool g_bIsPartialUpload;
 Handle g_hTimerUploadPartialLog;
@@ -234,10 +238,10 @@ public void OnPluginStart() {
 	HookEvent("player_death", Event_PlayerDeath);
 	
 	// Make it possible for other plugins to get notified when a log has been uploaded
-	g_hLogUploaded = CreateGlobalForward("LogUploaded", ET_Ignore, Param_Cell, Param_String, Param_String);
+	g_hLogUploaded = new GlobalForward("LogUploaded", ET_Ignore, Param_Cell, Param_String, Param_String);
 	
 	// Let other plugins block log lines
-	g_hBlockLogLine = CreateGlobalForward("BlockLogLine", ET_Event, Param_String);
+	g_hBlockLogLine = new GlobalForward("BlockLogLine", ET_Event, Param_String);
 	
 	// Remember the plugin version
 	FormatEx(g_sPluginVersion, sizeof(g_sPluginVersion), "LogsTF %s", PLUGIN_VERSION);
@@ -335,10 +339,6 @@ void EndMatch(bool endedMidgame) {
 	if (g_hTimerUploadPartialLog != null) {
 		CloseHandle(g_hTimerUploadPartialLog);
 		g_hTimerUploadPartialLog = null;
-	}
-	
-	if (endedMidgame) {
-		AddLogLine("World triggered \"Round_Stalemate\"\n");
 	}
 	
 	g_bLogReady = true;
