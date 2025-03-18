@@ -4,11 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.6.4"
+			"Latest"	"2.6.5"
 		}
 		
-		"Notes"	"Changes in 2.6.4:"
-		"Notes"	"- Fixed some logs having the wrong score count on logs.tf"
+		"Notes"	"Changes in 2.6.5:"
+		"Notes"	"- logs.tf html motd now highlights the client's user"
 	}
 	
 	"Files"
