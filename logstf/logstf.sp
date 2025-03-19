@@ -578,15 +578,18 @@ public Action Timer_ShowStats(Handle timer, any client) {
 	if (!IsClientValid(client))
 		return Plugin_Stop;
 
+	char steamID[32];
+	GetClientAuthId(client, AuthId_SteamID64, steamID, sizeof(steamID));
+
 	char lastLogURL[128];
-	FormatEx(lastLogURL, sizeof(lastLogURL), "%s#%i", g_sLastLogURL, GetClientUserId(client));
+	FormatEx(lastLogURL, sizeof(lastLogURL), "%s#%s", g_sLastLogURL, steamID);
 
 	char num[3];
 	Handle Kv = CreateKeyValues("data");
 	IntToString(MOTDPANEL_TYPE_URL, num, sizeof(num));
 	KvSetString(Kv, "title", "Logs");
 	KvSetString(Kv, "type", num);
-	KvSetString(Kv, "msg", g_sLastLogURL);
+	KvSetString(Kv, "msg", lastLogURL);
 	KvSetNum(Kv, "customsvr", 1);
 	ShowVGUIPanel(client, "info", Kv);
 	CloseHandle(Kv);
