@@ -116,6 +116,9 @@ Release notes:
 ---- 2.6.4 (16/11/2024) ----
 - Fixed some logs having the wrong score count on logs.tf
 
+---- 2.6.5 (18/03/2025) ----
+- logs.tf html motd now highlights the client's user
+
 
 
 TODO:
@@ -139,7 +142,7 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION	"2.6.4"
+#define PLUGIN_VERSION	"2.6.5"
 #define UPDATE_URL		"http://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
@@ -574,13 +577,19 @@ public Action BlockSay(int client, const char[] text, bool teamSay) {
 public Action Timer_ShowStats(Handle timer, any client) {
 	if (!IsClientValid(client))
 		return Plugin_Stop;
-	
+
+	char steamID[32];
+	GetClientAuthId(client, AuthId_SteamID64, steamID, sizeof(steamID));
+
+	char lastLogURL[128];
+	FormatEx(lastLogURL, sizeof(lastLogURL), "%s#%s", g_sLastLogURL, steamID);
+
 	char num[3];
 	Handle Kv = CreateKeyValues("data");
 	IntToString(MOTDPANEL_TYPE_URL, num, sizeof(num));
 	KvSetString(Kv, "title", "Logs");
 	KvSetString(Kv, "type", num);
-	KvSetString(Kv, "msg", g_sLastLogURL);
+	KvSetString(Kv, "msg", lastLogURL);
 	KvSetNum(Kv, "customsvr", 1);
 	ShowVGUIPanel(client, "info", Kv);
 	CloseHandle(Kv);
