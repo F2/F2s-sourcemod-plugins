@@ -1,4 +1,4 @@
-public SharedPlugin:__pl_afk = 
+public SharedPlugin __pl_afk = 
 {
 	name = "afk",
 	file = "afk.smx",
@@ -10,12 +10,12 @@ public SharedPlugin:__pl_afk =
 };
 
 #if !defined REQUIRE_PLUGIN
-public __pl_afk_SetNTVOptional()
+public void __pl_afk_SetNTVOptional()
 {
 	MarkNativeAsOptional("IsPlayerAFK");
 }
 #endif
 
-native bool:IsPlayerAFK(client);
+native bool IsPlayerAFK(client);
 
-forward OnAfkStateChanged(client, bool:afk);
+forward OnAfkStateChanged(int client, bool afk);
