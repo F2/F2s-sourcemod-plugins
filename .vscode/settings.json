@@ -98,7 +98,7 @@
     "SpacesInSquareBrackets: false",
     "Standard: Auto",
     "TabWidth: ${TabSize}",
-    "UseTab: ${UseTab}",
+    "UseTab: ForContinuationAndIndentation",
     "CommentPragmas: '^#define|#tryinclude'"
   ]
 }
