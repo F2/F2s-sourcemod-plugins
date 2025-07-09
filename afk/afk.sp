@@ -68,8 +68,7 @@ int           g_iMinPlayers;
 // public OnAfkStateChanged(client, bool:afk) {
 GlobalForward g_hOnAfkStateChanged;
 
-public void OnPluginStart()
-{
+public void OnPluginStart() {
     // Set up auto updater
     if (LibraryExists("updater"))
         Updater_AddPlugin(UPDATE_URL);
@@ -97,20 +96,17 @@ public void OnPluginStart()
     EnablePlugin();
 }
 
-public void OnPluginEnd()
-{
+public void OnPluginEnd() {
     DisablePlugin();
 }
 
-public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
-{
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
     CreateNative("IsPlayerAFK", Native_IsPlayerAFK);
     RegPluginLibrary("afk");
     return APLRes_Success;
 }
 
-public any Native_IsPlayerAFK(Handle plugin, int numParams)
-{
+public any Native_IsPlayerAFK(Handle plugin, int numParams) {
     if (!g_bEnabled)
         return false;
 
@@ -118,12 +114,10 @@ public any Native_IsPlayerAFK(Handle plugin, int numParams)
     return IsPlayerAFK(client);
 }
 
-public void OnMapStart()
-{
+public void OnMapStart() {
     Match_OnMapStart();
 
-    for (int client = 1; client <= MaxClients; client++)
-    {
+    for (int client = 1; client <= MaxClients; client++) {
         g_fAfkTime[client] = 0.0;
         g_bIsAfk[client]   = false;
     }
@@ -131,31 +125,26 @@ public void OnMapStart()
     g_fLastCheck = GetGameTime();
 }
 
-public void OnMapEnd()
-{
+public void OnMapEnd() {
     Match_OnMapEnd();
 }
 
-public void OnLibraryAdded(const char[] name)
-{
+public void OnLibraryAdded(const char[] name) {
     // Set up auto updater
     if (StrEqual(name, "updater"))
         Updater_AddPlugin(UPDATE_URL);
 }
 
-public void OnClientPutInServer(int client)
-{
+public void OnClientPutInServer(int client) {
     g_fAfkTime[client] = 0.0;
     g_bIsAfk[client]   = false;
 }
 
-public void CvarChange_MaxAfkTime(ConVar cvar, const char[] oldVal, const char[] newVal)
-{
+public void CvarChange_MaxAfkTime(ConVar cvar, const char[] oldVal, const char[] newVal) {
     g_fMaxAfkTime = StringToFloat(newVal);
 }
 
-public void CvarChange_MinPlayers(ConVar cvar, const char[] oldVal, const char[] newVal)
-{
+public void CvarChange_MinPlayers(ConVar cvar, const char[] oldVal, const char[] newVal) {
     g_iMinPlayers = StringToInt(newVal);
 }
 
@@ -163,22 +152,17 @@ public void CvarChange_MinPlayers(ConVar cvar, const char[] oldVal, const char[]
 // Match - start / end
 // -----------------------------------
 
-void StartMatch()
-{
+void StartMatch() {
     bool foundAFK[TFTeam] = { false, ... };
-    for (int client = 1; client <= MaxClients; client++)
-    {
-        if (IsPlayerAFK(client))
-        {
+    for (int client = 1; client <= MaxClients; client++) {
+        if (IsPlayerAFK(client)) {
             TFTeam clientTeam = TF2_GetClientTeam(client);
 
             // Warn the player's team
 
-            if (!foundAFK[clientTeam])
-            {
+            if (!foundAFK[clientTeam]) {
                 foundAFK[clientTeam] = true;
-                for (int other = 1; other <= MaxClients; other++)
-                {
+                for (int other = 1; other <= MaxClients; other++) {
                     if (!IsRealPlayer2(other))
                         continue;
                     if (TF2_GetClientTeam(other) != clientTeam)
@@ -187,8 +171,7 @@ void StartMatch()
                 }
             }
 
-            for (int other = 1; other <= MaxClients; other++)
-            {
+            for (int other = 1; other <= MaxClients; other++) {
                 if (!IsRealPlayer2(other))
                     continue;
                 if (TF2_GetClientTeam(other) != clientTeam)
@@ -202,26 +185,22 @@ void StartMatch()
     DisablePlugin();
 }
 
-void ResetMatch()
-{
+void ResetMatch() {
     EnablePlugin();
 }
 
-void EndMatch(bool endedMidgame)
-{
+void EndMatch(bool endedMidgame) {
     EnablePlugin();
 }
 
 // -----------------------------------
 
-void EnablePlugin()
-{
+void EnablePlugin() {
     if (g_bEnabled)
         return;
     g_bEnabled = true;
 
-    for (int client = 1; client <= MaxClients; client++)
-    {
+    for (int client = 1; client <= MaxClients; client++) {
         g_fAfkTime[client] = 0.0;
         g_bIsAfk[client]   = false;
     }
@@ -232,14 +211,12 @@ void EnablePlugin()
     g_hTimerCheck = CreateTimer(TIMERINTERVAL, Timer_CheckAFK, _, TIMER_REPEAT);
 }
 
-void DisablePlugin()
-{
+void DisablePlugin() {
     if (!g_bEnabled)
         return;
     g_bEnabled = false;
 
-    for (int client = 1; client <= MaxClients; client++)
-    {
+    for (int client = 1; client <= MaxClients; client++) {
         if (!IsRealPlayer(client) || IsFakeClient(client))
             continue;
 
@@ -253,15 +230,13 @@ void DisablePlugin()
     UnhookEvent("player_spawn", Event_player_spawn, EventHookMode_Post);
     UnhookEvent("player_team", Event_player_team, EventHookMode_Post);
 
-    if (g_hTimerCheck != INVALID_HANDLE)
-    {
+    if (g_hTimerCheck != INVALID_HANDLE) {
         KillTimer(g_hTimerCheck);
         g_hTimerCheck = INVALID_HANDLE;
     }
 }
 
-public void Event_player_spawn(Event event, const char[] name, bool dontBroadcast)
-{
+public void Event_player_spawn(Event event, const char[] name, bool dontBroadcast) {
     int userid               = event.GetInt("userid");
     int client               = GetClientOfUserId(userid);
 
@@ -272,8 +247,7 @@ public void Event_player_spawn(Event event, const char[] name, bool dontBroadcas
     // We cannot get the angles here, because TF2DM will move the player and change his angles later in this frame or the next frame.
 }
 
-public void Event_player_team(Event event, const char[] name, bool dontBroadcast)
-{
+public void Event_player_team(Event event, const char[] name, bool dontBroadcast) {
     int userid         = event.GetInt("userid");
     int client         = GetClientOfUserId(userid);
 
@@ -284,8 +258,7 @@ public void Event_player_team(Event event, const char[] name, bool dontBroadcast
     ClearSyncHud(client, g_hHud[TFTeam_Blue]);
 }
 
-public Action Timer_CheckAFK(Handle timer)
-{
+public Action Timer_CheckAFK(Handle timer) {
     float now    = GetGameTime();
     float span   = now - g_fLastCheck;
     g_fLastCheck = now;
@@ -296,21 +269,18 @@ public Action Timer_CheckAFK(Handle timer)
 
     int    realPlayerCount = GetRealPlayerCount();
 
-    for (int client = 1; client <= MaxClients; client++)
-    {
+    for (int client = 1; client <= MaxClients; client++) {
         afkBefore[client]      = g_bIsAfk[client];
         relevantClient[client] = false;
 
-        if (!IsRealPlayer(client) || IsFakeClient(client))
-        {
+        if (!IsRealPlayer(client) || IsFakeClient(client)) {
             g_bIsAfk[client] = false;
             continue;
         }
 
         TFTeam team        = TF2_GetClientTeam(client);
         clientTeam[client] = team;
-        if (team != TFTeam_Red && team != TFTeam_Blue)
-        {
+        if (team != TFTeam_Red && team != TFTeam_Blue) {
             g_bIsAfk[client] = false;
             continue;
         }
@@ -321,8 +291,7 @@ public Action Timer_CheckAFK(Handle timer)
             continue;    // Remain the same AFK state
 
         float angles[3];
-        if (!GetClientEyeAngles(client, angles))
-        {
+        if (!GetClientEyeAngles(client, angles)) {
             LogError("Could not get client eye angles for client %i", GetClientUserId(client));
             continue;    // Should never happen, but remain the same AFK state
         }
@@ -337,8 +306,7 @@ public Action Timer_CheckAFK(Handle timer)
         if (justSpawned)
             continue;    // If the player has just spawned, then record his angles but don't detect if he has moved.
 
-        if (vecDist <= 1.0)
-        {
+        if (vecDist <= 1.0) {
             g_fAfkTime[client] += span;
         }
         else {
@@ -351,17 +319,14 @@ public Action Timer_CheckAFK(Handle timer)
             g_fAfkTime[client] = 0.0;
 
         g_bIsAfk[client] = false;
-        if (g_fMaxAfkTime >= 1.0)
-        {
-            if (g_fAfkTime[client] >= g_fMaxAfkTime && realPlayerCount >= g_iMinPlayers)
-            {
+        if (g_fMaxAfkTime >= 1.0) {
+            if (g_fAfkTime[client] >= g_fMaxAfkTime && realPlayerCount >= g_iMinPlayers) {
                 g_bIsAfk[client] = true;
             }
         }
     }
 
-    for (int client = 1; client <= MaxClients; client++)
-    {
+    for (int client = 1; client <= MaxClients; client++) {
         if (!relevantClient[client])
             continue;
         if (afkBefore[client] == g_bIsAfk[client])
@@ -383,15 +348,13 @@ public Action Timer_CheckAFK(Handle timer)
     hudText[TFTeam_Blue] = "";
     hudText[TFTeam_Red]  = "";
 
-    for (int client = 1; client <= MaxClients; client++)
-    {
+    for (int client = 1; client <= MaxClients; client++) {
         if (!relevantClient[client])
             continue;
 
         TFTeam team = clientTeam[client];
 
-        if (g_bIsAfk[client])
-        {
+        if (g_bIsAfk[client]) {
             char nickname[32];
             GetClientName(client, nickname, sizeof(nickname));
 
@@ -400,8 +363,7 @@ public Action Timer_CheckAFK(Handle timer)
                 Format(hudText[team], sizeof(hudText[]), "%s\n- %s (%i min)", hudText[team], nickname, afkTime);
             else {
                 afkTime = RoundToFloor(g_fAfkTime[client] / 15.0) * 15;
-                if (afkTime == 0)
-                {
+                if (afkTime == 0) {
                     afkTime = 15;
                     if (RoundToFloor(g_fMaxAfkTime) < afkTime)
                         afkTime = RoundToFloor(g_fMaxAfkTime);
@@ -413,16 +375,13 @@ public Action Timer_CheckAFK(Handle timer)
         }
     }
 
-    for (TFTeam team = TFTeam_Red; team <= TFTeam_Blue; team++)
-    {
-        if (hudText[team][0] != '\0')
-        {
+    for (TFTeam team = TFTeam_Red; team <= TFTeam_Blue; team++) {
+        if (hudText[team][0] != '\0') {
             Format(hudText[team], sizeof(hudText[]), "You have AFK players:%s", hudText[team]);
         }
     }
 
-    for (int client = 1; client <= MaxClients; client++)
-    {
+    for (int client = 1; client <= MaxClients; client++) {
         if (!relevantClient[client])
             continue;
 
@@ -435,8 +394,7 @@ public Action Timer_CheckAFK(Handle timer)
     return Plugin_Continue;
 }
 
-bool IsPlayerAFK(int client)
-{
+bool IsPlayerAFK(int client) {
     if (!g_bEnabled)
         return false;
     if (!IsRealPlayer(client) || IsFakeClient(client))
