@@ -257,12 +257,12 @@ stock void Client_SetObserverMode(int client, Obs_Mode mode, bool updateMoveType
 		ConVar mp_forcecamera = FindConVar("mp_forcecamera");
 
 		if (mp_forcecamera != INVALID_HANDLE) {
-			switch (mp_forcecamera.IntValue)
+			switch (view_as<Obs_Allow>(mp_forcecamera.IntValue))
 			{
-				case view_as<int>(OBS_ALLOW_TEAM): {
+				case OBS_ALLOW_TEAM: {
 					mode = OBS_MODE_IN_EYE;
 				}
-				case view_as<int>(OBS_ALLOW_NONE): {
+				case OBS_ALLOW_NONE: {
 					mode = OBS_MODE_FIXED; // don't allow anything
 				}
 			}
@@ -528,7 +528,7 @@ stock int Client_GetClones(int client, int[] cloneList)
 	int x=0;
 	char ip_client[16], ip_player[16];
 
-	GetClientIP(client, ip_client, sizeof(client));
+	GetClientIP(client, ip_client, sizeof(ip_client));
 
 	for (int player=1; player <= MaxClients; player++) {
 
