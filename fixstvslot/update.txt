@@ -4,11 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.0.0"
+			"Latest"	"2.0.1"
 		}
 		
-		"Notes"	"Changes in 2.0.0:"
-		"Notes"	"- Now automatically changes the level if stv is enabled, not just on server start"
+		"Notes"	"Changes in 2.0.1:"
+		"Notes"	"- Updated code to be compatible with SourceMod 1.12"
 	}
 	
 	"Files"

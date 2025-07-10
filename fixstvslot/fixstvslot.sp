@@ -3,12 +3,19 @@ Release notes:
 ---- 1.0.1 (14/12/2013) ----
 - Changes the map on server start
 
+
 ---- 2.0.0 (07/07/2022) ----
 - Now automatically changes the level if stv is enabled, not just on server start
+
+
+---- 2.0.1 (10/07/2025) ----
+- Updated code to be compatible with SourceMod 1.12
+
 
 */
 
 #pragma semicolon 1
+#pragma newdecls required
 
 #include <sourcemod>
 #include <f2stocks>
@@ -16,25 +23,20 @@ Release notes:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#pragma newdecls required
-
-#define PLUGIN_VERSION "2.0.0"
-#define UPDATE_URL      "http://sourcemod.krus.dk/fixstvslot/update.txt"
-
-public Plugin myinfo = {
-	name = "Fix STV Slot",
-	author = "F2",
+#define PLUGIN_VERSION "2.0.1"
+#define UPDATE_URL     "http://sourcemod.krus.dk/fixstvslot/update.txt"
+public Plugin myinfo =
+{
+	name        = "Fix STV Slot",
+	author      = "F2",
 	description = "When STV is enabled, change the level so the bot joins.",
-	version = PLUGIN_VERSION,
-	url = "http://sourcemod.krus.dk/"
+	version     = PLUGIN_VERSION,
+	url         = "http://sourcemod.krus.dk/"
 };
 
-
-public void OnPluginStart()
-{
+public void OnPluginStart() {
 	// Set up auto updater
-	if (LibraryExists("updater"))
-	{
+	if (LibraryExists("updater")) {
 		Updater_AddPlugin(UPDATE_URL);
 	}
 
@@ -44,30 +46,24 @@ public void OnPluginStart()
 	HookConVarChange(FindConVar("tv_enable"), OnSTVChanged);
 }
 
-public void OnLibraryAdded(const char[] name)
-{
+public void OnLibraryAdded(const char[] name) {
 	// Set up auto updater
-	if (StrEqual(name, "updater"))
-	{
+	if (StrEqual(name, "updater")) {
 		Updater_AddPlugin(UPDATE_URL);
 	}
 }
 
-public void OnSTVChanged(ConVar convar, char[] oldValue, char[] newValue)
-{
-	if
-	(
+public void OnSTVChanged(ConVar convar, char[] oldValue, char[] newValue) {
+	if (
 		// stv doesn't exist
 		FindSTV() == -1
 		// stv was off
 		&& StrEqual(oldValue, "0")
 		// stv is now on
-		&& StrEqual(newValue, "1")
-	)
-	{
+		&& StrEqual(newValue, "1")) {
 		LogMessage("[FixSTVSlot] tv_enable changed to 1! Changing level...");
 		PrintToChatAll("[FixSTVSlot] tv_enable changed to 1! Changing level...");
-		
+
 		// We use the TIMER_FLAG_NO_MAPCHANGE so that,
 		// if someone quickly changes the level before the timer hits 0, it won't change the level twice.
 		// Also this maintains compatibility with the rglqol plugin.
@@ -75,8 +71,7 @@ public void OnSTVChanged(ConVar convar, char[] oldValue, char[] newValue)
 	}
 }
 
-public Action ChangeMap(Handle timer)
-{
+public Action ChangeMap(Handle timer) {
 	char map[128];
 	GetCurrentMap(map, sizeof(map));
 	ForceChangeLevel(map, "STV joined! Forcibly changing level so the bot can join.");
