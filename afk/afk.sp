@@ -288,12 +288,12 @@ public Action Timer_CheckAFK(Handle timer) {
 		relevantClient[client] = true;
 
 		if (!IsPlayerAlive(client))
-			continue;    // Remain the same AFK state
+			continue; // Remain the same AFK state
 
 		float angles[3];
 		if (!GetClientEyeAngles(client, angles)) {
 			LogError("Could not get client eye angles for client %i", GetClientUserId(client));
-			continue;    // Should never happen, but remain the same AFK state
+			continue; // Should never happen, but remain the same AFK state
 		}
 
 		float vecDist            = GetVectorDistance(angles, g_fLastAngles[client], true);
@@ -304,7 +304,7 @@ public Action Timer_CheckAFK(Handle timer) {
 		g_fLastAngles[client][2] = angles[2];
 
 		if (justSpawned)
-			continue;    // If the player has just spawned, then record his angles but don't detect if he has moved.
+			continue; // If the player has just spawned, then record his angles but don't detect if he has moved.
 
 		if (vecDist <= 1.0) {
 			g_fAfkTime[client] += span;
