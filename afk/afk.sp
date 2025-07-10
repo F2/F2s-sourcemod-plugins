@@ -17,7 +17,7 @@ Release notes:
 - Internal updates
 
 
----- 1.2.0 (09/07/2025) ----
+---- 1.1.2 (09/07/2025) ----
 - Updated code to be compatible with SourceMod 1.12
 
 
@@ -33,7 +33,7 @@ Release notes:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "1.2.0"
+#define PLUGIN_VERSION "1.1.2"
 #define UPDATE_URL     "http://sourcemod.krus.dk/afk/update.txt"
 public Plugin myinfo =
 {
@@ -308,8 +308,7 @@ public Action Timer_CheckAFK(Handle timer) {
 
 		if (vecDist <= 1.0) {
 			g_fAfkTime[client] += span;
-		}
-		else {
+		} else {
 			g_fAfkTime[client] = 0.0;
 		}
 

@@ -9,6 +9,11 @@ Release notes:
 ---- 1.0.1 (23/04/2023) ----
 - Internal updates
 
+
+---- 1.0.2 (10/07/2025) ----
+- Updated code to be compatible with SourceMod 1.12
+
+
 */
 
 #pragma semicolon 1
@@ -22,7 +27,7 @@ Release notes:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "1.0.1"
+#define PLUGIN_VERSION "1.0.2"
 #define UPDATE_URL     "http://sourcemod.krus.dk/countdown/update.txt"
 #define REASON_LEN     256
 
