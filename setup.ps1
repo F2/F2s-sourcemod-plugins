@@ -11,7 +11,7 @@ Write-Host "DONE!"
 
 function Get-SpcompVersion {
     try {
-        $spcompVersionString = (& "spcomp" "--version") | Select-Object -First 1
+        $spcompVersionString = (& "spcomp64") | Select-Object -First 1
         if ($spcompVersionString -match "SourcePawn Compiler (\d+\.\d+)(\.\d+)*") {
             return $Matches[1]
         }

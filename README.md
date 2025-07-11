@@ -94,6 +94,7 @@ For building a plugin locally, run these commands in Powershell 6+:
 ```powershell
 git clone https://github.com/F2/F2s-sourcemod-plugins.git
 cd F2s-sourcemod-plugins
+pwsh # Start powershell if you are not already in a powershell terminal
 ./setup.ps1
 
 compile logstf
