@@ -9,7 +9,7 @@ By F2
 #define _anyhttp_multipart_included
 
 #include <anyhttp_stringbuilder>
-#include <kvizzle_newdecls>
+#include <kvizzle>
 #include <f2stocks>
 
 

@@ -34,7 +34,7 @@ Release notes:
 #include <updater>
 
 #define PLUGIN_VERSION "1.1.2"
-#define UPDATE_URL     "http://sourcemod.krus.dk/afk/update.txt"
+#define UPDATE_URL     "https://sourcemod.krus.dk/afk/update.txt"
 public Plugin myinfo =
 {
 	name        = "AFK Detector",

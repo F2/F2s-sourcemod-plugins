@@ -28,7 +28,7 @@ Release notes:
 #include <updater>
 
 #define PLUGIN_VERSION "1.0.2"
-#define UPDATE_URL     "http://sourcemod.krus.dk/countdown/update.txt"
+#define UPDATE_URL     "https://sourcemod.krus.dk/countdown/update.txt"
 #define REASON_LEN     256
 
 public Plugin myinfo =

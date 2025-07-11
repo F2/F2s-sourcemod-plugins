@@ -103,7 +103,7 @@ TODO:
 #include <f2stocks>
 #include <sdkhooks>
 #include <smlib>
-#include <kvizzle_newdecls>
+#include <kvizzle>
 #undef REQUIRE_PLUGIN
 #include <updater>
 

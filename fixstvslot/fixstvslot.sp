@@ -24,14 +24,14 @@ Release notes:
 #include <updater>
 
 #define PLUGIN_VERSION "2.0.1"
-#define UPDATE_URL     "http://sourcemod.krus.dk/fixstvslot/update.txt"
+#define UPDATE_URL     "https://sourcemod.krus.dk/fixstvslot/update.txt"
 public Plugin myinfo =
 {
 	name        = "Fix STV Slot",
 	author      = "F2",
 	description = "When STV is enabled, change the level so the bot joins.",
 	version     = PLUGIN_VERSION,
-	url         = "http://sourcemod.krus.dk/"
+	url         = "https://sourcemod.krus.dk/"
 };
 
 public void OnPluginStart() {

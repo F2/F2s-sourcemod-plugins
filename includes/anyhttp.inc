@@ -42,7 +42,7 @@ TODO:
     #define REQUIRE_EXTENSIONS
 #endif
 
-#include <kvizzle_newdecls>
+#include <kvizzle>
 #include <f2stocks>
 #include <anyhttp_file>
 #include <anyhttp_stringbuilder>
