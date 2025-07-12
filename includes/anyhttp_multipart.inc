@@ -22,7 +22,7 @@ typeset AnyHttp_Multipart_Result {
 enum struct AnyHttpMultipartData {
     KeyValues fields;
     AnyHttpStringBuilder sb;
-    AnyHttp_Multipart_Result callback;
+    Function callback;
     any metadata;
     bool success;
     
@@ -45,7 +45,7 @@ enum struct AnyHttpMultipartData {
         pack.Reset();
         this.fields = pack.ReadCell();
         this.sb.ReadFromDataPack(pack);
-        this.callback = view_as<AnyHttp_Multipart_Result>(pack.ReadFunction());
+        this.callback = pack.ReadFunction();
         this.metadata = pack.ReadCell();
         this.success = pack.ReadCell();
         this.currentField = pack.ReadCell();

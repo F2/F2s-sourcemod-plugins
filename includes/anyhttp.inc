@@ -48,8 +48,9 @@ TODO:
 #include <anyhttp_stringbuilder>
 #include <anyhttp_multipart>
 
-#define ANYHTTP_VERSION		     "3.0.0"
+#define ANYHTTP_VERSION		     "3.0.1"
 #define SimultaneousConnections  16
+#define USERAGENT                "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
 
 #pragma dynamic 5242880 // Make sure we can allocate enough space for uploading files. Here's 20MB.
 
@@ -246,11 +247,8 @@ enum struct AnyHttpClass {
         if (this.Extension == AnyHttpUnknown) {
             if (LibraryExists("SteamWorks")) {
                 this.Extension = UseSteamWorks;
-#if SOURCEMOD_V_MAJOR == 1 && SOURCEMOD_V_MINOR <= 10
             } else if (GetFeatureStatus(FeatureType_Native, "curl_easy_init") == FeatureStatus_Available) {
-                // Initializing cURL options doesn't work on SM 1.11 at the moment. /F2, 09/07/2022
                 this.Extension = UseCURL;
-#endif
             } else {
                 return false;
             }
@@ -359,11 +357,11 @@ static void CleanUpRequest(AnyHttpRequest request) {
     
     request.Initialized = false;
     if (request.ExtensionHandle != null) {
-        CloseHandle(request.ExtensionHandle);
+        delete request.ExtensionHandle;
         request.ExtensionHandle = null;
     }
     if (request.FileHandle != null) {
-        CloseHandle(request.FileHandle);
+        delete request.FileHandle;
         request.FileHandle = null;
     }
     if (request.Fields != null) {
@@ -418,7 +416,7 @@ static void GenerateUniqueFilename(char[] filename, int maxsize) {
 
 static bool SteamWorks_Get(const char[] url, AnyHttp_Result callback, any metadata = 0) {
     Handle handle = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, url);
-    
+
     AnyHttpRequest request = NewRequest();
     request.ExtensionHandle = handle;
     request.Callback = callback;
@@ -434,8 +432,10 @@ static bool SteamWorks_Get(const char[] url, AnyHttp_Result callback, any metada
 
 
 static AnyHttpRequest SteamWorks_CreatePostForm(const char[] url, any metadata = 0) {
+    Handle handle = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, url);
+
     AnyHttpRequest request = NewRequest();
-    request.ExtensionHandle = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, url);
+    request.ExtensionHandle = handle;
     request.MetaData = metadata;
     return request;
 }
@@ -514,7 +514,7 @@ static bool cURL_Get(const char[] url, AnyHttp_Result callback, any metadata = 0
         return false;
     if (!curl_easy_setopt_int_array(curl, CURL_Default_Opts, sizeof(CURL_Default_Opts))) {
         LogError("Couldn't set cURL options");
-        CloseHandle(curl);
+        delete curl;
         return false;
     }
 
@@ -544,6 +544,19 @@ static bool cURL_Get(const char[] url, AnyHttp_Result callback, any metadata = 0
         return false;
     }
 
+    Handle slist = curl_slist();
+    if (slist == null) {
+        CleanUpRequest(request);
+        return false;
+    }
+
+    // Some websites reject the request if the user agent is not normal
+    curl_slist_append(slist, USERAGENT);
+    if (!curl_easy_setopt_handle(curl, CURLOPT_HTTPHEADER, slist)) {
+        CleanUpRequest(request);
+        return false;
+    }
+
     curl_easy_perform_thread(curl, cURL_Done);
     return true;
 }
@@ -551,21 +564,34 @@ static bool cURL_Get(const char[] url, AnyHttp_Result callback, any metadata = 0
 
 
 static AnyHttpRequest cURL_CreatePostForm(const char[] url, any metadata = 0) {
-    Handle handle = curl_easy_init();
-    if (handle == null)
+    Handle curl = curl_easy_init();
+    if (curl == null)
         return InvalidRequest;
-    if (!curl_easy_setopt_int_array(handle, CURL_Default_Opts, sizeof(CURL_Default_Opts))) {
+    if (!curl_easy_setopt_int_array(curl, CURL_Default_Opts, sizeof(CURL_Default_Opts))) {
         LogError("Couldn't set cURL options");
-        CloseHandle(handle);
+        delete curl;
         return InvalidRequest;
     }
-    if (!curl_easy_setopt_string(handle, CURLOPT_URL, url)) {
-        CloseHandle(handle);
+    if (!curl_easy_setopt_string(curl, CURLOPT_URL, url)) {
+        delete curl;
+        return InvalidRequest;
+    }
+
+    Handle slist = curl_slist();
+    if (slist == null) {
+        delete curl;
+        return InvalidRequest;
+    }
+
+    // Some websites reject the request if the user agent is not normal
+    curl_slist_append(slist, USERAGENT);
+    if (!curl_easy_setopt_handle(curl, CURLOPT_HTTPHEADER, slist)) {
+        delete curl;
         return InvalidRequest;
     }
     
     AnyHttpRequest request = NewRequest();
-    request.ExtensionHandle = handle;
+    request.ExtensionHandle = curl;
     request.MetaData = metadata;
     
     return request;
@@ -641,14 +667,14 @@ static void cURL_Done(Handle hndl, CURLcode code) {
     if (code != CURLE_OK) {
         char error_buffer[256];
         curl_easy_strerror(code, error_buffer, sizeof(error_buffer));
-        CloseHandle(filehandle);
+        delete filehandle;
         request.FileHandle = null;
         
         LogError("cURL error: %s", error_buffer);
         
         success = false;
      } else {
-        CloseHandle(filehandle); // Must be closed so it is flushed.
+        delete filehandle; // Must be closed so it is flushed.
         request.FileHandle = null;
 
         curl_easy_getinfo_int(hndl, CURLINFO_RESPONSE_CODE, responseCode);
@@ -667,7 +693,7 @@ static void cURL_Done(Handle hndl, CURLcode code) {
         File fileHandle = OpenFile(filename, "r");
         if (fileHandle != null) { 
             ReadFileString(fileHandle, buffer, size + 1);
-            CloseHandle(fileHandle);
+            delete fileHandle;
         }
         
         Call_PushString(buffer);

@@ -1,4 +1,5 @@
 {
+  "editor.formatOnSave": false,
   "sourcepawn.formatterSettings": [
     "AlignAfterOpenBracket: Align",
     "AlignArrayOfStructures: Left",

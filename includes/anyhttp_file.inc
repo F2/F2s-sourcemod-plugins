@@ -15,7 +15,7 @@ typeset AnyHttp_CopyFile_Result {
 enum struct AnyHttpCopyFileData {
     File source;
     File target;
-    AnyHttp_CopyFile_Result callback;
+    Function callback;
     any metadata;
     bool success;
 
@@ -33,7 +33,7 @@ enum struct AnyHttpCopyFileData {
         pack.Reset();
         this.source = pack.ReadCell();
         this.target = pack.ReadCell();
-        this.callback = view_as<AnyHttp_CopyFile_Result>(pack.ReadFunction());
+        this.callback = pack.ReadFunction();
         this.metadata = pack.ReadCell();
         this.success = pack.ReadCell();
         delete pack;
