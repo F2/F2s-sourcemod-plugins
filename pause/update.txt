@@ -4,14 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"1.6.2"
+			"Latest"	"1.6.3"
 		}
 		
-		"Notes"	"Changes in 1.6.2:"
-		"Notes"	"- Added support for restoring player positions, angles, and velocities when unpausing - by Shigbeard"
-		"Notes"	"- Also saved and restored player health along side this, incase fall damage still applied - by Shigbeard"
-		"Notes"	"- Added support for restoring spy cloak after pause, much like how uber is restored - by Shigbeard"
-		"Notes"	"- Improved handling of map changes and reloading the plugin"
+		"Notes"	"Changes in 1.6.3:"
+		"Notes"	"- Updated code to be compatible with SourceMod 1.12"
 	}
 	
 	"Files"

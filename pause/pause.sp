@@ -42,9 +42,15 @@ Release notes:
   This is achieved by setting any spy's cloak meter to a very large number, effectively making it permanent.
 - Improved handling of map changes and reloading the plugin
 
+
+---- 1.6.3 (12/07/2025) ----
+- Updated code to be compatible with SourceMod 1.12
+
+
 */
 
 #pragma semicolon 1
+#pragma newdecls required
 
 #include <sourcemod>
 #include <morecolors>
@@ -54,9 +60,8 @@ Release notes:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#pragma newdecls required
 
-#define PLUGIN_VERSION "1.6.2"
+#define PLUGIN_VERSION "1.6.3"
 #define UPDATE_URL		"http://sourcemod.krus.dk/pause/update.txt"
 
 #define PAUSE_UNPAUSE_TIME 2.0
@@ -190,7 +195,7 @@ public void OnClientDisconnect_Post(int client) {
 	}
 }
 
-public Action Event_player_spawn(Event event, const char[] name, bool dontBroadcast) {
+public void Event_player_spawn(Event event, const char[] name, bool dontBroadcast) {
 	// While paused, if a player stands in spawn and changes class,
 	// this event is immediately fired. We reset the state so we do not restore
 	// the previous class's attributes.
