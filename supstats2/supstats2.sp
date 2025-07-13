@@ -1161,7 +1161,7 @@ float DistanceAboveGroundBox(int victim) {
 		LogError("trace error. victim %N(%d)", victim, victim);
 	}
 	
-	CloseHandle(trace);
+	delete trace;
 	return distance;
 }
 

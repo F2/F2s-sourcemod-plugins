@@ -40,7 +40,7 @@ public Plugin myinfo =
 	url         = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
-Handle g_hTimer              = INVALID_HANDLE;
+Handle g_hTimer              = null;
 char   g_sReason[REASON_LEN] = "";
 int    g_iTimeleft           = -1;
 ConVar g_hCvarReason;
@@ -106,7 +106,7 @@ public Action Command_say(int client, int args) {
 				} else {
 					g_iTimeleft = time;
 					strcopy(g_sReason, sizeof(g_sReason), reason);
-					if (g_hTimer != INVALID_HANDLE)
+					if (g_hTimer != null)
 						KillTimer(g_hTimer);
 					g_hTimer = CreateTimer(1.0, Timer_Countdown, INVALID_HANDLE, TIMER_REPEAT);
 					Timer_Countdown(g_hTimer);
@@ -116,7 +116,7 @@ public Action Command_say(int client, int args) {
 			return Plugin_Handled;
 		} else if (StrEqual(text, "!stopcountdown", false)) {
 			KillTimer(g_hTimer);
-			g_hTimer = INVALID_HANDLE;
+			g_hTimer = null;
 			PrintHintTextToAll("%s", " ");
 			PrintHintTextToAll("%s", "");
 			return Plugin_Handled;
@@ -139,7 +139,7 @@ public Action Timer_Countdown(Handle timer) {
 	//		StopSound(client, SNDCHAN_STATIC, "UI/hint.wav");
 
 	if (g_iTimeleft <= 0) {
-		g_hTimer = INVALID_HANDLE;
+		g_hTimer = null;
 		return Plugin_Stop;
 	}
 	g_iTimeleft--;

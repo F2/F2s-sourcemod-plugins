@@ -54,7 +54,7 @@ bool          g_bEnabled = false;
 
 float         g_fLastAngles[MAXPLAYERS + 1][3];
 float         g_fAfkTime[MAXPLAYERS + 1];
-Handle        g_hTimerCheck = INVALID_HANDLE;
+Handle        g_hTimerCheck = null;
 float         g_fLastCheck;
 bool          g_bIsAfk[MAXPLAYERS + 1];
 
@@ -230,9 +230,9 @@ void DisablePlugin() {
 	UnhookEvent("player_spawn", Event_player_spawn, EventHookMode_Post);
 	UnhookEvent("player_team", Event_player_team, EventHookMode_Post);
 
-	if (g_hTimerCheck != INVALID_HANDLE) {
+	if (g_hTimerCheck != null) {
 		KillTimer(g_hTimerCheck);
-		g_hTimerCheck = INVALID_HANDLE;
+		g_hTimerCheck = null;
 	}
 }
 

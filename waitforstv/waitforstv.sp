@@ -58,8 +58,8 @@ new Float:g_fMatchEndTime; // time when match ended
 new g_iStvCountdown = 0, g_iStvCountdownStartAmount;
 new String:g_sStvCountdownNextMap[128]; // which map to switch to after the countdown
 new bool:g_bMatchPlayed = false;
-new Handle:g_hCountdownTimer = INVALID_HANDLE;
-new Handle:g_cvarDelayMapChange = INVALID_HANDLE;
+new Handle:g_hCountdownTimer = null;
+new Handle:g_cvarDelayMapChange = null;
 
 
 public OnPluginStart() {
@@ -86,7 +86,7 @@ public OnLibraryAdded(const String:name[]) {
 public OnMapStart() {
 	Match_OnMapStart();
 	g_bMatchPlayed = false;
-	g_hCountdownTimer = INVALID_HANDLE;
+	g_hCountdownTimer = null;
 	g_iStvCountdown = 0;
 }
 
@@ -181,7 +181,7 @@ public Action:Cmd_Changelevel(args) {
 
 public Action:Cmd_StopChangelevel(args) {
 	KillTimer(g_hCountdownTimer);
-	g_hCountdownTimer = INVALID_HANDLE;
+	g_hCountdownTimer = null;
 	g_iStvCountdown = 0;
 	CPrintToChatAll2("{lightgreen}[Wait for STV] {default}Map change cancelled!");
 	

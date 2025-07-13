@@ -44,7 +44,7 @@ public Plugin:myinfo = {
 new bool:g_bHookActivated = false;
 
 new g_iAddScore[MAXPLAYERS+1]; // The old scores that are currently being added to the clients.
-new Handle:g_kvOldScores = INVALID_HANDLE; // Keys are steamids of players disconnected, and values are their old scores.
+new Handle:g_kvOldScores = null; // Keys are steamids of players disconnected, and values are their old scores.
 
 
 
@@ -66,7 +66,7 @@ public OnLibraryAdded(const String:name[]) {
 
 public OnPluginEnd() {
 	StopHook();
-	CloseHandle(g_kvOldScores);
+	delete g_kvOldScores;
 }
 
 
@@ -77,7 +77,7 @@ ResetOldScores() {
 	StopHook();
 	
 	// Clear the old scores
-	CloseHandle(g_kvOldScores);
+	delete g_kvOldScores;
 	g_kvOldScores = CreateKeyValues("OldScores");
 	
 	for (new client = 1; client <= MaxClients; client++)

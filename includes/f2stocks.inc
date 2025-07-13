@@ -356,7 +356,7 @@ stock int GetMaxHealth(int client) {
 		if (fnGetMaxHealth == null)
 			SetFailState("Failed to set up GetMaxHealth sdkcall");
 
-		CloseHandle(hConf);
+		delete hConf;
 	}
 
 	return SDKCall(fnGetMaxHealth, client);

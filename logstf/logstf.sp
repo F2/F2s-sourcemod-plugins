@@ -282,7 +282,7 @@ public void OnPluginEnd() {
 	char path[64];
 	GetLogPath(LOG_PATH, path, sizeof(path));
 	DeleteFile(path);
-	CloseHandle(g_hLogUploaded);
+	delete g_hLogUploaded;
 }
 
 // -----------------------------------
@@ -332,7 +332,7 @@ void StartMatch() {
 
 void ResetMatch() {
 	if (g_hTimerUploadPartialLog != null) {
-		CloseHandle(g_hTimerUploadPartialLog);
+		delete g_hTimerUploadPartialLog;
 		g_hTimerUploadPartialLog = null;
 	}
 
@@ -341,7 +341,7 @@ void ResetMatch() {
 
 void EndMatch(bool endedMidgame) {
 	if (g_hTimerUploadPartialLog != null) {
-		CloseHandle(g_hTimerUploadPartialLog);
+		delete g_hTimerUploadPartialLog;
 		g_hTimerUploadPartialLog = null;
 	}
 
@@ -587,7 +587,7 @@ public Action Timer_ShowStats(Handle timer, any client) {
 	KvSetString(Kv, "msg", lastLogURL);
 	KvSetNum(Kv, "customsvr", 1);
 	ShowVGUIPanel(client, "info", Kv);
-	CloseHandle(Kv);
+	delete Kv;
 
 	return Plugin_Stop;
 }
@@ -715,7 +715,7 @@ void UploadLog(bool partial) {
 
 		// Handle file = OpenFile(partialpath, "a");
 		// WriteFileString(file, buffer, false);
-		// CloseHandle(file);
+		// delete file;
 	}
 
 	if (!partial)
@@ -899,18 +899,18 @@ bool FindJsonValue(const char[] input, const char[] key, char[] value, int maxle
 	char regex_str[128];
 	Format(regex_str, sizeof(regex_str), "\"%s\"\\s*:\\s*(\"(.*?)\"|(.+?))\\s*[,}]", key);
 	Regex regex = CompileRegex(regex_str, PCRE_CASELESS);
-	if (regex == INVALID_HANDLE)
+	if (regex == null)
 		return false;
 	int matches = regex.Match(input);
 	if (matches < 3) {
-		CloseHandle(regex);
+		delete regex;
 		return false;
 	}
 	if (!GetRegexSubString(regex, matches == 4 ? 3 : 2, value, maxlen)) {
-		CloseHandle(regex);
+		delete regex;
 		return false;
 	}
-	CloseHandle(regex);
+	delete regex;
 
 	return true;
 }
