@@ -15,6 +15,10 @@ Release notes:
 - Support for new ready-up behaviour
 
 
+---- 1.1.2 (13/07/2025) ----
+- Updated code to be compatible with SourceMod 1.12
+
+
 TODO:
 - Automatic zipping of match*.dem files
 
@@ -22,6 +26,7 @@ TODO:
 */
 
 #pragma semicolon 1
+#pragma newdecls required
 
 #include <sourcemod>
 #include <morecolors>
@@ -31,31 +36,31 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.1.1"
-#define UPDATE_URL		"http://sourcemod.krus.dk/recordstv/update.txt"
+#define PLUGIN_VERSION "1.1.2"
+#define UPDATE_URL		"https://sourcemod.krus.dk/recordstv/update.txt"
 
 
-new String:g_sAutoRecordFormat[] = "auto-%Y%m%d-%H%M-%map";
-new Handle:g_cvarAutoRecord = INVALID_HANDLE;
+char g_sAutoRecordFormat[] = "auto-%Y%m%d-%H%M-%map";
+ConVar g_cvarAutoRecord = null;
 
-new Handle:g_hCvarRedTeamName = INVALID_HANDLE;
-new Handle:g_hCvarBlueTeamName = INVALID_HANDLE;
+ConVar g_hCvarRedTeamName = null;
+ConVar g_hCvarBlueTeamName = null;
 
-new Handle:g_cvarRecordPath = INVALID_HANDLE;
-new Handle:g_cvarFilename = INVALID_HANDLE;
+ConVar g_cvarRecordPath = null;
+ConVar g_cvarFilename = null;
 
 
-public Plugin:myinfo = {
+public Plugin myinfo = {
 	name = "Record SourceTV",
 	author = "F2",
 	description = "Records SourceTV during matches",
 	version = PLUGIN_VERSION,
-	url = "http://sourcemod.krus.dk/"
+	url = "https://sourcemod.krus.dk/"
 };
 
 
 
-public OnPluginStart() {
+public void OnPluginStart() {
 	// Set up auto updater
 	if (LibraryExists("updater"))
 		Updater_AddPlugin(UPDATE_URL);
@@ -73,13 +78,13 @@ public OnPluginStart() {
 	Match_OnPluginStart();
 }
 
-public OnLibraryAdded(const String:name[]) {
+public void OnLibraryAdded(const char[] name) {
 	// Set up auto updater
 	if (StrEqual(name, "updater"))
 		Updater_AddPlugin(UPDATE_URL);
 }
 
-public OnMapStart() {
+public void OnMapStart() {
 	Match_OnMapStart();
 }
 
@@ -88,7 +93,7 @@ public void OnMapEnd() {
 }
 
 
-public CvarChange_FileName(Handle:cvar, const String:oldVal[], const String:newVal[]) {
+public void CvarChange_FileName(ConVar cvar, const char[] oldVal, const char[] newVal) {
 	if (StrContains(newVal, "/") != -1 || StrContains(newVal, "\\") != -1) {
 		ReplyToCommand(0, "recordstv_filename must not contain forward slash or backslash.");
 		SetConVarString(g_cvarFilename, oldVal);
@@ -99,44 +104,44 @@ public CvarChange_FileName(Handle:cvar, const String:oldVal[], const String:newV
 // Match - start / end
 // -----------------------------------
 
-StartMatch() {
+void StartMatch() {
 	StartRecording();
 }
 
-ResetMatch() {
+void ResetMatch() {
 	StopRecording();
 }
 
-EndMatch(bool:endedMidgame) {
+void EndMatch(bool endedMidgame) {
 	StopRecording();
 }
 
 // -----------------------------------
 
 
-StartRecording() {
+void StartRecording() {
 	ServerCommand("tv_stoprecord");
 	
-	decl String:path[128];
+	char path[128];
 	GetConVarString(g_cvarRecordPath, path, sizeof(path));
 	
-	decl String:filename[128];
+	char filename[128];
 	GetConVarString(g_cvarFilename, filename, sizeof(filename));
 	RecordToFile(path, filename);
 }
 
-StopRecording() {
+void StopRecording() {
 	ServerCommand("tv_stoprecord");
 	if (GetConVarBool(g_cvarAutoRecord))
 		RecordToFile("", g_sAutoRecordFormat);
 }
 
-RecordToFile(const String:path[], const String:format[]) {
-	decl String:filename[256];
+void RecordToFile(const char[] path, const char[] format) {
+	char filename[256];
 	strcopy(filename, sizeof(filename), format);
 	
 	// Prepend the path to the filename
-	decl String:path2[128];
+	char path2[128];
 	strcopy(path2, sizeof(path2), path);
 	ReplaceString(path2, sizeof(path2), "\\", "/");
 	TrimString(path2);
@@ -151,12 +156,12 @@ RecordToFile(const String:path[], const String:format[]) {
 	ReplaceString(filename, sizeof(filename), "#", "%");
 	
 	// Replace %map with current map
-	decl String:map[128];
+	char map[128];
 	GetCurrentMap(map, sizeof(map));
 	ReplaceString(filename, sizeof(filename), "%map", map, false);
 	
 	// Replace %red and %blue with current team names
-	decl String:teamname[128];
+	char teamname[128];
 	GetConVarString(g_hCvarRedTeamName, teamname, sizeof(teamname));
 	CleanFilename(teamname);
 	ReplaceString(filename, sizeof(filename), "%red", teamname, false);
@@ -166,7 +171,7 @@ RecordToFile(const String:path[], const String:format[]) {
 	ReplaceString(filename, sizeof(filename), "%blu", teamname, false);
 	
 	// Replace time placeholders
-	decl String:filename2[256];
+	char filename2[256];
 	FormatTime(filename2, sizeof(filename2), filename);
 	
 	// Remove illegal path characters
@@ -174,13 +179,13 @@ RecordToFile(const String:path[], const String:format[]) {
 	
 	// Create the demo directory
 	if (filename2[0] != '\0') {
-		new slashPos = StrContains(filename2, "/");
+		int slashPos = StrContains(filename2, "/");
 		while (slashPos != -1) {
 			filename2[slashPos] = '\0';
 			CreateDirectory(filename2, FPERM_O_READ | FPERM_O_EXEC | FPERM_G_READ | FPERM_G_EXEC | FPERM_U_READ | FPERM_U_WRITE | FPERM_U_EXEC);
 			filename2[slashPos] = '/';
 			
-			new newSlashPos = StrContains(filename2[slashPos + 1], "/");
+			int newSlashPos = StrContains(filename2[slashPos + 1], "/");
 			if (newSlashPos == -1)
 				slashPos = -1;
 			else
@@ -192,10 +197,10 @@ RecordToFile(const String:path[], const String:format[]) {
 	ServerCommand("tv_record %s", filename2);
 }
 
-CleanFilename(String:filename[], bool:allowSlash = false) {
-	new srcpos = 0, destpos = 0;
+void CleanFilename(char[] filename, bool allowSlash = false) {
+	int srcpos = 0, destpos = 0;
 	while (filename[srcpos] != '\0') {
-		new c = filename[srcpos];
+		int c = filename[srcpos];
 		if (IsCharAlpha(c) || IsCharNumeric(c) || c == '-' || c == '_' || c == '.' || (allowSlash && c == '/')) {
 			filename[destpos] = c;
 			destpos++;
