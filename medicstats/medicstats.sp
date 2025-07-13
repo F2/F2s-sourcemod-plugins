@@ -108,7 +108,7 @@ enum struct MedicInfo {
     float MedicLastUberTime; // The GameTime of last uber
     float MedicLastDeath;    // The GameTime of last death
 
-    bool MedicHasHadAdvantage; // True if the medic has 100% uber and he got it significantly earlier than the opposing medic
+    bool MedicHasHadAdvantage; // True if the medic has 100% uber and they got it significantly earlier than the opposing medic
     float MedicCurrentBiggestAdvantage; // If MedicHasHadAdvantage is true, this value indicates how big the uber advantage was (in seconds)
 }
 
@@ -463,7 +463,7 @@ public Action Timer_CollectInfo(Handle timer) {
                 // Medic has not started building yet.
 
                 if (!(medic[team].MedicHasUber || medic[team].MedicIsUbering)) {
-                    // If the medic does not have the uber and is not ubering, he has now started building uber.
+                    // If the medic does not have the uber and is not ubering, they have now started building uber.
                     medic[team].MedicStartedBuildTime = gameTime;
                     LogEmptyUber(client);
                 }

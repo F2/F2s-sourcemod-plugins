@@ -2,7 +2,7 @@
 
 Features:
 
-- **Note:** Requires the [SteamWorks](http://users.alliedmods.net/~kyles/builds/SteamWorks/) ([mirror](https://github.com/hexa-core-eu/SteamWorks/releases)) extension, or the cURL extension.
+- **Note:** Requires the [SteamWorks](http://users.alliedmods.net/~kyles/builds/SteamWorks/) ([mirror](https://github.com/hexa-core-eu/SteamWorks/releases)) extension, or the [cURL extension](https://github.com/sapphonie/SM-neocurl-ext/releases).
 - Automatically uploads logs to [logs.tf](https://logs.tf)
 - You can see the logs in-game by typing `!logs` or `.ss`
 - Uploads logs after each round (the log will be updated on logs.tf after each round), so you can use `!logs`/`.ss` after each round

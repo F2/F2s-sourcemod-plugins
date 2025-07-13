@@ -2,7 +2,7 @@
 Release notes:
 
 ---- 1.0.0 (01/11/2013) ----
-- Restores a player's score when he reconnects
+- Restores a player's score when they reconnect
 - Stored scores are trashed on mapchange and when a new match starts
 
 

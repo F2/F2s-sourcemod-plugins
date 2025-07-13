@@ -304,7 +304,7 @@ public Action Timer_CheckAFK(Handle timer) {
 		g_fLastAngles[client][2] = angles[2];
 
 		if (justSpawned)
-			continue; // If the player has just spawned, then record his angles but don't detect if he has moved.
+			continue; // If the player has just spawned, then record their angles but don't detect if they have moved.
 
 		if (vecDist <= 1.0) {
 			g_fAfkTime[client] += span;

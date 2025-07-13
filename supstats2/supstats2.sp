@@ -219,7 +219,7 @@ public void OnPluginStart() {
 	g_tShotTypes.SetValue("tf_weapon_sniperrifle", SHOT_HITSCAN);
 	g_tShotTypes.SetValue("tf_weapon_revolver", SHOT_HITSCAN);
 	
-	g_hCvarEnableAccuracy = CreateConVar("supstats_accuracy", "1", "Enable accuracy");
+	g_hCvarEnableAccuracy = CreateConVar("supstats_accuracy", "1", "Enable accuracy logs");
 	HookConVarChange(g_hCvarEnableAccuracy, CvarChange_EnableAccuracy);
 	char cvarEnableAccuracy[16];
 	GetConVarString(g_hCvarEnableAccuracy, cvarEnableAccuracy, sizeof(cvarEnableAccuracy));
