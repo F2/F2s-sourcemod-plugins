@@ -46,7 +46,7 @@ $plugins = @("waitforstv", "medicstats", "supstats2", "logstf", "restorescore", 
 
 foreach ($p in $plugins) {
     Write-Host "Compiling $p..."
-    & $spcomp "$p.sp" "-i" (Join-Path ".." "includes") "-D" "$p"
+    & "$spcomp" "$p.sp" "-i" (Join-Path ".." "includes") "-D" "$p"
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Failed compilation of $p"
