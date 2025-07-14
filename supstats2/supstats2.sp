@@ -87,6 +87,10 @@ Release notes:
 - Prevent script execution timeout on startup
 
 
+---- 2.5.4 (14/07/2025) ----
+- Updated code to be compatible with SourceMod 1.12
+
+
 TODO:
 - Use GetGameTime() instead of GetEngineTime()?
 - Write comments in code :D
@@ -95,7 +99,7 @@ TODO:
 - Log Blackbox healing more precisely (perhaps use player_healonhit instead)
 */
 
-#pragma semicolon 1 // Force strict semicolon mode.
+#pragma semicolon 1
 #pragma newdecls required
 
 #include <sourcemod>
@@ -107,7 +111,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.5.3"
+#define PLUGIN_VERSION "2.5.4"
 #define UPDATE_URL		"https://sourcemod.krus.dk/supstats2/update.txt"
 
 #define NAMELEN 64

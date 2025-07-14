@@ -4,11 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.5.3"
+			"Latest"	"2.5.4"
 		}
 		
-		"Notes"	"Changes in 2.5.3:"
-		"Notes"	"- Prevent script execution timeout on startup"
+		"Notes"	"Changes in 2.5.4:"
+		"Notes"	"- Updated code to be compatible with SourceMod 1.12"
 	}
 	
 	"Files"
