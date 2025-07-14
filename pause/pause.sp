@@ -62,7 +62,7 @@ Release notes:
 
 
 #define PLUGIN_VERSION "1.6.3"
-#define UPDATE_URL		"http://sourcemod.krus.dk/pause/update.txt"
+#define UPDATE_URL		"https://sourcemod.krus.dk/pause/update.txt"
 
 #define PAUSE_UNPAUSE_TIME 2.0
 #define UNPAUSE_WAIT_TIME 5

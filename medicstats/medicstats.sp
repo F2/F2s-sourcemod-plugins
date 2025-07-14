@@ -79,7 +79,7 @@ Known Bugs:
 
 
 #define PLUGIN_VERSION "1.4.1"
-#define UPDATE_URL "http://sourcemod.krus.dk/medicstats/update.txt"
+#define UPDATE_URL "https://sourcemod.krus.dk/medicstats/update.txt"
 #define TIMER_TICK 0.15
 
 

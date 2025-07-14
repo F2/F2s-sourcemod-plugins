@@ -106,8 +106,6 @@ public void Event_player_activate(Event event, const char[] name, bool dontBroad
 	int client = GetClientOfUserId(userid);
 	if (!IsRealPlayer(client))
 		return;
-
-	SetEntProp(client, Prop_Data, "m_iFrags", 40);
 	
 	char steamid[64];
 	if (!GetClientAuthId(client, AuthId_Steam2, steamid, sizeof(steamid), false))
