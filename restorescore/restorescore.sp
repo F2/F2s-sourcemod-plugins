@@ -110,7 +110,8 @@ public void Event_player_activate(Event event, const char[] name, bool dontBroad
 	SetEntProp(client, Prop_Data, "m_iFrags", 40);
 	
 	char steamid[64];
-	GetClientAuthId(client, AuthId_Steam2, steamid, sizeof(steamid), false);
+	if (!GetClientAuthId(client, AuthId_Steam2, steamid, sizeof(steamid), false))
+		return;
 	KvRewind(g_kvOldScores);
 	if (KvJumpToKey(g_kvOldScores, steamid) == false)
 		return;
@@ -147,7 +148,8 @@ public void Event_player_disconnect(Event event, const char[] name, bool dontBro
 	if (score <= 0)
 		return;
 	char steamid[64];
-	GetClientAuthId(client, AuthId_Steam2, steamid, sizeof(steamid), false);
+	if (!GetClientAuthId(client, AuthId_Steam2, steamid, sizeof(steamid), false))
+		return;
 	
 	KvRewind(g_kvOldScores);
 	if (KvJumpToKey(g_kvOldScores, steamid, true) == false)
