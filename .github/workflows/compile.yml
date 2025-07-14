@@ -22,19 +22,6 @@ jobs:
         uses: rumblefrog/setup-sp@v1.2.4
         with:
           version: "1.12.x"
-      
-      - name: Check spcomp64 file type
-        run: file /opt/hostedtoolcache/sourcepawn/1.12.7210/x64/spcomp64
-      - name: Check spcomp64 permissions
-        run: ls -l /opt/hostedtoolcache/sourcepawn/1.12.7210/x64/spcomp64
-      - name: Check spcomp64 file type 2
-        run: file spcomp64
-      - name: Find spcomp64
-        run: |
-          pwsh Write-Host (Get-Command spcomp64).Source
-      - name: Try running spcomp64
-        run: |
-          pwsh & spcomp64
 
       - name: Prepare publish
         run: |

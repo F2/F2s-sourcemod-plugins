@@ -38,11 +38,15 @@ New-Item -ItemType directory -Path (Join-Path "dist" "source")
 New-Item -ItemType directory -Path (Join-Path "dist" "ftp")
 Copy-Item -Path "includes" -Destination (Join-Path "dist" "source") -Recurse
 
+# The github action (rumblefrog/setup-sp) will rename the executable to "spcomp64_original".
+# The "spcomp64" would then instead be a bash script, which we can't directly run from powershell.
+$spcomp = (Get-Command "spcomp64_original" -ErrorAction SilentlyContinue) ? "spcomp64_original" : "spcomp64"
+
 $plugins = @("waitforstv", "medicstats", "supstats2", "logstf", "restorescore", "countdown", "fixstvslot", "pause", "recordstv", "classwarning", "afk");
 
 foreach ($p in $plugins) {
     Write-Host "Compiling $p..."
-    & "spcomp64" "$p.sp" "-i" (Join-Path ".." "includes") "-D" "$p"
+    & $spcomp "$p.sp" "-i" (Join-Path ".." "includes") "-D" "$p"
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Failed compilation of $p"
