@@ -25,19 +25,21 @@ float g_fCapMultipliers[] = {
 	4.6290, 4.6463, 4.6632, 4.6799, 4.6963, 4.7124, 4.7283, 4.7439
 };
 
+
 char g_sClassNames[TFClassType][16] = {
 	"Unknown", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer"
 };
 
 stock void F2STOCKS_Dummy() {
 	g_fCapMultipliers[0] = 0.0; // To avoid getting a "not used" warning
-	g_sClassNames[0]     = "Unknown";
+	g_sClassNames[0] = "Unknown";
 }
 
-// Cached STV client id
-int        PrintToSTV_iLastStvClient;
 
-stock void PrintToSTV(const char[] format, any...) {
+
+
+int PrintToSTV_iLastStvClient; // Cached STV client id
+stock void PrintToSTV(const char[] format, any ...) {
 	int stv = FindSTV();
 	if (stv < 1)
 		return;
@@ -47,7 +49,7 @@ stock void PrintToSTV(const char[] format, any...) {
 	PrintToChat(stv, "%s", buffer);
 }
 
-stock void CPrintToSTV(const char[] format, any...) {
+stock void CPrintToSTV(const char[] format, any ...) {
 	int stv = FindSTV();
 	if (stv < 1)
 		return;
@@ -82,7 +84,7 @@ stock float TF2_GetPlayerUberLevel(int client, int &medigunEntity = -1) { // Thi
 		GetEntityNetClass(index, classname, sizeof(classname));
 		if (StrEqual(classname, "CWeaponMedigun")) {
 			medigunEntity = index;
-			float value   = GetEntPropFloat(index, Prop_Send, "m_flChargeLevel");
+			float value = GetEntPropFloat(index, Prop_Send, "m_flChargeLevel");
 			return value;
 		}
 	}
@@ -131,7 +133,7 @@ stock void F2_GetMedigunName(int client, char[] medigun, int medigunLen) {
 
 stock int TF2_GetHealingTarget(int client) {
 	char classname[64];
-	int  index = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+	int index = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 	if (index > 0) {
 		GetEntityNetClass(index, classname, sizeof(classname));
 
@@ -192,9 +194,10 @@ stock int GetRealPlayerCount() {
 	return c;
 }
 
+
 // As opposed to CPrintToChatEx, this function only colorizes message, NOT the parameters
 // Requires <morecolors>
-stock void CPrintToChatEx2(int client, int author, const char[] message, any...) {
+stock void CPrintToChatEx2(int client, int author, const char[] message, any ...) {
 	MC_CheckTrie();
 	if (client <= 0 || client > MaxClients) {
 		ThrowError("Invalid client index %i", client);
@@ -219,7 +222,7 @@ stock void CPrintToChatEx2(int client, int author, const char[] message, any...)
 
 // As opposed to CPrintToChatAllEx, this function only colorizes message, NOT the parameters
 // Requires <morecolors>
-stock void CPrintToChatAllEx2(int author, const char[] message, any...) {
+stock void CPrintToChatAllEx2(int author, const char[] message, any ...) {
 	MC_CheckTrie();
 	if (author <= 0 || author > MaxClients) {
 		ThrowError("Invalid client index %i", author);
@@ -244,7 +247,7 @@ stock void CPrintToChatAllEx2(int author, const char[] message, any...) {
 
 // As opposed to CPrintToChat, this function only colorizes message, NOT the parameters
 // Requires <morecolors>
-stock void CPrintToChat2(int client, const char[] message, any...) {
+stock void CPrintToChat2(int client, const char[] message, any ...) {
 	MC_CheckTrie();
 	if (client <= 0 || client > MaxClients) {
 		ThrowError("Invalid client index %i", client);
@@ -263,7 +266,7 @@ stock void CPrintToChat2(int client, const char[] message, any...) {
 
 // As opposed to CPrintToChatAll, this function only colorizes message, NOT the parameters
 // Requires <morecolors>
-stock void CPrintToChatAll2(const char[] message, any...) {
+stock void CPrintToChatAll2(const char[] message, any ...) {
 	MC_CheckTrie();
 	char buffer[MC_MAX_MESSAGE_LENGTH];
 	char buffer2[MC_MAX_MESSAGE_LENGTH];
@@ -279,6 +282,7 @@ stock void CPrintToChatAll2(const char[] message, any...) {
 		MC_SendMessage(i, buffer2);
 	}
 }
+
 
 stock void GetPlayerTeamStr(int team, char[] teamstr, int teamstrLen) {
 	switch (team) {
@@ -332,6 +336,7 @@ stock bool CopyFile(const char[] source, const char[] destination) {
 	return true;
 }
 
+
 stock void SetPlayerOutline(int client, bool enable) {
 	SetEntProp(client, Prop_Send, "m_bGlowEnabled", enable ? 1 : 0, 1);
 }
@@ -340,8 +345,10 @@ stock bool GetPlayerOutline(int client) {
 	return GetEntProp(client, Prop_Send, "m_bGlowEnabled", 1) != 0;
 }
 
+
+
 // Based on psychonic's post https://forums.alliedmods.net/showpost.php?p=1865459&postcount=3
-Handle    fnGetMaxHealth = null;
+Handle fnGetMaxHealth = null;
 stock int GetMaxHealth(int client) {
 	if (fnGetMaxHealth == null) {
 		Handle hConf = LoadGameConfigFile("sdkhooks.games");
@@ -377,7 +384,7 @@ stock bool F2_String_StartsWith(const char[] haystack, const char[] needle, bool
 
 stock bool F2_String_EndsWith(const char[] haystack, const char[] needle, bool caseSensitive = true) {
 	int haystackLen = strlen(haystack);
-	int needleLen   = strlen(needle);
+	int needleLen = strlen(needle);
 	if (needleLen > haystackLen)
 		return false;
 
@@ -390,7 +397,7 @@ stock bool F2_String_EndsWith(const char[] haystack, const char[] needle, bool c
 }
 
 stock void F2_GetFileName(char[] filename, int maxsize, const char[] filepath) {
-	int lastBackSlash    = FindCharInString(filepath, '\\', true);
+	int lastBackSlash = FindCharInString(filepath, '\\', true);
 	int lastForwardSlash = FindCharInString(filepath, '/', true);
 	if (lastBackSlash == -1 && lastForwardSlash == -1) {
 		strcopy(filename, maxsize, filepath);
@@ -407,7 +414,7 @@ stock bool SteamID_Equal(const char[] id1, const char[] id2) {
 	int steam2;
 
 	if (F2_String_StartsWith(id1, "STEAM_0:", false)) {
-		int a  = id1[8] == '1' ? 1 : 0;
+		int a = id1[8] == '1' ? 1 : 0;
 		steam1 = StringToInt(id1[10]);
 		if (steam1 == 0)
 			return false;
@@ -416,7 +423,7 @@ stock bool SteamID_Equal(const char[] id1, const char[] id2) {
 		if (StringToIntEx(id1[5], steam1) != strlen(id1) - 5 - 1)
 			return false;
 	} else {
-		int a  = id1[0] == '1' ? 1 : 0;
+		int a = id1[0] == '1' ? 1 : 0;
 		steam1 = StringToInt(id1[2]);
 		if (steam1 == 0)
 			return false;
@@ -424,7 +431,7 @@ stock bool SteamID_Equal(const char[] id1, const char[] id2) {
 	}
 
 	if (F2_String_StartsWith(id2, "STEAM_0:", false)) {
-		int a  = id2[8] == '1' ? 1 : 0;
+		int a = id2[8] == '1' ? 1 : 0;
 		steam2 = StringToInt(id2[10]);
 		if (steam2 == 0)
 			return false;
@@ -433,7 +440,7 @@ stock bool SteamID_Equal(const char[] id1, const char[] id2) {
 		if (StringToIntEx(id2[5], steam2) != strlen(id2) - 5 - 1)
 			return false;
 	} else {
-		int a  = id2[0] == '1' ? 1 : 0;
+		int a = id2[0] == '1' ? 1 : 0;
 		steam2 = StringToInt(id2[2]);
 		if (steam2 == 0)
 			return false;
@@ -497,6 +504,8 @@ stock int GetClientBySteamId(const char[] auth, AuthIdType idtype, bool validate
 	return -1;
 }
 
+
+
 stock void HtmlDecodeSpecialChars(char[] str, int maxlen) {
 	ReplaceString(str, maxlen, "&lt;", "<");
 	ReplaceString(str, maxlen, "&gt;", ">");
@@ -504,8 +513,8 @@ stock void HtmlDecodeSpecialChars(char[] str, int maxlen) {
 	ReplaceString(str, maxlen, "&amp;", "&");
 }
 
-enum MapType
-{
+
+enum MapType {
 	MapType_Unknown,
 	MapType_5CP,
 	MapType_TC,
@@ -538,7 +547,7 @@ stock MapType GetMapType() {
 	if (FindEntityByClassname(-1, "item_teamflag") != -1)
 		return MapType_CTF;
 
-	ent           = -1;
+	ent = -1;
 	int cartcount = 0;
 	while ((ent = FindEntityByClassname(ent, "mapobj_cart_dispenser")) != -1) {
 		cartcount++;
@@ -548,23 +557,23 @@ stock MapType GetMapType() {
 	else if (cartcount > 1)
 		return MapType_PayloadRace;
 
-	ent         = -1;
+	ent = -1;
 	int cpcount = 0;
 	while ((ent = FindEntityByClassname(ent, "team_control_point")) != -1) {
 		cpcount++;
 	}
 
-	ent            = -1;
+	ent = -1;
 	int roundcount = 0;
 	while ((ent = FindEntityByClassname(ent, "team_control_point_round")) != -1) {
 		roundcount++;
 	}
 
-	ent                  = -1;
-	bool switchonwin     = false;
+	ent = -1;
+	bool switchonwin = false;
 	bool scorepercapture = false;
 	if ((ent = FindEntityByClassname(ent, "team_control_point_master")) != -1) {
-		switchonwin     = GetEntProp(ent, Prop_Data, "m_bSwitchTeamsOnWin", 4) == 1;
+		switchonwin = GetEntProp(ent, Prop_Data, "m_bSwitchTeamsOnWin", 4) == 1;
 		scorepercapture = GetEntProp(ent, Prop_Data, "m_bScorePerCapture", 4) == 1;
 	}
 

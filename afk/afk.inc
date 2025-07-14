@@ -16,6 +16,6 @@ public void __pl_afk_SetNTVOptional()
 }
 #endif
 
-native bool IsPlayerAFK(client);
+native bool IsPlayerAFK(int client);
 
-forward OnAfkStateChanged(int client, bool afk);
+forward void OnAfkStateChanged(int client, bool afk);

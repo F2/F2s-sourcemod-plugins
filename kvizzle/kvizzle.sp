@@ -6,14 +6,17 @@
 
 #define PLUGIN_VERSION "1.0.1"
 
+
 public Plugin myinfo =
 {
-	name        = "Kvizzle",
-	author      = "F2",
+	name = "Kvizzle",
+	author = "F2",
 	description = "Test of kvizzle.inc",
-	version     = PLUGIN_VERSION,
-	url         = "https://sourcemod.krus.dk/"
+	version = PLUGIN_VERSION,
+	url = "https://sourcemod.krus.dk/"
 };
+
+
 
 public void OnPluginStart() {
 	RunUnitTest();
@@ -119,10 +122,10 @@ void UTSimplePseudoClasses(KeyValues kv) {
 void UTSimpleActions(KeyValues kv) {
 	PrintToServer("UTSimpleActions...");
 
-	int   value;
+	int value;
 	float fvalue;
-	char  strvalue[128];
-	char  path[128];
+	char strvalue[128];
+	char path[128];
 
 	path = "Simple.Section2.Subsection1:count";
 	if (!KvizGetNumExact(kv, value, path) || value != 3)
@@ -179,10 +182,10 @@ void UTSimpleDefaultValue(KeyValues kv) {
 void UTSimpleGetTypes(KeyValues kv) {
 	PrintToServer("UTSimpleGetTypes...");
 
-	char  path[128];
+	char path[128];
 	float vecvalue[3];
-	int   longlong[2];
-	int   r, g, b, a;
+	int longlong[2];
+	int r, g, b, a;
 
 	path = "Simple.Section3.Num1";
 	if (KvizGetNum(kv, 0, path) != 1)
@@ -197,8 +200,7 @@ void UTSimpleGetTypes(KeyValues kv) {
 		UTError(kv, "Error reading %s", path);
 
 	path = "Simple.Section3.Vector123";
-	if (!KvizGetVector(kv, vecvalue, { 0.0, 0.0, 0.0 }, path)
-		|| vecvalue[0] != 1.0 || vecvalue[1] != 2.0 || vecvalue[2] != 3.0)
+	if (!KvizGetVector(kv, vecvalue, { 0.0, 0.0, 0.0 }, path) || vecvalue[0] != 1.0 || vecvalue[1] != 2.0 || vecvalue[2] != 3.0)
 		UTError(kv, "Error reading %s", path);
 
 	path = "Simple.Section3.Color1234";
@@ -361,9 +363,9 @@ void UTDelete() {
 void UTContextSwitch() {
 	PrintToServer("UTContextSwitch...");
 
-	char      path[128] = "aa.bb.cc.dd.ee.ff.gg.hh.aa.bb.aa.bb.cc.dd.ee.ff.gg.hh.aa.bb.aa.bb.cc.dd.ee.ff.gg.hh.aa.bb.cc.dd"; // 32 depth
+	char path[128] = "aa.bb.cc.dd.ee.ff.gg.hh.aa.bb.aa.bb.cc.dd.ee.ff.gg.hh.aa.bb.aa.bb.cc.dd.ee.ff.gg.hh.aa.bb.cc.dd"; // 32 depth
 
-	KeyValues kv1       = KvizCreate("Test1");
+	KeyValues kv1 = KvizCreate("Test1");
 	KvizSetString(kv1, "test1", path);
 
 	KeyValues kv2 = KvizCreate("Test2");
@@ -456,7 +458,7 @@ void UTOtherStuff(KeyValues kv) {
 		UTError(kv, "Error reading %s (%s)", path, strvalue);
 }
 
-void UTError(KeyValues kv, const char[] text, any...) {
+void UTError(KeyValues kv, const char[] text, any ...) {
 	char buffer[256];
 	VFormat(buffer, sizeof(buffer), text, 3);
 	if (kv != null)

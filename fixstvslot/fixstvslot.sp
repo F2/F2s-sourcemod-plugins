@@ -25,14 +25,15 @@ Release notes:
 
 #define PLUGIN_VERSION "2.0.1"
 #define UPDATE_URL     "https://sourcemod.krus.dk/fixstvslot/update.txt"
-public Plugin myinfo =
-{
-	name        = "Fix STV Slot",
-	author      = "F2",
+
+public Plugin myinfo = {
+	name = "Fix STV Slot",
+	author = "F2",
 	description = "When STV is enabled, change the level so the bot joins.",
-	version     = PLUGIN_VERSION,
-	url         = "https://sourcemod.krus.dk/"
+	version = PLUGIN_VERSION,
+	url = "https://sourcemod.krus.dk/"
 };
+
 
 public void OnPluginStart() {
 	// Set up auto updater
@@ -60,7 +61,8 @@ public void OnSTVChanged(ConVar convar, char[] oldValue, char[] newValue) {
 		// stv was off
 		&& StrEqual(oldValue, "0")
 		// stv is now on
-		&& StrEqual(newValue, "1")) {
+		&& StrEqual(newValue, "1")
+	) {
 		LogMessage("[FixSTVSlot] tv_enable changed to 1! Changing level...");
 		PrintToChatAll("[FixSTVSlot] tv_enable changed to 1! Changing level...");
 

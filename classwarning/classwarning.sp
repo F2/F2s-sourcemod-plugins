@@ -33,22 +33,24 @@ Release notes:
 #include <updater>
 
 #define PLUGIN_VERSION "1.1.2"
-#define UPDATE_URL     "https://sourcemod.krus.dk/classwarning/update.txt"
-public Plugin myinfo =
-{
-	name        = "Class Warning",
-	author      = "F2",
+#define UPDATE_URL		"https://sourcemod.krus.dk/classwarning/update.txt"
+
+
+public Plugin myinfo = {
+	name = "Class Warning",
+	author = "F2",
 	description = "Warns players that are breaking the class limits",
-	version     = PLUGIN_VERSION,
-	url         = "https://github.com/F2/F2s-sourcemod-plugins"
+	version = PLUGIN_VERSION,
+	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
-int    g_iClassLimits[10];
+int g_iClassLimits[10];
 ConVar g_hCvarClassLimit[10];
 Handle g_hWarningTimer[MAXPLAYERS + 1];
-float  g_fLastPosition[MAXPLAYERS + 1][3];
+float g_fLastPosition[MAXPLAYERS + 1][3];
 ConVar g_hCvarAutoReset;
-bool   g_bEnabled = false;
+bool g_bEnabled = false;
+
 
 public void OnPluginStart() {
 	// Set up auto updater
@@ -62,7 +64,7 @@ public void OnPluginStart() {
 
 	g_hCvarAutoReset = CreateConVar("sm_tournament_classlimit_autoreset", "1", "If 1, sets all class warning limits to -1 upon map start.", FCVAR_NONE);
 
-	for (int class = 1; class <= 9; class ++) {
+	for (int class = 1; class <= 9; class++) {
 		char cvarName[64], cvarDesc[128];
 		Format(cvarName, sizeof(cvarName), "sm_tournament_classlimit_%s", g_sClassNames[class]);
 		String_ToLower(cvarName, cvarName, sizeof(cvarName));
@@ -169,7 +171,7 @@ public void OnMapEnd() {
 	Match_OnMapEnd();
 
 	if (g_hCvarAutoReset.BoolValue) {
-		for (int class = 1; class <= 9; class ++) {
+		for (int class = 1; class <= 9; class++) {
 			g_hCvarClassLimit[class].SetInt(-1);
 		}
 	}
@@ -218,7 +220,7 @@ void DisablePlugin() {
 }
 
 public void CvarChange_ClassLimit(ConVar cvar, const char[] oldVal, const char[] newVal) {
-	for (int class = 1; class <= 9; class ++) {
+	for (int class = 1; class <= 9; class++) {
 		if (g_hCvarClassLimit[class] == cvar) {
 			g_iClassLimits[class] = StringToInt(newVal);
 
@@ -283,8 +285,8 @@ public Action Timer_Warn(Handle timer, any client) {
 		return Plugin_Stop;
 	}
 
-	TFTeam team              = TF2_GetClientTeam(client);
-	int    currentClassCount = CountClass(team, class);
+	TFTeam team = TF2_GetClientTeam(client);
+	int currentClassCount = CountClass(team, class);
 
 	if (currentClassCount <= g_iClassLimits[view_as<int>(class)]) {
 		StopWarning(client);

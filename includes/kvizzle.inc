@@ -58,7 +58,7 @@ Public functions:
 
 
 
-TODO
+TODO:
 - Write more comments in the code ;)
 */
 
@@ -70,46 +70,31 @@ TODO
 #define KVIZZLE_VERSION     "1.1.0"
 
 // Customizable settings
-// Max number of simultaneously open Kvizzles. You can still use more, but the performance will degrade. However, if you set the number too high, then the performance will degrade when you have few Kvizzles opened simultaneously.
-const int Kviz_iMaxContexts = 4;
-// Max path depth... ie: aa.bb.cc.dd.ee(...).zz. Depth 32 equals 31 periods.
-const int Kviz_iMaxPathDepth = 32;
-// Max size of the traversal stack. The size of the traversal stack gets increased by 1 every time you call KvizJumpToKey, and decreased by 1 every time you call KvizGoBack. You can set it to 0 by calling KvizRewind.
-#define Kviz_iMaxTraversalStack 32
-// Max string length of a section in a Kv-file.
-const int Kviz_iMaxSectionLen = 128;
+const int Kviz_iMaxContexts = 4; // Max number of simultaneously open Kvizzles. You can still use more, but the performance will degrade. However, if you set the number too high, then the performance will degrade when you have few Kvizzles opened simultaneously.
+const int Kviz_iMaxPathDepth = 32; // Max path depth... ie: aa.bb.cc.dd.ee(...).zz. Depth 32 equals 31 periods.
+#define Kviz_iMaxTraversalStack 32 // Max size of the traversal stack. The size of the traversal stack gets increased by 1 every time you call KvizJumpToKey, and decreased by 1 every time you call KvizGoBack. You can set it to 0 by calling KvizRewind.
+const int Kviz_iMaxSectionLen = 128; // Max string length of a section in a Kv-file.
 // ---------------------
 
 
 
 const int KVIZ_ACTION_NONE = 0;
-// :first-child
-const int KVIZ_PSEUDO_FIRSTCHILD = 10;
-// :last-child
-const int KVIZ_PSEUDO_LASTCHILD = 11;
-// :nth-child
-const int KVIZ_PSEUDO_NTHCHILD = 12;
-// :any-child
-const int KVIZ_PSEUDO_ANYCHILD = 13;
-// :parent, :up
-const int KVIZ_PSEUDO_UP = 14;
+const int KVIZ_PSEUDO_FIRSTCHILD = 10; // :first-child
+const int KVIZ_PSEUDO_LASTCHILD = 11;  // :last-child
+const int KVIZ_PSEUDO_NTHCHILD = 12;   // :nth-child
+const int KVIZ_PSEUDO_ANYCHILD = 13;   // :any-child
+const int KVIZ_PSEUDO_UP = 14;         // :parent, :up
 
 const int KVIZ_CHECK_MIN = 20;
-// :has-value, :has-value(text)
-const int KVIZ_CHECK_HASVALUE = 21;
-// :has-value-ci, :has-value-ci(text)
-const int KVIZ_CHECK_HASVALUE_CI = 22;
+const int KVIZ_CHECK_HASVALUE = 21;    // :has-value, :has-value(text)
+const int KVIZ_CHECK_HASVALUE_CI = 22; // :has-value-ci, :has-value-ci(text)
 const KVIZ_CHECK_MAX = 29;
 
 const KVIZ_ACTION_MIN = 30;
-// :count
-const KVIZ_ACTION_COUNT = 31;
-// :section-name
-const KVIZ_ACTION_SECTIONNAME = 32;
-// :value
-const KVIZ_ACTION_VALUE = 33;
-// :value-or-section
-const KVIZ_ACTION_VALUEORSECTION = 34;
+const KVIZ_ACTION_COUNT = 31;          // :count
+const KVIZ_ACTION_SECTIONNAME = 32;    // :section-name
+const KVIZ_ACTION_VALUE = 33;          // :value
+const KVIZ_ACTION_VALUEORSECTION = 34; // :value-or-section
 
 
 enum struct KvizData {
@@ -309,8 +294,8 @@ stock bool KvizGetStringExact(KeyValues kv, char[] value, int valueLen, const ch
         switch (action) {
             case KVIZ_ACTION_NONE, KVIZ_ACTION_VALUE: {
                 if (kv.GetDataType(NULL_STRING) == KvData_None) {
-                    return false;
-                } // We are at a section: "xyz" { ... }
+                    return false; // We are at a section: "xyz" { ... }
+                }
                 kv.GetString(NULL_STRING, value, valueLen);
                 return true;
             }
@@ -376,12 +361,10 @@ stock bool KvizSetString(KeyValues kv, const char[] value, const char[] path, an
         if (action == KVIZ_ACTION_NONE || action == KVIZ_ACTION_VALUE) {
             kv.SetString(NULL_STRING, value);
             return true;
-        }
-        else if (action == KVIZ_ACTION_SECTIONNAME) {
+        } else if (action == KVIZ_ACTION_SECTIONNAME) {
             kv.SetSectionName(value);
             return true;
-        }
-        else {
+        } else {
             LogError("Kvizzle - KvizSetString does not support action %i (in %s)", action, path);
         }
     }
@@ -418,8 +401,8 @@ stock bool KvizGetNumExact(KeyValues kv, int &value, const char[] path, any ...)
         switch (action) {
             case KVIZ_ACTION_NONE, KVIZ_ACTION_VALUE: {
                 if (kv.GetDataType(NULL_STRING) == KvData_None) {
-                    return false;
-                } // We are at a section: "xyz" { ... }
+                    return false; // We are at a section: "xyz" { ... }
+                }
                 kv.GetString(NULL_STRING, strvalue, sizeof(strvalue));
                 if (StringToIntEx(strvalue, value) == strlen(strvalue)) {
                     return true;
@@ -496,14 +479,12 @@ stock bool KvizSetNum(KeyValues kv, int value, const char[] path, any ...) {
         if (action == KVIZ_ACTION_NONE || action == KVIZ_ACTION_VALUE) {
             kv.SetNum(NULL_STRING, value);
             return true;
-        }
-        else if (action == KVIZ_ACTION_SECTIONNAME) {
+        } else if (action == KVIZ_ACTION_SECTIONNAME) {
             char strvalue[64];
             IntToString(value, strvalue, sizeof(strvalue));
             kv.SetSectionName(strvalue);
             return true;
-        }
-        else {
+        } else {
             LogError("Kvizzle - KvizSetNum does not support action %i (in %s)", action, path);
         }
     }
@@ -539,8 +520,8 @@ stock bool KvizGetUInt64Exact(KeyValues kv, int value[2], const char[] path, any
         switch (action) {
             case KVIZ_ACTION_NONE, KVIZ_ACTION_VALUE: {
                 if (kv.GetDataType(NULL_STRING) == KvData_None) {
-                    return false;
-                } // We are at a section: "xyz" { ... }
+                    return false; // We are at a section: "xyz" { ... }
+                }
                 // It turns out, KvGetUInt64 doesn't use the default value, if the kv-value is malformatted. In that case it just returns {0, 0}.
                 kv.GetUInt64(NULL_STRING, value);
                 return true;
@@ -603,10 +584,9 @@ stock bool KvizSetUInt64(KeyValues kv, int value[2], const char[] path, any ...)
         if (action == KVIZ_ACTION_NONE || action == KVIZ_ACTION_VALUE) {
             kv.SetUInt64(NULL_STRING, value);
             return true;
-        }
-        else if (action == KVIZ_ACTION_SECTIONNAME)
+        } else if (action == KVIZ_ACTION_SECTIONNAME) {
             LogError("Kvizzle - KvizSetUInt64 does not support :section-name (in %s)", path);
-        else {
+        } else {
             LogError("Kvizzle - KvizSetUInt64 does not support action %i (in %s)", action, path);
         }
     }
@@ -645,8 +625,8 @@ stock bool KvizGetColorExact(KeyValues kv, int &r, int &g, int &b, int &a, const
         switch (action) {
             case KVIZ_ACTION_NONE, KVIZ_ACTION_VALUE: {
                 if (kv.GetDataType(NULL_STRING) == KvData_None) {
-                    return false;
-                } // We are at a section: "xyz" { ... }
+                    return false; // We are at a section: "xyz" { ... }
+                }
                 kv.GetColor(NULL_STRING, r, g, b, a);
                 return true;
             }
@@ -719,14 +699,12 @@ stock bool KvizSetColor(KeyValues kv, int r, int g, int b, int a, const char[] p
         if (action == KVIZ_ACTION_NONE || action == KVIZ_ACTION_VALUE) {
             kv.SetColor(NULL_STRING, r, g, b, a);
             return true;
-        }
-        else if (action == KVIZ_ACTION_SECTIONNAME) {
+        } else if (action == KVIZ_ACTION_SECTIONNAME) {
             char strvalue[64];
             FormatEx(strvalue, sizeof(strvalue), "%i %i %i %i", r, g, b, a);
             kv.SetSectionName(strvalue);
             return true;
-        }
-        else {
+        } else {
             LogError("Kvizzle - KvizSetColor does not support action %i (in %s)", action, path);
         }
     }
@@ -765,8 +743,8 @@ stock bool KvizGetFloatExact(KeyValues kv, float &value, const char[] path, any 
         switch (action) {
             case KVIZ_ACTION_NONE, KVIZ_ACTION_VALUE: {
                 if (kv.GetDataType(NULL_STRING) == KvData_None) {
-                    return false;
-                } // We are probably at a section: "xyz" { ... }
+                    return false; // We are probably at a section: "xyz" { ... }
+                }
                 kv.GetString(NULL_STRING, strvalue, sizeof(strvalue));
                 if (StringToFloatEx(strvalue, value) == strlen(strvalue)) {
                     return true;
@@ -834,14 +812,12 @@ stock bool KvizSetFloat(KeyValues kv, float value, const char[] path, any ...) {
         if (action == KVIZ_ACTION_NONE || action == KVIZ_ACTION_VALUE) {
             kv.SetFloat(NULL_STRING, value);
             return true;
-        }
-        else if (action == KVIZ_ACTION_SECTIONNAME) {
+        } else if (action == KVIZ_ACTION_SECTIONNAME) {
             char strvalue[64];
             FloatToString(value, strvalue, sizeof(strvalue));
             kv.SetSectionName(strvalue);
             return true;
-        }
-        else {
+        } else {
             LogError("Kvizzle - KvizSetFloat does not support action %i (in %s)", action, path);
         }
     }
@@ -879,8 +855,8 @@ stock bool KvizGetVectorExact(KeyValues kv, float value[3], const char[] path, a
         switch (action) {
             case KVIZ_ACTION_NONE, KVIZ_ACTION_VALUE: {
                 if (kv.GetDataType(NULL_STRING) == KvData_None) {
-                    return false;
-                } // We are at a section: "xyz" { ... }
+                    return false; // We are at a section: "xyz" { ... }
+                }
                 kv.GetString(NULL_STRING, strvalue, sizeof(strvalue));
                 if (KvizStringToVector(strvalue, value)) {
                     return true;
@@ -951,14 +927,12 @@ stock bool KvizSetVector(KeyValues kv, float vec[3], const char[] path, any ...)
         if (action == KVIZ_ACTION_NONE || action == KVIZ_ACTION_VALUE) {
             kv.SetVector(NULL_STRING, vec);
             return true;
-        }
-        else if (action == KVIZ_ACTION_SECTIONNAME) {
+        } else if (action == KVIZ_ACTION_SECTIONNAME) {
             char strvalue[Kviz_iMaxSectionLen];
             Format(strvalue, sizeof(strvalue), "%f %f %f", vec[0], vec[1], vec[2]);
             kv.SetSectionName(strvalue);
             return true;
-        }
-        else {
+        } else {
             LogError("Kvizzle - KvizSetVector does not support action %i (in %s)", action, path);
         }
     }
@@ -999,12 +973,10 @@ stock bool KvizDelete(KeyValues kv, const char[] path, any ...) {
         //Kviz_sPositionPathPseudoClass[Kviz_iCurrentContext][pathDepth][0] = '\0';
         //PrintToServer("section  %s", Kviz_sPositionPath[Kviz_iCurrentContext][pathDepth]);
         return true;
-    }
-    else if (ret == -1) {
+    } else if (ret == -1) {
         Kviz[Kviz_iCurrentContext].Kviz_iPositionPathCount--;
         return true;
-    }
-    else {
+    } else {
         return false;
     }
 }
@@ -1159,11 +1131,9 @@ stock bool KvizGoto(KeyValues kv, const char[] path, bool create, int &action, b
         }
         KvizRollBack(kv, rootDepth);
         return true;
-    }
-    else if (Kviz[Kviz_iCurrentContext].Kviz_iTraversalStackLen != 0) {
+    } else if (Kviz[Kviz_iCurrentContext].Kviz_iTraversalStackLen != 0) {
         return KvizGoto2(kv, path, create, action, jumpToValues, Kviz[Kviz_iCurrentContext].Kviz_iTraversalStack[Kviz[Kviz_iCurrentContext].Kviz_iTraversalStackLen - 1]);
-    }
-    else {
+    } else {
         return KvizGoto2(kv, path, create, action, jumpToValues, 0);
     }
 }
@@ -1176,13 +1146,11 @@ stock bool KvizGoto2(KeyValues kv, const char[] path, bool create, int &action, 
         if (path[endPos] == '\\') {
             if (path[endPos+1] == '\0') {
                 key[destPos++] = path[endPos++];
-            }
-            else {
+            } else {
                 endPos++;
                 key[destPos++] = path[endPos++];
             }
-        }
-        else {
+        } else {
             key[destPos++] = path[endPos++];
         }
     }
@@ -1209,16 +1177,13 @@ stock bool KvizGoto2(KeyValues kv, const char[] path, bool create, int &action, 
             if (key[i] == '(') {
                 pseudoClassHasParm = true;
                 key[i] = '\0';
-            }
-            else if (pseudoClassHasParm) {
+            } else if (pseudoClassHasParm) {
                 if (key[i] == ')') {
                     break;
-                }
-                else {
+                } else {
                     pseudoClassParms[pseudoClassParmsLen++] = key[i];
                 }
-            }
-            else {
+            } else {
                 pseudoClassTag[i] = key[i];
                 pseudoClassTagLen++;
             }
@@ -1249,15 +1214,11 @@ stock bool KvizGoto2(KeyValues kv, const char[] path, bool create, int &action, 
     bool alreadyInPosition = false;
     if (isAction) {
         alreadyInPosition = true;
-        // We are not going any deeper in this step.
-        depth--;
-    }
-    else if (isCheck) {
+        depth--; // We are not going any deeper in this step.
+    } else if (isCheck) {
         alreadyInPosition = true;
-        // We are not going any deeper in this step.
-        depth--;
-    }
-    else {
+        depth--; // We are not going any deeper in this step.
+    } else {
         if (isPseudoClass && pseudoClass == KVIZ_PSEUDO_UP) {
             int rootDepth = -1;
             int traversalStackLen = Kviz[Kviz_iCurrentContext].Kviz_iTraversalStackLen;
@@ -1270,16 +1231,14 @@ stock bool KvizGoto2(KeyValues kv, const char[] path, bool create, int &action, 
                 LogError("Kvizzle - :up used on root node (%s)", path);
                 depth = rootDepth;
             }
-        }
-        else if (depth < Kviz[Kviz_iCurrentContext].Kviz_iPositionPathCount) {
+        } else if (depth < Kviz[Kviz_iCurrentContext].Kviz_iPositionPathCount) {
             if (isPseudoClass) {
                 if (pseudoClass == KVIZ_PSEUDO_NTHCHILD && Kviz_sPositionPathNthChild[Kviz_iCurrentContext][depth] != 0) {
                     int currentChildNum = Kviz_sPositionPathNthChild[Kviz_iCurrentContext][depth];
                     int newChildNum = pseudoParmInt;
                     if (currentChildNum == newChildNum) {
                         alreadyInPosition = true;
-                    }
-                    else if (currentChildNum < newChildNum) {
+                    } else if (currentChildNum < newChildNum) {
                         KvizRollBack(kv, depth);
                         while (currentChildNum < newChildNum) {
                             if (!kv.GotoNextKey(!jumpToValues)) {
@@ -1296,23 +1255,18 @@ stock bool KvizGoto2(KeyValues kv, const char[] path, bool create, int &action, 
                         strcopy(Kviz_sPositionPathPseudoClass[Kviz_iCurrentContext][depth], sizeof(Kviz_sPositionPathPseudoClass[][]), key);
                         Kviz_sPositionPathNthChild[Kviz_iCurrentContext][depth] = currentChildNum;
                         alreadyInPosition = true;
-                    }
-                    else {
+                    } else {
                         KvizRollBack(kv, depth-1);
                     }
-                }
-                else if (pseudoClass != KVIZ_PSEUDO_ANYCHILD && StrEqual(Kviz_sPositionPathPseudoClass[Kviz_iCurrentContext][depth], key)) {
+                } else if (pseudoClass != KVIZ_PSEUDO_ANYCHILD && StrEqual(Kviz_sPositionPathPseudoClass[Kviz_iCurrentContext][depth], key)) {
                     alreadyInPosition = true;
-                }
-                else {
+                } else {
                     KvizRollBack(kv, depth-1);
                 }
-            }
-            else {
+            } else {
                 if (StrEqual(Kviz_sPositionPath[Kviz_iCurrentContext][depth], key)) {
                     alreadyInPosition = true;
-                }
-                else {
+                } else {
                     KvizRollBack(kv, depth-1);
                 }
             }
@@ -1396,8 +1350,7 @@ stock bool KvizGoto2(KeyValues kv, const char[] path, bool create, int &action, 
                 default:
                     KvizThrowError(kv, "Unknown pseudoClass (%s / %i) - Please contact F2", key, pseudoClass);
             }
-        }
-        else {
+        } else {
             //PrintToServer("JumpToKey: %s", key);
             if (!kv.JumpToKey(key, create)) {
                 return false;
@@ -1406,14 +1359,11 @@ stock bool KvizGoto2(KeyValues kv, const char[] path, bool create, int &action, 
             strcopy(Kviz_sPositionPath[Kviz_iCurrentContext][depth], sizeof(Kviz_sPositionPath[][]), key);
             Kviz_sPositionPathPseudoClass[Kviz_iCurrentContext][depth][0] = '\0';
             Kviz[Kviz_iCurrentContext].Kviz_iPositionPathCount++;
-            // We jumped directly to a subkey - we don't know which number child it is. Fixed 06/07/2015.
-            Kviz_sPositionPathNthChild[Kviz_iCurrentContext][depth] = 0;
+            Kviz_sPositionPathNthChild[Kviz_iCurrentContext][depth] = 0; // We jumped directly to a subkey - we don't know which number child it is. Fixed 06/07/2015.
         }
-    }
-    else if (isAction) {
+    } else if (isAction) {
         action = pseudoClass;
-    }
-    else if (isCheck) {
+    } else if (isCheck) {
         switch (pseudoClass) {
             case KVIZ_CHECK_HASVALUE, KVIZ_CHECK_HASVALUE_CI: {
                 if (kv.GetDataType(NULL_STRING) == KvData_None) {
@@ -1427,8 +1377,7 @@ stock bool KvizGoto2(KeyValues kv, const char[] path, bool create, int &action, 
                     if (!StrEqual(strvalue, pseudoClassParms, pseudoClass == KVIZ_CHECK_HASVALUE)) {
                         return false;
                     }
-                }
-                else {
+                } else {
                     // :has-value .. check that the node has a value (ie. it is not a section)
                     // --- we already did that above.
                 }
@@ -1439,15 +1388,13 @@ stock bool KvizGoto2(KeyValues kv, const char[] path, bool create, int &action, 
     }
 
     if (path[endPos] == '\0') {
-        // If we were in "A.B.C" before, and we are now navigating to "A.B", then make sure to remove "C" from the stack.
-        KvizRollBack(kv, depth);
+        KvizRollBack(kv, depth); // If we were in "A.B.C" before, and we are now navigating to "A.B", then make sure to remove "C" from the stack.
 
         if (action == KVIZ_ACTION_VALUEORSECTION) {
             KvDataTypes dataType = kv.GetDataType(NULL_STRING);
             if (dataType == KvData_None) {
                 action = KVIZ_ACTION_SECTIONNAME;
-            }
-            else {
+            } else {
                 action = KVIZ_ACTION_VALUE;
             }
         }
@@ -1455,8 +1402,8 @@ stock bool KvizGoto2(KeyValues kv, const char[] path, bool create, int &action, 
     }
 
     if (action != KVIZ_ACTION_NONE) {
-        return false;
-    } // You cannot use an action in the middle of a path
+        return false; // You cannot use an action in the middle of a path
+    }
 
     if (!KvizGoto2(kv, path[path[endPos] == ':' ? endPos : endPos+1], create, action, jumpToValues, depth + 1)) {
         return false;
@@ -1549,7 +1496,7 @@ stock bool KvizSwitchFromArchive(KeyValues kv) {
                 pathPos++;
             }
 
-            char kvizPos[Kviz_iMaxPathDepth*Kviz_iMaxSectionLen] = "";
+            char kvizPos[Kviz_iMaxPathDepth * Kviz_iMaxSectionLen] = "";
             if (pathPos > 0) {
                 // TODO: Can be optimized a lot, because StrCat is getting strlen all the time
                 pathPos--;
@@ -1625,8 +1572,7 @@ stock bool KvizRemoveContext(KeyValues kv) {
 
         if (Kviz_iCurrentContext == 0) {
             Kviz_iCurrentContext = Kviz_iMaxContexts - 1;
-        }
-        else {
+        } else {
             Kviz_iCurrentContext--;
         }
     }

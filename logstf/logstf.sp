@@ -146,36 +146,35 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.6.6"
-#define UPDATE_URL     "https://sourcemod.krus.dk/logstf/update.txt"
+#define PLUGIN_VERSION	"2.6.6"
+#define UPDATE_URL		"https://sourcemod.krus.dk/logstf/update.txt"
 
-#define LOG_PATH       "logstf.log"
-#define PLOG_PATH      "logstf-partial.log"
+#define LOG_PATH  "logstf.log"
+#define PLOG_PATH "logstf-partial.log"
 #define LOG_BUFFERSIZE 768 // I have seen log lines longer than 512
-#define LOG_FLUSHCNT   100
-#define LOG_BUFFERCNT  150
+#define LOG_FLUSHCNT 100
+#define LOG_BUFFERCNT 150
 
-public Plugin myinfo =
-{
-	name        = "Logs.TF Uploader",
-	author      = "F2",
+public Plugin myinfo = {
+	name = "Logs.TF Uploader",
+	author = "F2",
 	description = "Logs.TF log uploader",
-	version     = PLUGIN_VERSION,
-	url         = "https://github.com/F2/F2s-sourcemod-plugins"
+	version = PLUGIN_VERSION,
+	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
 #define TFMAXPLAYERS 33
 
-char   g_sPluginVersion[32];
-char   g_sDefaultTrigger[8]     = "!log";
-char   g_sClassNamesLower[][16] = { "undefined", "scout", "sniper", "soldier", "demoman", "medic", "heavyweapons", "pyro", "spy", "engineer" };
+char g_sPluginVersion[32];
+char g_sDefaultTrigger[8] = "!log";
+char g_sClassNamesLower[][16] = { "undefined", "scout", "sniper", "soldier", "demoman", "medic", "heavyweapons", "pyro", "spy", "engineer" };
 
-char   g_sLogBuffer[LOG_BUFFERCNT][LOG_BUFFERSIZE];
-int    g_iNextLogBuffer;
-bool   g_bLogReady;
-bool   g_bIsUploading;
-int    g_iUploadAttempt;
-int    g_iPlayersInMatch;
+char g_sLogBuffer[LOG_BUFFERCNT][LOG_BUFFERSIZE];
+int g_iNextLogBuffer;
+bool g_bLogReady;
+bool g_bIsUploading;
+int g_iUploadAttempt;
+int g_iPlayersInMatch;
 
 Handle g_hCvarHostname,
 	g_hCvarRedTeamName,
@@ -188,22 +187,22 @@ Handle g_hCvarHostname,
 	g_hCvarMidGameNotice,
 	g_hCvarSuppressChat;
 
-char          g_sLastLogURL[128];
-char          g_sCachedHostname[64];
-char          g_sCachedRedTeamName[32];
-char          g_sCachedBluTeamName[32];
-char          g_sCachedMap[32];
+char g_sLastLogURL[128];
+char g_sCachedHostname[64];
+char g_sCachedRedTeamName[32];
+char g_sCachedBluTeamName[32];
+char g_sCachedMap[32];
 GlobalForward g_hLogUploaded;  // public void LogUploaded(bool success, const char[] logid, const char[] url)
 GlobalForward g_hBlockLogLine; // public Action BlockLogLine(const char[] logline)
 
-bool          g_bIsPartialUpload;
-Handle        g_hTimerUploadPartialLog;
-char          g_sCurrentLogID[32];
-bool          g_bReuploadASAP;
-bool          g_bPartialUploadNotice[TFMAXPLAYERS + 1]; // true if the player should receive a Partial Upload notice upon death
-bool          g_bFirstPartialUploaded;
+bool g_bIsPartialUpload;
+Handle g_hTimerUploadPartialLog;
+char g_sCurrentLogID[32];
+bool g_bReuploadASAP;
+bool g_bPartialUploadNotice[TFMAXPLAYERS + 1]; // true if the player should receive a Partial Upload notice upon death
+bool g_bFirstPartialUploaded;
 
-bool          g_bDisableSS;
+bool g_bDisableSS;
 
 public void OnPluginStart() {
 	// Set up auto updater
@@ -225,18 +224,18 @@ public void OnPluginStart() {
 	RegConsoleCmd("say", Command_say);
 
 	// Remember handles to some cvars
-	g_hCvarHostname      = FindConVar("hostname");
-	g_hCvarRedTeamName   = FindConVar("mp_tournament_redteamname");
-	g_hCvarBlueTeamName  = FindConVar("mp_tournament_blueteamname");
-	g_hCvarLogsDir       = FindConVar("sv_logsdir");
+	g_hCvarHostname = FindConVar("hostname");
+	g_hCvarRedTeamName = FindConVar("mp_tournament_redteamname");
+	g_hCvarBlueTeamName = FindConVar("mp_tournament_blueteamname");
+	g_hCvarLogsDir = FindConVar("sv_logsdir");
 
 	// Create LogsTF cvars
-	g_hCvarApikey        = CreateConVar("logstf_apikey", "", "Your logs.tf API key", FCVAR_PROTECTED);
-	g_hCvarTitle         = CreateConVar("logstf_title", "{server}: {blu} vs {red}", "Title to use on logs.tf", FCVAR_NONE);
-	g_hCvarAutoUpload    = CreateConVar("logstf_autoupload", "2", "Set to 2 to upload logs from all matches. (default)\n - Set to 1 to upload logs from matches with at least 4 players.\n - Set to 0 to disable automatic upload. Admins can still upload logs by typing !ul", FCVAR_NONE);
+	g_hCvarApikey = CreateConVar("logstf_apikey", "", "Your logs.tf API key", FCVAR_PROTECTED);
+	g_hCvarTitle = CreateConVar("logstf_title", "{server}: {blu} vs {red}", "Title to use on logs.tf", FCVAR_NONE);
+	g_hCvarAutoUpload = CreateConVar("logstf_autoupload", "2", "Set to 2 to upload logs from all matches. (default)\n - Set to 1 to upload logs from matches with at least 4 players.\n - Set to 0 to disable automatic upload. Admins can still upload logs by typing !ul", FCVAR_NONE);
 	g_hCvarMidGameUpload = CreateConVar("logstf_midgameupload", "1", "Set to 0 to upload logs after the match has finished.\n - Set to 1 to upload the logs after each round.", FCVAR_NONE);
 	g_hCvarMidGameNotice = CreateConVar("logstf_midgamenotice", "1", "Set to 1 to notice players about midgame logs.\n - Set to 0 to disable it.", FCVAR_NONE);
-	g_hCvarSuppressChat  = CreateConVar("logstf_suppresschat", "0", "Set to 1 to hide '!log' chats.\n - Set to 0 to show '!log' chats.", FCVAR_NONE);
+	g_hCvarSuppressChat = CreateConVar("logstf_suppresschat", "0", "Set to 1 to hide '!log' chats.\n - Set to 0 to show '!log' chats.", FCVAR_NONE);
 
 	// Events
 	HookEvent("teamplay_round_win", Event_RoundEnd);
@@ -244,7 +243,7 @@ public void OnPluginStart() {
 	HookEvent("player_death", Event_PlayerDeath);
 
 	// Make it possible for other plugins to get notified when a log has been uploaded
-	g_hLogUploaded  = new GlobalForward("LogUploaded", ET_Ignore, Param_Cell, Param_String, Param_String);
+	g_hLogUploaded = new GlobalForward("LogUploaded", ET_Ignore, Param_Cell, Param_String, Param_String);
 
 	// Let other plugins block log lines
 	g_hBlockLogLine = new GlobalForward("BlockLogLine", ET_Event, Param_String);
@@ -285,13 +284,15 @@ public void OnPluginEnd() {
 	delete g_hLogUploaded;
 }
 
+
+
 // -----------------------------------
 // Match - start / end
 // -----------------------------------
 
 void StartMatch() {
 	FlushLog();
-	g_sLastLogURL     = ""; // Avoid people typing .ss towards the end of the match, only to show the old stats
+	g_sLastLogURL = ""; // Avoid people typing .ss towards the end of the match, only to show the old stats
 
 	g_iPlayersInMatch = 0;
 	for (int client = 1; client <= MaxClients; client++) {
@@ -316,13 +317,13 @@ void StartMatch() {
 	GetLogPath(LOG_PATH, path, sizeof(path));
 	File file = OpenFile(path, "w");
 	file.Close();
-	g_bLogReady             = false;
+	g_bLogReady = false;
 
 	// Set up Partial Upload
 	// It is too much of a performance hit to upload regularly. Only do it at the end of each round.
-	// g_hTimerUploadPartialLog = CreateTimer(120.0, Timer_UploadPartialLog, _, TIMER_FLAG_NO_MAPCHANGE | TIMER_REPEAT);
-	g_sCurrentLogID         = "";
-	g_bReuploadASAP         = false;
+	//g_hTimerUploadPartialLog = CreateTimer(120.0, Timer_UploadPartialLog, _, TIMER_FLAG_NO_MAPCHANGE | TIMER_REPEAT);
+	g_sCurrentLogID = "";
+	g_bReuploadASAP = false;
 	g_bFirstPartialUploaded = false;
 	Array_Fill(g_bPartialUploadNotice, sizeof(g_bPartialUploadNotice), false);
 
@@ -345,10 +346,10 @@ void EndMatch(bool endedMidgame) {
 		g_hTimerUploadPartialLog = null;
 	}
 
-	g_bLogReady      = true;
+	g_bLogReady = true;
 	g_iUploadAttempt = 1;
 
-	int autoupload   = GetConVarInt(g_hCvarAutoUpload);
+	int autoupload = GetConVarInt(g_hCvarAutoUpload);
 	if (autoupload == 1) {
 		if (g_iPlayersInMatch >= 4 && GetEngineTime() - g_fMatchStartTime >= 90) {
 			UploadLog(false);
@@ -400,6 +401,9 @@ void AnnounceLogReady() {
 
 // -----------------------------------
 
+
+
+
 // -----------------------------------
 // Partial Upload (Midgame Logs)
 // -----------------------------------
@@ -415,7 +419,7 @@ public Action Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 	if (!g_bInMatch)
 		return Plugin_Continue;
 
-	int  autoupload   = GetConVarInt(g_hCvarAutoUpload);
+	int autoupload = GetConVarInt(g_hCvarAutoUpload);
 	bool shouldUpload = (autoupload == 1 && g_iPlayersInMatch >= 4 && GetEngineTime() - g_fMatchStartTime >= 90) || (autoupload == 2);
 	if (!shouldUpload)
 		return Plugin_Continue;
@@ -438,6 +442,7 @@ public Action Timer_UploadPartialLog(Handle timer) {
 	UploadLog(true);
 	return Plugin_Continue;
 }
+
 
 public Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast) {
 	if (GetConVarInt(g_hCvarMidGameUpload) <= 0)
@@ -475,7 +480,6 @@ public Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadca
 // Handle user input
 // -----------------------------------
 float g_fSSTime[TFMAXPLAYERS + 1];
-
 public Action Command_say(int client, int args) {
 	if (client == 0)
 		return Plugin_Continue;
@@ -508,13 +512,14 @@ public Action Command_say(int client, int args) {
 		|| StrEqual(text, ".log", false)
 		|| StrEqual(text, "!log", false)
 		|| StrEqual(text, ".logs", false)
-		|| StrEqual(text, "!logs", false)) {
+		|| StrEqual(text, "!logs", false)
+	) {
 		if (strlen(g_sLastLogURL) != 0) {
 			// If the person has used .ss, don't show the Partial Upload notice
 			g_bPartialUploadNotice[client] = false;
 
 			// Check if the client has disable html motd.
-			g_fSSTime[client]              = GetTickedTime();
+			g_fSSTime[client] = GetTickedTime();
 			QueryClientConVar(client, "cl_disablehtmlmotd", QueryConVar_DisableHtmlMotd);
 		}
 
@@ -599,6 +604,7 @@ public Action Timer_ShowStats(Handle timer, any client) {
 // -----------------------------------
 // Save log lines to file
 // -----------------------------------
+
 public Action GameLog(const char[] message) {
 	if (CallBlockLogLine(message) == Plugin_Continue) // I benchmarked this on my computer. In a normal 30min match there can be up to 6,000 log lines. This function can be called 8,500,000,000 times during that time.
 		AddLogLine(message);
@@ -681,7 +687,7 @@ void UploadLog(bool partial) {
 
 	if (!partial)
 		g_bLogReady = false;
-	g_bIsUploading     = true;
+	g_bIsUploading = true;
 	g_bIsPartialUpload = partial;
 
 	char title[128];
@@ -708,14 +714,14 @@ void UploadLog(bool partial) {
 		}
 
 		// We should NOT add a Round_Stalemate just after a round has ended (logs.tf will not understand it)
-		// char buffer[128];
-		// char time[32];
-		// FormatTime(time, sizeof(time), "%m/%d/%Y - %H:%M:%S");
-		// FormatEx(buffer, sizeof(buffer), "\nL %s: %s\n", time, "World triggered \"Round_Stalemate\"");
+		//char buffer[128];
+		//char time[32];
+		//FormatTime(time, sizeof(time), "%m/%d/%Y - %H:%M:%S");
+		//FormatEx(buffer, sizeof(buffer), "\nL %s: %s\n", time, "World triggered \"Round_Stalemate\"");
 
-		// Handle file = OpenFile(partialpath, "a");
-		// WriteFileString(file, buffer, false);
-		// delete file;
+		//Handle file = OpenFile(partialpath, "a");
+		//WriteFileString(file, buffer, false);
+		//delete file;
 	}
 
 	if (!partial)
@@ -843,6 +849,11 @@ public Action RetryUploadLog(Handle timer, int client) {
 	return Plugin_Stop;
 }
 
+
+
+
+
+
 void CallLogUploaded(bool success, const char[] logid, const char[] url) {
 	Call_StartForward(g_hLogUploaded);
 
@@ -868,6 +879,7 @@ Action CallBlockLogLine(const char[] logline) {
 	return result;
 }
 
+
 void GetLogPath(const char[] file, char[] destpath, int destpathLen) {
 	char logsdir[64];
 	GetConVarString(g_hCvarLogsDir, logsdir, sizeof(logsdir));
@@ -880,6 +892,8 @@ void GetLogPath(const char[] file, char[] destpath, int destpathLen) {
 	else
 		Format(destpath, destpathLen, "%s/%s", logsdir, file);
 }
+
+
 
 // this is a very simpLe json "parser", that only works on vEry simple json strinGs (as the Ones sent by logs.tf).
 bool FindJsonValue(const char[] input, const char[] key, char[] value, int maxlen) {

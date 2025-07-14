@@ -27,22 +27,22 @@ Release notes:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "1.0.2"
-#define UPDATE_URL     "https://sourcemod.krus.dk/countdown/update.txt"
-#define REASON_LEN     256
+#define PLUGIN_VERSION 	"1.0.2"
+#define UPDATE_URL		"https://sourcemod.krus.dk/countdown/update.txt"
+#define REASON_LEN 		256
 
-public Plugin myinfo =
-{
-	name        = "Countdown",
-	author      = "F2",
+public Plugin myinfo = {
+	name = "Countdown",
+	author = "F2",
 	description = "Counts down with a custom text",
-	version     = PLUGIN_VERSION,
-	url         = "https://github.com/F2/F2s-sourcemod-plugins"
+	version = PLUGIN_VERSION,
+	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
-Handle g_hTimer              = null;
-char   g_sReason[REASON_LEN] = "";
-int    g_iTimeleft           = -1;
+
+Handle g_hTimer = null;
+char g_sReason[REASON_LEN] = "";
+int g_iTimeleft = -1;
 ConVar g_hCvarReason;
 
 public void OnPluginStart() {
@@ -88,7 +88,7 @@ public Action Command_say(int client, int args) {
 			char buffers[3][REASON_LEN];
 			ReplaceString(text, sizeof(text), "  ", " ");
 			int pieces = ExplodeString(text, " ", buffers, 3, REASON_LEN, true);
-			int time   = -1;
+			int time = -1;
 
 			if (pieces >= 2)
 				time = ParseDuration(buffers[1]);
@@ -110,7 +110,7 @@ public Action Command_say(int client, int args) {
 						KillTimer(g_hTimer);
 					g_hTimer = CreateTimer(1.0, Timer_Countdown, INVALID_HANDLE, TIMER_REPEAT);
 					Timer_Countdown(g_hTimer);
-					// EmitSoundToAll("UI/hint.wav", SOUND_FROM_PLAYER, SNDCHAN_STATIC);
+					//EmitSoundToAll("UI/hint.wav", SOUND_FROM_PLAYER, SNDCHAN_STATIC);
 				}
 			}
 			return Plugin_Handled;
@@ -134,7 +134,7 @@ public Action Timer_Countdown(Handle timer) {
 	strcopy(reason, sizeof(reason), g_sReason);
 	ReplaceString(reason, sizeof(reason), "%time", strtime, false);
 	PrintHintTextToAll("%s", reason);
-	// for (int client = 1; client <= MaxClients; client++)
+	//for (int client = 1; client <= MaxClients; client++)
 	//	if (IsRealPlayer(client))
 	//		StopSound(client, SNDCHAN_STATIC, "UI/hint.wav");
 
@@ -145,6 +145,8 @@ public Action Timer_Countdown(Handle timer) {
 	g_iTimeleft--;
 	return Plugin_Continue;
 }
+
+
 
 // Format duration in mins and secs.
 stock void DurationFormat(int seconds, char[] buffer, int size) {
@@ -160,7 +162,7 @@ stock void DurationFormat(int seconds, char[] buffer, int size) {
 // Parse a duration of this format: 7m15s
 stock int ParseDuration(const char[] text) {
 	int seconds = 0;
-	int len     = strlen(text);
+	int len = strlen(text);
 	if (len == 0)
 		return -1;
 

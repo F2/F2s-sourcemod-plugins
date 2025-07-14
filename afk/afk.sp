@@ -34,39 +34,39 @@ Release notes:
 #include <updater>
 
 #define PLUGIN_VERSION "1.1.2"
-#define UPDATE_URL     "https://sourcemod.krus.dk/afk/update.txt"
-public Plugin myinfo =
-{
-	name        = "AFK Detector",
-	author      = "F2",
+#define UPDATE_URL		"https://sourcemod.krus.dk/afk/update.txt"
+
+
+public Plugin myinfo = {
+	name = "AFK Detector",
+	author = "F2",
 	description = "Shows which players are AFK in warmup",
-	version     = PLUGIN_VERSION,
-	url         = "https://github.com/F2/F2s-sourcemod-plugins"
+	version = PLUGIN_VERSION,
+	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
-#define DEFANG0       -1.0
-#define DEFANG1       -1.0
-#define DEFANG2       -1.0
+#define DEFANG0 -1.0
+#define DEFANG1 -1.0
+#define DEFANG2 -1.0
 
 #define TIMERINTERVAL 0.5
 
-bool          g_bEnabled = false;
+bool g_bEnabled = false;
 
-float         g_fLastAngles[MAXPLAYERS + 1][3];
-float         g_fAfkTime[MAXPLAYERS + 1];
-Handle        g_hTimerCheck = null;
-float         g_fLastCheck;
-bool          g_bIsAfk[MAXPLAYERS + 1];
+float g_fLastAngles[MAXPLAYERS + 1][3];
+float g_fAfkTime[MAXPLAYERS + 1];
+Handle g_hTimerCheck = null;
+float g_fLastCheck;
+bool g_bIsAfk[MAXPLAYERS + 1];
 
-Handle        g_hHud[4];
+Handle g_hHud[4];
 
-ConVar        g_hCvarMaxAfkTime;
-ConVar        g_hCvarMinPlayers;
-float         g_fMaxAfkTime;
-int           g_iMinPlayers;
+ConVar g_hCvarMaxAfkTime;
+ConVar g_hCvarMinPlayers;
+float g_fMaxAfkTime;
+int g_iMinPlayers;
 
-// public void OnAfkStateChanged(int client, bool afk) {
-GlobalForward g_hOnAfkStateChanged;
+GlobalForward g_hOnAfkStateChanged; // public void OnAfkStateChanged(int client, bool afk) {
 
 public void OnPluginStart() {
 	// Set up auto updater
@@ -75,16 +75,16 @@ public void OnPluginStart() {
 
 	g_hOnAfkStateChanged = CreateGlobalForward("OnAfkStateChanged", ET_Ignore, Param_Cell, Param_Cell);
 
-	g_hCvarMaxAfkTime    = CreateConVar("afk_time", "20", "Number of seconds you can stand still before being marked as AFK.", FCVAR_NONE, true, 5.0);
-	g_fMaxAfkTime        = GetConVarFloat(g_hCvarMaxAfkTime);
+	g_hCvarMaxAfkTime = CreateConVar("afk_time", "20", "Number of seconds you can stand still before being marked as AFK.", FCVAR_NONE, true, 5.0);
+	g_fMaxAfkTime = GetConVarFloat(g_hCvarMaxAfkTime);
 	HookConVarChange(g_hCvarMaxAfkTime, CvarChange_MaxAfkTime);
 
 	g_hCvarMinPlayers = CreateConVar("afk_minplayers", "8", "Minimum number of players on the server before the plugin is active.", FCVAR_NONE);
-	g_iMinPlayers     = GetConVarInt(g_hCvarMinPlayers);
+	g_iMinPlayers = GetConVarInt(g_hCvarMinPlayers);
 	HookConVarChange(g_hCvarMinPlayers, CvarChange_MinPlayers);
 
 	g_hHud[TFTeam_Blue] = CreateHudSynchronizer();
-	g_hHud[TFTeam_Red]  = CreateHudSynchronizer();
+	g_hHud[TFTeam_Red] = CreateHudSynchronizer();
 
 	// Match.inc
 	Match_OnPluginStart();
@@ -119,7 +119,7 @@ public void OnMapStart() {
 
 	for (int client = 1; client <= MaxClients; client++) {
 		g_fAfkTime[client] = 0.0;
-		g_bIsAfk[client]   = false;
+		g_bIsAfk[client] = false;
 	}
 
 	g_fLastCheck = GetGameTime();
@@ -137,7 +137,7 @@ public void OnLibraryAdded(const char[] name) {
 
 public void OnClientPutInServer(int client) {
 	g_fAfkTime[client] = 0.0;
-	g_bIsAfk[client]   = false;
+	g_bIsAfk[client] = false;
 }
 
 public void CvarChange_MaxAfkTime(ConVar cvar, const char[] oldVal, const char[] newVal) {
@@ -202,7 +202,7 @@ void EnablePlugin() {
 
 	for (int client = 1; client <= MaxClients; client++) {
 		g_fAfkTime[client] = 0.0;
-		g_bIsAfk[client]   = false;
+		g_bIsAfk[client] = false;
 	}
 
 	HookEvent("player_spawn", Event_player_spawn, EventHookMode_Post);
@@ -237,8 +237,8 @@ void DisablePlugin() {
 }
 
 public void Event_player_spawn(Event event, const char[] name, bool dontBroadcast) {
-	int userid               = event.GetInt("userid");
-	int client               = GetClientOfUserId(userid);
+	int userid = event.GetInt("userid");
+	int client = GetClientOfUserId(userid);
 
 	g_fLastAngles[client][0] = DEFANG0;
 	g_fLastAngles[client][1] = DEFANG1;
@@ -248,29 +248,29 @@ public void Event_player_spawn(Event event, const char[] name, bool dontBroadcas
 }
 
 public void Event_player_team(Event event, const char[] name, bool dontBroadcast) {
-	int userid         = event.GetInt("userid");
-	int client         = GetClientOfUserId(userid);
+	int userid = event.GetInt("userid");
+	int client = GetClientOfUserId(userid);
 
 	g_fAfkTime[client] = 0.0;
-	g_bIsAfk[client]   = false;
+	g_bIsAfk[client] = false;
 
 	ClearSyncHud(client, g_hHud[TFTeam_Red]);
 	ClearSyncHud(client, g_hHud[TFTeam_Blue]);
 }
 
 public Action Timer_CheckAFK(Handle timer) {
-	float now    = GetGameTime();
-	float span   = now - g_fLastCheck;
+	float now = GetGameTime();
+	float span = now - g_fLastCheck;
 	g_fLastCheck = now;
 
-	bool   afkBefore[MAXPLAYERS + 1];
-	bool   relevantClient[MAXPLAYERS + 1];
+	bool afkBefore[MAXPLAYERS + 1];
+	bool relevantClient[MAXPLAYERS + 1];
 	TFTeam clientTeam[MAXPLAYERS + 1];
 
-	int    realPlayerCount = GetRealPlayerCount();
+	int realPlayerCount = GetRealPlayerCount();
 
 	for (int client = 1; client <= MaxClients; client++) {
-		afkBefore[client]      = g_bIsAfk[client];
+		afkBefore[client] = g_bIsAfk[client];
 		relevantClient[client] = false;
 
 		if (!IsRealPlayer(client) || IsFakeClient(client)) {
@@ -278,7 +278,7 @@ public Action Timer_CheckAFK(Handle timer) {
 			continue;
 		}
 
-		TFTeam team        = TF2_GetClientTeam(client);
+		TFTeam team = TF2_GetClientTeam(client);
 		clientTeam[client] = team;
 		if (team != TFTeam_Red && team != TFTeam_Blue) {
 			g_bIsAfk[client] = false;
@@ -296,8 +296,8 @@ public Action Timer_CheckAFK(Handle timer) {
 			continue; // Should never happen, but remain the same AFK state
 		}
 
-		float vecDist            = GetVectorDistance(angles, g_fLastAngles[client], true);
-		bool  justSpawned        = g_fLastAngles[client][0] == DEFANG0 && g_fLastAngles[client][1] == DEFANG1 && g_fLastAngles[client][2] == DEFANG2;
+		float vecDist = GetVectorDistance(angles, g_fLastAngles[client], true);
+		bool  justSpawned = g_fLastAngles[client][0] == DEFANG0 && g_fLastAngles[client][1] == DEFANG1 && g_fLastAngles[client][2] == DEFANG2;
 
 		g_fLastAngles[client][0] = angles[0];
 		g_fLastAngles[client][1] = angles[1];
@@ -312,7 +312,7 @@ public Action Timer_CheckAFK(Handle timer) {
 			g_fAfkTime[client] = 0.0;
 		}
 
-		int buttons      = GetClientButtons(client);
+		int buttons = GetClientButtons(client);
 		int buttonsCheck = IN_ATTACK | IN_JUMP | IN_FORWARD | IN_BACK | IN_MOVELEFT | IN_MOVERIGHT;
 		if ((buttons & buttonsCheck) != 0)
 			g_fAfkTime[client] = 0.0;
