@@ -355,7 +355,7 @@ public Action CheckPause(Handle timer, int client) {
 	return Plugin_Continue;
 }
 
-public Action Event_PlayerHealed(Handle event, const char[] name, bool dontBroadcast) {
+public Action Event_PlayerHealed(Event event, const char[] name, bool dontBroadcast) {
 	char patientName[NAMELEN];
 	char healerName[NAMELEN];
 	char patientSteamId[64];
@@ -432,11 +432,11 @@ char classNames[][] = {
 };
 
 
-//public void Event_PlayerHealOnHit(Handle event, const string name[], bool dontBroadcast) {
+//public void Event_PlayerHealOnHit(Event event, const string name[], bool dontBroadcast) {
 //	PrintToChatAll("heal on hit - amount(%i) client(%i)", GetEventInt(event, "amount"), GetEventInt(event, "entindex"));
 //}
 
-public void Event_PlayerSpawned(Handle event, const char[] name, bool dontBroadcast) {
+public void Event_PlayerSpawned(Event event, const char[] name, bool dontBroadcast) {
 	char playerName[NAMELEN];
 	char playerSteamID[64];
 	char playerTeam[64];
@@ -467,12 +467,12 @@ public void Event_PlayerSpawned(Handle event, const char[] name, bool dontBroadc
 
 
 // "%s<%i><%s><%s>" triggered "chargedeployed" (medigun "%s")
-public void EventPre_player_chargedeployed(Handle event, const char[] name, bool dontBroadcast) {
+public void EventPre_player_chargedeployed(Event event, const char[] name, bool dontBroadcast) {
 	g_bBlockLog = true;
 	strcopy(g_sBlockLog, sizeof(g_sBlockLog), "chargedeployed");
 }
 
-public void Event_player_chargedeployed(Handle event, const char[] name, bool dontBroadcast) {
+public void Event_player_chargedeployed(Event event, const char[] name, bool dontBroadcast) {
 	g_bBlockLog = false;
 	g_sBlockLog = "";
 	
@@ -510,7 +510,7 @@ void GetMedigunName(int client, char[] medigun, int medigunLen) {
 
 
 // Medkit pickup with healing
-public void Event_ItemPickup(Handle event, const char[] name, bool dontBroadcast) {
+public void Event_ItemPickup(Event event, const char[] name, bool dontBroadcast) {
 	char item[64];
 	GetEventString(event, "item", item, sizeof(item));
 	int userid = GetEventInt(event, "userid");
@@ -779,7 +779,7 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 	return Plugin_Continue;
 }
 
-public void Event_PlayerHurt(Handle event, const char[] name, bool dontBroadcast) {
+public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast) {
 	int victimid = GetEventInt(event, "userid");
 	int victim = GetClientOfUserId(victimid);
 	int attackerid = GetEventInt(event, "attacker");

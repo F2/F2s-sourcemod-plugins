@@ -65,7 +65,7 @@ ConVar        g_hCvarMinPlayers;
 float         g_fMaxAfkTime;
 int           g_iMinPlayers;
 
-// public OnAfkStateChanged(client, bool:afk) {
+// public void OnAfkStateChanged(int client, bool afk) {
 GlobalForward g_hOnAfkStateChanged;
 
 public void OnPluginStart() {

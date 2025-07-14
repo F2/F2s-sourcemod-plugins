@@ -227,7 +227,7 @@ public void CvarChange_ClassLimit(ConVar cvar, const char[] oldVal, const char[]
 	}
 }
 
-public void Event_player_spawn(Handle event, const char[] name, bool dontBroadcast) {
+public void Event_player_spawn(Event event, const char[] name, bool dontBroadcast) {
 	if (!g_bEnabled)
 		return;
 

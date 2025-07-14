@@ -403,7 +403,7 @@ void AnnounceLogReady() {
 // -----------------------------------
 // Partial Upload (Midgame Logs)
 // -----------------------------------
-public Action Event_RoundEnd(Handle event, const char[] name, bool dontBroadcast) {
+public Action Event_RoundEnd(Event event, const char[] name, bool dontBroadcast) {
 	if (GetConVarInt(g_hCvarMidGameUpload) <= 0)
 		return Plugin_Continue;
 
@@ -439,7 +439,7 @@ public Action Timer_UploadPartialLog(Handle timer) {
 	return Plugin_Continue;
 }
 
-public Action Event_PlayerDeath(Handle event, const char[] name, bool dontBroadcast) {
+public Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast) {
 	if (GetConVarInt(g_hCvarMidGameUpload) <= 0)
 		return Plugin_Continue;
 	if (!GetConVarBool(g_hCvarMidGameNotice)) // Is midgame notices disabled?

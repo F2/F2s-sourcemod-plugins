@@ -4,12 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"1.1.2"
+			"Latest"	"1.1.3"
 		}
 		
-		"Notes"	"Changes in 1.1.2:"
-		"Notes"	"- Fixed a minor error when the server is closing"
-		"Notes"	"- Fixed SteamIDs sometimes being wrong in the logs"
+		"Notes"	"Changes in 1.1.3:"
+		"Notes"	"- Updated code to be compatible with SourceMod 1.12"
 	}
 	
 	"Files"

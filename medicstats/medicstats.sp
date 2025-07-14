@@ -217,7 +217,7 @@ public void Cvar_LogBuffs(Handle cvar, const char[] oldValue, const char[] newVa
     Array_Fill(g_iBuffed, sizeof(g_iBuffed), 0);
 }
 
-public Action Event_player_connect(Handle event, const char[] name, bool dontBroadcast) {
+public Action Event_player_connect(Event event, const char[] name, bool dontBroadcast) {
     int userid = GetEventInt(event, "userid");
     int client = GetClientOfUserId(userid);
 
@@ -227,7 +227,7 @@ public Action Event_player_connect(Handle event, const char[] name, bool dontBro
     return Plugin_Continue;
 }
 
-public Action Event_player_spawn(Handle event, const char[] name, bool dontBroadcast) {
+public Action Event_player_spawn(Event event, const char[] name, bool dontBroadcast) {
     int userid = GetEventInt(event, "userid");
     int client = GetClientOfUserId(userid);
 
@@ -267,7 +267,7 @@ public Action Event_player_spawn(Handle event, const char[] name, bool dontBroad
     return Plugin_Continue;
 }
 
-public Action Event_player_death(Handle event, const char[] name, bool dontBroadcast) {
+public Action Event_player_death(Event event, const char[] name, bool dontBroadcast) {
     int userid = GetEventInt(event, "userid");
     int client = GetClientOfUserId(userid);
 
@@ -301,7 +301,7 @@ public Action Event_player_death(Handle event, const char[] name, bool dontBroad
     return Plugin_Continue;
 }
 
-public Action Event_player_chargedeployed(Handle event, const char[] name, bool dontBroadcast) {
+public Action Event_player_chargedeployed(Event event, const char[] name, bool dontBroadcast) {
     int userid = GetEventInt(event, "userid");
     int client = GetClientOfUserId(userid);
 
@@ -337,7 +337,7 @@ public Action Event_player_chargedeployed(Handle event, const char[] name, bool 
     return Plugin_Continue;
 }
 
-public Action Event_player_healed(Handle event, const char[] name, bool dontBroadcast) {
+public Action Event_player_healed(Event event, const char[] name, bool dontBroadcast) {
     int patientId = GetEventInt(event, "patient");
     int healerId = GetEventInt(event, "healer");
     int patient = GetClientOfUserId(patientId);
@@ -370,16 +370,16 @@ public Action Event_player_healed(Handle event, const char[] name, bool dontBroa
     return Plugin_Continue;
 }
 
-public void Event_round_win(Handle event, const char[] name, bool dontBroadcast) {
+public void Event_round_win(Event event, const char[] name, bool dontBroadcast) {
     IsBonusRoundTime = true;
 }
 
-public void Event_round_restart_seconds(Handle event, const char[] name, bool dontBroadcast) {
+public void Event_round_restart_seconds(Event event, const char[] name, bool dontBroadcast) {
     CountdownStarted = true;
     IsInMatch = false;
 }
 
-public void Event_teamplay_round_start(Handle event, const char[] name, bool dontBroadcast) {
+public void Event_teamplay_round_start(Event event, const char[] name, bool dontBroadcast) {
     if (CountdownStarted) {
         CountdownStarted = false;
 
@@ -395,7 +395,7 @@ public void Event_teamplay_round_start(Handle event, const char[] name, bool don
     LastRoundStart = GetGameTime();
 }
 
-public Action Event_game_over(Handle event, const char[] name, bool dontBroadcast) {
+public Action Event_game_over(Event event, const char[] name, bool dontBroadcast) {
     if (!IsInMatch)
         return Plugin_Continue;
 
