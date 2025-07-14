@@ -57,6 +57,10 @@ Release notes:
 - Internal updates - by Leigh MacDonald
 
 
+---- 1.4.2 (14/07/2025) ----
+- Updated code to be compatible with SourceMod 1.12
+
+
 
 TODO:
 - The log lines should include which medigun is wielded
@@ -78,7 +82,7 @@ Known Bugs:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.4.1"
+#define PLUGIN_VERSION "1.4.2"
 #define UPDATE_URL "https://sourcemod.krus.dk/medicstats/update.txt"
 #define TIMER_TICK 0.15
 
