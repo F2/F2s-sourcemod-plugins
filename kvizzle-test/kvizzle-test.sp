@@ -9,7 +9,7 @@
 
 public Plugin myinfo =
 {
-	name = "Kvizzle",
+	name = "Test: Kvizzle",
 	author = "F2",
 	description = "Test of kvizzle.inc",
 	version = PLUGIN_VERSION,
