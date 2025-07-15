@@ -96,7 +96,7 @@ public void OnMapEnd() {
 public void CvarChange_FileName(ConVar cvar, const char[] oldVal, const char[] newVal) {
 	if (StrContains(newVal, "/") != -1 || StrContains(newVal, "\\") != -1) {
 		ReplyToCommand(0, "recordstv_filename must not contain forward slash or backslash.");
-		SetConVarString(g_cvarFilename, oldVal);
+		g_cvarFilename.SetString(oldVal);
 	}
 }
 

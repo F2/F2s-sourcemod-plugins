@@ -73,7 +73,7 @@ public void OnPluginStart() {
 	
 	g_cvarDelayMapChange = FindConVar("tv_delaymapchange_protect");
 	HookConVarChange(g_cvarDelayMapChange, ConVar_DelayMapChange);
-	SetConVarInt(g_cvarDelayMapChange, 0);
+	g_cvarDelayMapChange.IntValue = 0;
 	
 	Match_OnPluginStart();
 	
@@ -119,7 +119,7 @@ public void ConVar_DelayMapChange(ConVar cvar, const char[] oldVal, const char[]
 	if (v == 0)
 		return;
 	
-	SetConVarInt(g_cvarDelayMapChange, 0);
+	g_cvarDelayMapChange.IntValue = 0;
 }
 
 public Action Cmd_Changelevel(int args) {

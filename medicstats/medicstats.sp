@@ -145,7 +145,7 @@ public void OnPluginStart() {
     ConVar tftrue_logs_includebuffs = FindConVar("tftrue_logs_includebuffs");
     if (tftrue_logs_includebuffs != null) {
         if (tftrue_logs_includebuffs.BoolValue)
-            SetConVarString(g_hCvarLogBuffs, "0");
+            g_hCvarLogBuffs.SetString("0");
     }
     char cvarLogBuffs[16];
     g_hCvarLogBuffs.GetString(cvarLogBuffs, sizeof(cvarLogBuffs));

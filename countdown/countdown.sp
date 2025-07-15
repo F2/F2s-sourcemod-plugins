@@ -62,7 +62,7 @@ public void OnLibraryAdded(const char[] name) {
 
 public void OnReasonChange(ConVar cvar, const char[] oldVal, const char[] newVal) {
 	if (StrContains(newVal, "%time", false) == -1 && StrContains(oldVal, "%time", false) != -1) {
-		SetConVarString(cvar, oldVal);
+		cvar.SetString(oldVal);
 	}
 }
 
