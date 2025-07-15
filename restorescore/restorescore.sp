@@ -102,7 +102,7 @@ public void OnMapStart() {
 
 // When a player connects, check if it is a returning player, and adjust his score accordingly.
 public void Event_player_activate(Event event, const char[] name, bool dontBroadcast) {
-	int userid = GetEventInt(event, "userid");
+	int userid = event.GetInt("userid");
 	int client = GetClientOfUserId(userid);
 	if (!IsRealPlayer(client))
 		return;
@@ -127,7 +127,7 @@ public void Event_player_activate(Event event, const char[] name, bool dontBroad
 
 // When a player disconnects, remember the score.
 public void Event_player_disconnect(Event event, const char[] name, bool dontBroadcast) {
-	int userid = GetEventInt(event, "userid");
+	int userid = event.GetInt("userid");
 	int client = GetClientOfUserId(userid);
 	
 	g_iAddScore[client] = 0;

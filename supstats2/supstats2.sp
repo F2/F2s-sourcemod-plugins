@@ -368,11 +368,11 @@ public Action Event_PlayerHealed(Event event, const char[] name, bool dontBroadc
 	char healerTeam[64];
 	char strAirshot[64] = "";
 
-	int patientId = GetEventInt(event, "patient");
-	int healerId = GetEventInt(event, "healer");
+	int patientId = event.GetInt("patient");
+	int healerId = event.GetInt("healer");
 	int patient = GetClientOfUserId(patientId);
 	int healer = GetClientOfUserId(healerId);
-	int amount = GetEventInt(event, "amount");
+	int amount = event.GetInt("amount");
 	
 	if (lastAirshot[healer]) {
 		Format(strAirshot, sizeof(strAirshot), " (airshot \"1\") (height \"%i\")", lastAirshotHeight[healer]);
@@ -437,7 +437,7 @@ char classNames[][] = {
 
 
 //public void Event_PlayerHealOnHit(Event event, const string name[], bool dontBroadcast) {
-//	PrintToChatAll("heal on hit - amount(%i) client(%i)", GetEventInt(event, "amount"), GetEventInt(event, "entindex"));
+//	PrintToChatAll("heal on hit - amount(%i) client(%i)", event.GetInt("amount"), event.GetInt("entindex"));
 //}
 
 public void Event_PlayerSpawned(Event event, const char[] name, bool dontBroadcast) {
@@ -445,9 +445,9 @@ public void Event_PlayerSpawned(Event event, const char[] name, bool dontBroadca
 	char playerSteamID[64];
 	char playerTeam[64];
 	
-	int userid = GetEventInt(event, "userid");
+	int userid = event.GetInt("userid");
 	int client = GetClientOfUserId(userid);
-	int clss = GetEventInt(event, "class");
+	int clss = event.GetInt("class");
 
 	if (!IsRealPlayer(client))
 		return; // eg. SourceTV
@@ -485,7 +485,7 @@ public void Event_player_chargedeployed(Event event, const char[] name, bool don
 	char playerTeam[16];
 	char medigun[64];
 	
-	int userid = GetEventInt(event, "userid");
+	int userid = event.GetInt("userid");
 	int client = GetClientOfUserId(userid);
 	GetClientName(client, playerName, sizeof(playerName));
 	GetClientAuthStringNew(client, playerAuth, sizeof(playerAuth), false);
@@ -516,8 +516,8 @@ void GetMedigunName(int client, char[] medigun, int medigunLen) {
 // Medkit pickup with healing
 public void Event_ItemPickup(Event event, const char[] name, bool dontBroadcast) {
 	char item[64];
-	GetEventString(event, "item", item, sizeof(item));
-	int userid = GetEventInt(event, "userid");
+	event.GetString("item", item, sizeof(item));
+	int userid = event.GetInt("userid");
 	int client = GetClientOfUserId(userid);
 	
 	if (strncmp(item, "medkit_", 7, true) == 0 && medpackHealAmount[client] != 0) {
@@ -784,14 +784,14 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 }
 
 public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast) {
-	int victimid = GetEventInt(event, "userid");
+	int victimid = event.GetInt("userid");
 	int victim = GetClientOfUserId(victimid);
-	int attackerid = GetEventInt(event, "attacker");
+	int attackerid = event.GetInt("attacker");
 	int attacker = GetClientOfUserId(attackerid);
-	int damage = GetEventInt(event, "damageamount");
+	int damage = event.GetInt("damageamount");
 	
-	bool crit = GetEventBool(event, "crit");
-	bool minicrit = GetEventBool(event, "minicrit");
+	bool crit = event.GetBool("crit");
+	bool minicrit = event.GetBool("minicrit");
 	
 	if (victim != attacker && attacker != 0) {
 		char attackerName[NAMELEN];

@@ -222,7 +222,7 @@ public void Cvar_LogBuffs(Handle cvar, const char[] oldValue, const char[] newVa
 }
 
 public Action Event_player_connect(Event event, const char[] name, bool dontBroadcast) {
-    int userid = GetEventInt(event, "userid");
+    int userid = event.GetInt("userid");
     int client = GetClientOfUserId(userid);
 
     // ==== Buffs ====
@@ -232,7 +232,7 @@ public Action Event_player_connect(Event event, const char[] name, bool dontBroa
 }
 
 public Action Event_player_spawn(Event event, const char[] name, bool dontBroadcast) {
-    int userid = GetEventInt(event, "userid");
+    int userid = event.GetInt("userid");
     int client = GetClientOfUserId(userid);
 
     // ==== Buffs ====
@@ -272,7 +272,7 @@ public Action Event_player_spawn(Event event, const char[] name, bool dontBroadc
 }
 
 public Action Event_player_death(Event event, const char[] name, bool dontBroadcast) {
-    int userid = GetEventInt(event, "userid");
+    int userid = event.GetInt("userid");
     int client = GetClientOfUserId(userid);
 
     // ==== Buffs ====
@@ -306,7 +306,7 @@ public Action Event_player_death(Event event, const char[] name, bool dontBroadc
 }
 
 public Action Event_player_chargedeployed(Event event, const char[] name, bool dontBroadcast) {
-    int userid = GetEventInt(event, "userid");
+    int userid = event.GetInt("userid");
     int client = GetClientOfUserId(userid);
 
     // ==== Medic stats ====
@@ -342,11 +342,11 @@ public Action Event_player_chargedeployed(Event event, const char[] name, bool d
 }
 
 public Action Event_player_healed(Event event, const char[] name, bool dontBroadcast) {
-    int patientId = GetEventInt(event, "patient");
-    int healerId = GetEventInt(event, "healer");
+    int patientId = event.GetInt("patient");
+    int healerId = event.GetInt("healer");
     int patient = GetClientOfUserId(patientId);
     int healer = GetClientOfUserId(healerId);
-    //int amount = GetEventInt(event, "amount");
+    //int amount = event.GetInt("amount");
     if (healer == 0) {
         // Caused by medpacks
         return Plugin_Continue;

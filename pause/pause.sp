@@ -200,7 +200,7 @@ public void Event_player_spawn(Event event, const char[] name, bool dontBroadcas
 	// this event is immediately fired. We reset the state so we do not restore
 	// the previous class's attributes.
 
-	int userid = GetEventInt(event, "userid");
+	int userid = event.GetInt("userid");
 	int client = GetClientOfUserId(userid);
 	
 	ResetState(client);

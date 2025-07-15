@@ -236,7 +236,7 @@ public void Event_player_spawn(Event event, const char[] name, bool dontBroadcas
 	if (GetEngineTime() - g_fMatchStartTime < 5.0)
 		return; // Don't report anything before the game starts
 
-	int userid = GetEventInt(event, "userid");
+	int userid = event.GetInt("userid");
 	int client = GetClientOfUserId(userid);
 
 	StartWarning(client);

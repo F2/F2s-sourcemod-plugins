@@ -456,7 +456,7 @@ public Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadca
 	if (!g_bFirstPartialUploaded) // Has there not been a partial upload yet?
 		return Plugin_Continue;
 
-	int userid = GetEventInt(event, "userid");
+	int userid = event.GetInt("userid");
 	int client = GetClientOfUserId(userid);
 
 	if (!g_bPartialUploadNotice[client]) // Does the user need to be notified? If not ...
