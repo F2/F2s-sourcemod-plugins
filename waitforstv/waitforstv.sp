@@ -193,7 +193,7 @@ public Action Cmd_StopChangelevel(int args) {
 	return Plugin_Continue;
 }
 
-public Action StvCountdownTrigger(Handle timer, any edict) {
+public Action StvCountdownTrigger(Handle timer) {
 	g_iStvCountdown--;
 	
 	if (g_iStvCountdown <= 0) {
