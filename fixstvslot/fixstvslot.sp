@@ -10,6 +10,7 @@ Release notes:
 
 ---- 2.0.1 (10/07/2025) ----
 - Updated code to be compatible with SourceMod 1.12
+- Only change map if the server is empty
 
 
 */
@@ -62,6 +63,8 @@ public void OnSTVChanged(ConVar convar, char[] oldValue, char[] newValue) {
 		&& StrEqual(oldValue, "0")
 		// stv is now on
 		&& StrEqual(newValue, "1")
+		// There are no players on the server
+		&& GetRealPlayerCount() == 0
 	) {
 		LogMessage("[FixSTVSlot] tv_enable changed to 1! Changing level...");
 		PrintToChatAll("[FixSTVSlot] tv_enable changed to 1! Changing level...");

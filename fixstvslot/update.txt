@@ -9,6 +9,7 @@
 		
 		"Notes"	"Changes in 2.0.1:"
 		"Notes"	"- Updated code to be compatible with SourceMod 1.12"
+		"Notes"	"- Only change map if the server is empty"
 	}
 	
 	"Files"
