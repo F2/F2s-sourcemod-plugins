@@ -132,7 +132,7 @@ public Action Cmd_Changelevel(int args) {
 		return Plugin_Continue;
 	
 	// If tv is disabled then just change the map
-	bool tvenabled = GetConVarBool(FindConVar("tv_enable"));
+	bool tvenabled = FindConVar("tv_enable").BoolValue;
 	if (tvenabled == false)
 		return Plugin_Continue;
 	
@@ -143,7 +143,7 @@ public Action Cmd_Changelevel(int args) {
 		return Plugin_Continue;
 	
 	// Retrieve the stvdelay
-	float stvdelayf = GetConVarFloat(FindConVar("tv_delay"));
+	float stvdelayf = FindConVar("tv_delay").FloatValue;
 	int stvdelay = RoundToCeil(stvdelayf);
 	if (stvdelay < 0)
 		stvdelay = 0;

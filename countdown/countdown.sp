@@ -97,7 +97,7 @@ public Action Command_say(int client, int args) {
 				MC_PrintToChat(client, "{red}%s", "Please specify a proper duration, for example: !countdown 2m");
 			} else {
 				char reason[REASON_LEN];
-				GetConVarString(g_hCvarReason, reason, sizeof(reason));
+				g_hCvarReason.GetString(reason, sizeof(reason));
 				if (pieces == 3)
 					strcopy(reason, sizeof(reason), buffers[2]);
 

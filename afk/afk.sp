@@ -76,11 +76,11 @@ public void OnPluginStart() {
 	g_hOnAfkStateChanged = CreateGlobalForward("OnAfkStateChanged", ET_Ignore, Param_Cell, Param_Cell);
 
 	g_hCvarMaxAfkTime = CreateConVar("afk_time", "20", "Number of seconds you can stand still before being marked as AFK.", FCVAR_NONE, true, 5.0);
-	g_fMaxAfkTime = GetConVarFloat(g_hCvarMaxAfkTime);
+	g_fMaxAfkTime = g_hCvarMaxAfkTime.FloatValue;
 	HookConVarChange(g_hCvarMaxAfkTime, CvarChange_MaxAfkTime);
 
 	g_hCvarMinPlayers = CreateConVar("afk_minplayers", "8", "Minimum number of players on the server before the plugin is active.", FCVAR_NONE);
-	g_iMinPlayers = GetConVarInt(g_hCvarMinPlayers);
+	g_iMinPlayers = g_hCvarMinPlayers.IntValue;
 	HookConVarChange(g_hCvarMinPlayers, CvarChange_MinPlayers);
 
 	g_hHud[TFTeam_Blue] = CreateHudSynchronizer();

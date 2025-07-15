@@ -123,16 +123,16 @@ void StartRecording() {
 	ServerCommand("tv_stoprecord");
 	
 	char path[128];
-	GetConVarString(g_cvarRecordPath, path, sizeof(path));
+	g_cvarRecordPath.GetString(path, sizeof(path));
 	
 	char filename[128];
-	GetConVarString(g_cvarFilename, filename, sizeof(filename));
+	g_cvarFilename.GetString(filename, sizeof(filename));
 	RecordToFile(path, filename);
 }
 
 void StopRecording() {
 	ServerCommand("tv_stoprecord");
-	if (GetConVarBool(g_cvarAutoRecord))
+	if (g_cvarAutoRecord.BoolValue)
 		RecordToFile("", g_sAutoRecordFormat);
 }
 
@@ -162,10 +162,10 @@ void RecordToFile(const char[] path, const char[] format) {
 	
 	// Replace %red and %blue with current team names
 	char teamname[128];
-	GetConVarString(g_hCvarRedTeamName, teamname, sizeof(teamname));
+	g_hCvarRedTeamName.GetString(teamname, sizeof(teamname));
 	CleanFilename(teamname);
 	ReplaceString(filename, sizeof(filename), "%red", teamname, false);
-	GetConVarString(g_hCvarBlueTeamName, teamname, sizeof(teamname));
+	g_hCvarBlueTeamName.GetString(teamname, sizeof(teamname));
 	CleanFilename(teamname);
 	ReplaceString(filename, sizeof(filename), "%blue", teamname, false);
 	ReplaceString(filename, sizeof(filename), "%blu", teamname, false);

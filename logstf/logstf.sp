@@ -176,7 +176,7 @@ bool g_bIsUploading;
 int g_iUploadAttempt;
 int g_iPlayersInMatch;
 
-Handle g_hCvarHostname,
+ConVar g_hCvarHostname,
 	g_hCvarRedTeamName,
 	g_hCvarBlueTeamName,
 	g_hCvarLogsDir,
@@ -349,7 +349,7 @@ void EndMatch(bool endedMidgame) {
 	g_bLogReady = true;
 	g_iUploadAttempt = 1;
 
-	int autoupload = GetConVarInt(g_hCvarAutoUpload);
+	int autoupload = g_hCvarAutoUpload.IntValue;
 	if (autoupload == 1) {
 		if (g_iPlayersInMatch >= 4 && GetEngineTime() - g_fMatchStartTime >= 90) {
 			UploadLog(false);
@@ -364,9 +364,9 @@ void EndMatch(bool endedMidgame) {
 }
 
 void CacheMatchValues() {
-	GetConVarString(g_hCvarHostname, g_sCachedHostname, sizeof(g_sCachedHostname));
-	GetConVarString(g_hCvarBlueTeamName, g_sCachedBluTeamName, sizeof(g_sCachedBluTeamName));
-	GetConVarString(g_hCvarRedTeamName, g_sCachedRedTeamName, sizeof(g_sCachedRedTeamName));
+	g_hCvarHostname.GetString(g_sCachedHostname, sizeof(g_sCachedHostname));
+	g_hCvarBlueTeamName.GetString(g_sCachedBluTeamName, sizeof(g_sCachedBluTeamName));
+	g_hCvarRedTeamName.GetString(g_sCachedRedTeamName, sizeof(g_sCachedRedTeamName));
 	String_Trim(g_sCachedHostname, g_sCachedHostname, sizeof(g_sCachedHostname));
 	String_Trim(g_sCachedBluTeamName, g_sCachedBluTeamName, sizeof(g_sCachedBluTeamName));
 	String_Trim(g_sCachedRedTeamName, g_sCachedRedTeamName, sizeof(g_sCachedRedTeamName));
@@ -408,7 +408,7 @@ void AnnounceLogReady() {
 // Partial Upload (Midgame Logs)
 // -----------------------------------
 public Action Event_RoundEnd(Event event, const char[] name, bool dontBroadcast) {
-	if (GetConVarInt(g_hCvarMidGameUpload) <= 0)
+	if (g_hCvarMidGameUpload.IntValue <= 0)
 		return Plugin_Continue;
 
 	// Don't upload if the map is about to end
@@ -419,7 +419,7 @@ public Action Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 	if (!g_bInMatch)
 		return Plugin_Continue;
 
-	int autoupload = GetConVarInt(g_hCvarAutoUpload);
+	int autoupload = g_hCvarAutoUpload.IntValue;
 	bool shouldUpload = (autoupload == 1 && g_iPlayersInMatch >= 4 && GetEngineTime() - g_fMatchStartTime >= 90) || (autoupload == 2);
 	if (!shouldUpload)
 		return Plugin_Continue;
@@ -445,9 +445,9 @@ public Action Timer_UploadPartialLog(Handle timer) {
 
 
 public Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast) {
-	if (GetConVarInt(g_hCvarMidGameUpload) <= 0)
+	if (g_hCvarMidGameUpload.IntValue <= 0)
 		return Plugin_Continue;
-	if (!GetConVarBool(g_hCvarMidGameNotice)) // Is midgame notices disabled?
+	if (!g_hCvarMidGameNotice.BoolValue) // Is midgame notices disabled?
 		return Plugin_Continue;
 	if (!g_bInMatch) // Partial Upload is only relevant during the match
 		return Plugin_Continue;
@@ -523,7 +523,7 @@ public Action Command_say(int client, int args) {
 			QueryClientConVar(client, "cl_disablehtmlmotd", QueryConVar_DisableHtmlMotd);
 		}
 
-		if (GetConVarBool(g_hCvarSuppressChat)) {
+		if (g_hCvarSuppressChat.BoolValue) {
 			return Plugin_Stop;
 		}
 	}
@@ -561,7 +561,7 @@ public Action BlockSay(int client, const char[] text, bool teamSay) {
 		return Plugin_Continue;
 	if (StrEqual(text, "!ul", false) && Client_IsAdmin(client))
 		return Plugin_Handled;
-	if (GetConVarBool(g_hCvarSuppressChat) && (
+	if (g_hCvarSuppressChat.BoolValue && (
 		(!g_bDisableSS && (StrEqual(text, ".ss", false) || StrEqual(text, "!ss", false)))
 		|| StrEqual(text, ".stats", false) 
 		|| StrEqual(text, "!stats", false) 
@@ -675,7 +675,7 @@ void UploadLog(bool partial) {
 	}
 
 	char apiKey[64];
-	GetConVarString(g_hCvarApikey, apiKey, sizeof(apiKey));
+	g_hCvarApikey.GetString(apiKey, sizeof(apiKey));
 	TrimString(apiKey);
 	if (strlen(apiKey) == 0) {
 		if (!partial)
@@ -691,7 +691,7 @@ void UploadLog(bool partial) {
 	g_bIsPartialUpload = partial;
 
 	char title[128];
-	GetConVarString(g_hCvarTitle, title, sizeof(title));
+	g_hCvarTitle.GetString(title, sizeof(title));
 	ReplaceString(title, sizeof(title), "{server}", g_sCachedHostname, false);
 	ReplaceString(title, sizeof(title), "{blu}", g_sCachedBluTeamName, false);
 	ReplaceString(title, sizeof(title), "{blue}", g_sCachedBluTeamName, false);
@@ -882,7 +882,7 @@ Action CallBlockLogLine(const char[] logline) {
 
 void GetLogPath(const char[] file, char[] destpath, int destpathLen) {
 	char logsdir[64];
-	GetConVarString(g_hCvarLogsDir, logsdir, sizeof(logsdir));
+	g_hCvarLogsDir.GetString(logsdir, sizeof(logsdir));
 	if (DirExists(logsdir) == false) {
 		// Setting use_valve_fs=true somehow allows it true create nested directories.
 		CreateDirectory(logsdir, FPERM_O_READ | FPERM_O_EXEC | FPERM_G_READ | FPERM_G_EXEC | FPERM_U_READ | FPERM_U_WRITE | FPERM_U_EXEC, true);

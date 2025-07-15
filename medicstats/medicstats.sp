@@ -144,11 +144,11 @@ public void OnPluginStart() {
     HookConVarChange(g_hCvarLogBuffs, Cvar_LogBuffs);
     ConVar tftrue_logs_includebuffs = FindConVar("tftrue_logs_includebuffs");
     if (tftrue_logs_includebuffs != null) {
-        if (GetConVarBool(tftrue_logs_includebuffs))
+        if (tftrue_logs_includebuffs.BoolValue)
             SetConVarString(g_hCvarLogBuffs, "0");
     }
     char cvarLogBuffs[16];
-    GetConVarString(g_hCvarLogBuffs, cvarLogBuffs, sizeof(cvarLogBuffs));
+    g_hCvarLogBuffs.GetString(cvarLogBuffs, sizeof(cvarLogBuffs));
     Cvar_LogBuffs(g_hCvarLogBuffs, "", cvarLogBuffs);
 
     HookEvent("player_connect", Event_player_connect, EventHookMode_Post);

@@ -226,7 +226,7 @@ public void OnPluginStart() {
 	g_hCvarEnableAccuracy = CreateConVar("supstats_accuracy", "1", "Enable accuracy logs");
 	HookConVarChange(g_hCvarEnableAccuracy, CvarChange_EnableAccuracy);
 	char cvarEnableAccuracy[16];
-	GetConVarString(g_hCvarEnableAccuracy, cvarEnableAccuracy, sizeof(cvarEnableAccuracy));
+	g_hCvarEnableAccuracy.GetString(cvarEnableAccuracy, sizeof(cvarEnableAccuracy));
 	CvarChange_EnableAccuracy(g_hCvarEnableAccuracy, cvarEnableAccuracy, cvarEnableAccuracy);
 	
 	char map[64];

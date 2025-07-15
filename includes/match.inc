@@ -234,7 +234,7 @@ public void Match_TournamentModeChanged(ConVar convar, const char[] oldValue, co
 
 
 stock bool IsTournamentEnabled() {
-	return GetConVarBool(match_hCvarTournament);
+	return match_hCvarTournament.BoolValue;
 }
 
 stock bool IsWinConditionMet(bool ish = true) {
@@ -242,17 +242,17 @@ stock bool IsWinConditionMet(bool ish = true) {
 	if (timeleft != -1 && timeleft <= (ish ? 10 : 0))
 		return true;
 	
-	int winlimit = GetConVarInt(match_hCvarWinlimit);
+	int winlimit = match_hCvarWinlimit.IntValue;
 	int blueScore = GetTeamScore(view_as<int>(TFTeam_Blue));
 	int redScore = GetTeamScore(view_as<int>(TFTeam_Red));
 	if (winlimit > 0 && ((winlimit - blueScore) <= 0 || (winlimit - redScore) <= 0)) // Win limit hit
 		return true;
 	
-	int windiff = GetConVarInt(match_hCvarWindiff);
+	int windiff = match_hCvarWindiff.IntValue;
 	if (windiff > 0 && (windiff - Math_Abs(redScore - blueScore)) <= 0) // Win difference limit hit
 		return true;
 	
-	int maxrounds = GetConVarInt(match_hCvarMaxRounds);
+	int maxrounds = match_hCvarMaxRounds.IntValue;
 	if (maxrounds > 0 && (maxrounds - g_iRoundsPlayed) <= 0) // Max rounds hit
 		return true;
 	
@@ -285,9 +285,9 @@ void Match_ResetMatch() {
 	
 	bool wasReset = true;
 	int timeleft = GetTimeLeft();
-	int winlimit = GetConVarInt(match_hCvarWinlimit);
-	int windiff = GetConVarInt(match_hCvarWindiff);
-	int maxrounds = GetConVarInt(match_hCvarMaxRounds);
+	int winlimit = match_hCvarWinlimit.IntValue;
+	int windiff = match_hCvarWindiff.IntValue;
+	int maxrounds = match_hCvarMaxRounds.IntValue;
 	int blueScore = GetTeamScore(view_as<int>(TFTeam_Blue));
 	int redScore = GetTeamScore(view_as<int>(TFTeam_Red));
 	
@@ -330,7 +330,7 @@ stock int GetTimeLeft() {
 	if (!g_bInMatch || !g_bFirstRoundStarted)
 		return -1;
 	
-	int timelimit = GetConVarInt(match_hCvarTimelimit);
+	int timelimit = match_hCvarTimelimit.IntValue;
 	if (timelimit <= 0)
 		return -1;
 	
