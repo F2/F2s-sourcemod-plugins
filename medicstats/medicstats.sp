@@ -57,6 +57,10 @@ Release notes:
 - Internal updates - by Leigh MacDonald
 
 
+---- 1.4.2 (14/07/2025) ----
+- Updated code to be compatible with SourceMod 1.12
+
+
 
 TODO:
 - The log lines should include which medigun is wielded
@@ -78,8 +82,8 @@ Known Bugs:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.4.1"
-#define UPDATE_URL "http://sourcemod.krus.dk/medicstats/update.txt"
+#define PLUGIN_VERSION "1.4.2"
+#define UPDATE_URL "https://sourcemod.krus.dk/medicstats/update.txt"
 #define TIMER_TICK 0.15
 
 
@@ -108,7 +112,7 @@ enum struct MedicInfo {
     float MedicLastUberTime; // The GameTime of last uber
     float MedicLastDeath;    // The GameTime of last death
 
-    bool MedicHasHadAdvantage; // True if the medic has 100% uber and he got it significantly earlier than the opposing medic
+    bool MedicHasHadAdvantage; // True if the medic has 100% uber and they got it significantly earlier than the opposing medic
     float MedicCurrentBiggestAdvantage; // If MedicHasHadAdvantage is true, this value indicates how big the uber advantage was (in seconds)
 }
 
@@ -140,11 +144,11 @@ public void OnPluginStart() {
     HookConVarChange(g_hCvarLogBuffs, Cvar_LogBuffs);
     ConVar tftrue_logs_includebuffs = FindConVar("tftrue_logs_includebuffs");
     if (tftrue_logs_includebuffs != null) {
-        if (GetConVarBool(tftrue_logs_includebuffs))
-            SetConVarString(g_hCvarLogBuffs, "0");
+        if (tftrue_logs_includebuffs.BoolValue)
+            g_hCvarLogBuffs.SetString("0");
     }
     char cvarLogBuffs[16];
-    GetConVarString(g_hCvarLogBuffs, cvarLogBuffs, sizeof(cvarLogBuffs));
+    g_hCvarLogBuffs.GetString(cvarLogBuffs, sizeof(cvarLogBuffs));
     Cvar_LogBuffs(g_hCvarLogBuffs, "", cvarLogBuffs);
 
     HookEvent("player_connect", Event_player_connect, EventHookMode_Post);
@@ -217,8 +221,8 @@ public void Cvar_LogBuffs(Handle cvar, const char[] oldValue, const char[] newVa
     Array_Fill(g_iBuffed, sizeof(g_iBuffed), 0);
 }
 
-public Action Event_player_connect(Handle event, const char[] name, bool dontBroadcast) {
-    int userid = GetEventInt(event, "userid");
+public Action Event_player_connect(Event event, const char[] name, bool dontBroadcast) {
+    int userid = event.GetInt("userid");
     int client = GetClientOfUserId(userid);
 
     // ==== Buffs ====
@@ -227,8 +231,8 @@ public Action Event_player_connect(Handle event, const char[] name, bool dontBro
     return Plugin_Continue;
 }
 
-public Action Event_player_spawn(Handle event, const char[] name, bool dontBroadcast) {
-    int userid = GetEventInt(event, "userid");
+public Action Event_player_spawn(Event event, const char[] name, bool dontBroadcast) {
+    int userid = event.GetInt("userid");
     int client = GetClientOfUserId(userid);
 
     // ==== Buffs ====
@@ -267,8 +271,8 @@ public Action Event_player_spawn(Handle event, const char[] name, bool dontBroad
     return Plugin_Continue;
 }
 
-public Action Event_player_death(Handle event, const char[] name, bool dontBroadcast) {
-    int userid = GetEventInt(event, "userid");
+public Action Event_player_death(Event event, const char[] name, bool dontBroadcast) {
+    int userid = event.GetInt("userid");
     int client = GetClientOfUserId(userid);
 
     // ==== Buffs ====
@@ -301,8 +305,8 @@ public Action Event_player_death(Handle event, const char[] name, bool dontBroad
     return Plugin_Continue;
 }
 
-public Action Event_player_chargedeployed(Handle event, const char[] name, bool dontBroadcast) {
-    int userid = GetEventInt(event, "userid");
+public Action Event_player_chargedeployed(Event event, const char[] name, bool dontBroadcast) {
+    int userid = event.GetInt("userid");
     int client = GetClientOfUserId(userid);
 
     // ==== Medic stats ====
@@ -337,12 +341,12 @@ public Action Event_player_chargedeployed(Handle event, const char[] name, bool 
     return Plugin_Continue;
 }
 
-public Action Event_player_healed(Handle event, const char[] name, bool dontBroadcast) {
-    int patientId = GetEventInt(event, "patient");
-    int healerId = GetEventInt(event, "healer");
+public Action Event_player_healed(Event event, const char[] name, bool dontBroadcast) {
+    int patientId = event.GetInt("patient");
+    int healerId = event.GetInt("healer");
     int patient = GetClientOfUserId(patientId);
     int healer = GetClientOfUserId(healerId);
-    //int amount = GetEventInt(event, "amount");
+    //int amount = event.GetInt("amount");
     if (healer == 0) {
         // Caused by medpacks
         return Plugin_Continue;
@@ -370,16 +374,16 @@ public Action Event_player_healed(Handle event, const char[] name, bool dontBroa
     return Plugin_Continue;
 }
 
-public void Event_round_win(Handle event, const char[] name, bool dontBroadcast) {
+public void Event_round_win(Event event, const char[] name, bool dontBroadcast) {
     IsBonusRoundTime = true;
 }
 
-public void Event_round_restart_seconds(Handle event, const char[] name, bool dontBroadcast) {
+public void Event_round_restart_seconds(Event event, const char[] name, bool dontBroadcast) {
     CountdownStarted = true;
     IsInMatch = false;
 }
 
-public void Event_teamplay_round_start(Handle event, const char[] name, bool dontBroadcast) {
+public void Event_teamplay_round_start(Event event, const char[] name, bool dontBroadcast) {
     if (CountdownStarted) {
         CountdownStarted = false;
 
@@ -395,7 +399,7 @@ public void Event_teamplay_round_start(Handle event, const char[] name, bool don
     LastRoundStart = GetGameTime();
 }
 
-public Action Event_game_over(Handle event, const char[] name, bool dontBroadcast) {
+public Action Event_game_over(Event event, const char[] name, bool dontBroadcast) {
     if (!IsInMatch)
         return Plugin_Continue;
 
@@ -463,7 +467,7 @@ public Action Timer_CollectInfo(Handle timer) {
                 // Medic has not started building yet.
 
                 if (!(medic[team].MedicHasUber || medic[team].MedicIsUbering)) {
-                    // If the medic does not have the uber and is not ubering, he has now started building uber.
+                    // If the medic does not have the uber and is not ubering, they have now started building uber.
                     medic[team].MedicStartedBuildTime = gameTime;
                     LogEmptyUber(client);
                 }

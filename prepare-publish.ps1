@@ -2,6 +2,7 @@
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
+. ./keyvalues-parser.ps1
 
 function ZipFiles($zipfilename, $sourcedir) {
     Add-Type -Assembly System.IO.Compression.FileSystem
@@ -38,14 +39,23 @@ New-Item -ItemType directory -Path (Join-Path "dist" "source")
 New-Item -ItemType directory -Path (Join-Path "dist" "ftp")
 Copy-Item -Path "includes" -Destination (Join-Path "dist" "source") -Recurse
 
+# The github action (rumblefrog/setup-sp) will rename the executable to "spcomp64_original".
+# The "spcomp64" would then instead be a bash script, which we can't directly run from powershell.
+$spcomp = (Get-Command "spcomp64_original" -ErrorAction SilentlyContinue) ? "spcomp64_original" : "spcomp64"
+
 $plugins = @("waitforstv", "medicstats", "supstats2", "logstf", "restorescore", "countdown", "fixstvslot", "pause", "recordstv", "classwarning", "afk");
 
 foreach ($p in $plugins) {
     Write-Host "Compiling $p..."
-    & "spcomp" "$p.sp" "-i" (Join-Path ".." "includes") "-D" $p
+    & "$spcomp" "$p.sp" "-i" (Join-Path ".." "includes") "-D" "$p"
 
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "Failed compilation of $p"
+        Write-Error "Failed compilation of $p"
+        Exit 1
+    }
+
+    if (-not (Test-UpdaterFile "./$p/update.txt")) {
+        Write-Error "Failed validation of $p/update.txt"
         Exit 1
     }
 

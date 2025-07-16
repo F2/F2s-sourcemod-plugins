@@ -1,4 +1,4 @@
-# Pause <a href="https://sourcemod.krus.dk/pause.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
+# Improved Pause <a href="https://sourcemod.krus.dk/pause.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
 
 Features:
 

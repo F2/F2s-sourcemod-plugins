@@ -6,7 +6,7 @@ F2's SourceMod plugins for competitive Team Fortress 2.
 
 Download all plugins in a zip file here: <a href="https://sourcemod.krus.dk/f2-sourcemod-plugins.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
 
-### Medic Stats <a href="https://sourcemod.krus.dk/medicstats.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
+### Medic Stats <a href="https://sourcemod.krus.dk/medicstats.zip"><img src="https://img.shields.io/badge/-download-informational" /></a> <a href="./medicstats"><img src="https://img.shields.io/badge/-More%20info-yellowgreen" /></a>
 
 - Logs buff heals (~95% accurate)
 - Logs average time to build über
@@ -16,7 +16,7 @@ Download all plugins in a zip file here: <a href="https://sourcemod.krus.dk/f2-s
 - Logs other additional medic stats
 - See [example on logs.tf](https://logs.tf/154545)
 
-### Supplemental Stats 2 <a href="https://sourcemod.krus.dk/supstats2.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
+### Supplemental Stats 2 <a href="https://sourcemod.krus.dk/supstats2.zip"><img src="https://img.shields.io/badge/-download-informational" /></a> <a href="./supstats2"><img src="https://img.shields.io/badge/-More%20info-yellowgreen" /></a>
 
 - Logs damage and real damage per weapon
 - Logs damage taken
@@ -53,23 +53,23 @@ Download all plugins in a zip file here: <a href="https://sourcemod.krus.dk/f2-s
 - Option to restore player positions when unpausing
 - Option to restore cloak meters when unpausing
 
-### ClassWarning <a href="https://sourcemod.krus.dk/classwarning.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
+### ClassWarning <a href="https://sourcemod.krus.dk/classwarning.zip"><img src="https://img.shields.io/badge/-download-informational" /></a> <a href="./classwarning"><img src="https://img.shields.io/badge/-More%20info-yellowgreen" /></a>
 
 - In ETF2L, class limits are not enforced by the server. This plugin warns players in chat if they are breaking the class limit (see [screenshot](https://sourcemod.krus.dk/classwarning.jpg)).
 
-### RecordSTV <a href="https://sourcemod.krus.dk/recordstv.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
+### RecordSTV <a href="https://sourcemod.krus.dk/recordstv.zip"><img src="https://img.shields.io/badge/-download-informational" /></a> <a href="./recordstv"><img src="https://img.shields.io/badge/-More%20info-yellowgreen" /></a>
 
 - When a match starts, it starts recording a STV demo
 - When the match ends, it stops the recording
 - Set up the path and the filenames of the demos with cvars: **recordstv_path** and **recordstv_filename**
 - In both cvars you can use several placeholders. See the description of recordstv_filename for the full list of placeholders.
 
-### WaitForSTV <a href="https://sourcemod.krus.dk/waitforstv.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
+### WaitForSTV <a href="https://sourcemod.krus.dk/waitforstv.zip"><img src="https://img.shields.io/badge/-download-informational" /></a> <a href="./waitforstv"><img src="https://img.shields.io/badge/-More%20info-yellowgreen" /></a>
 
 - Waits up to 90 seconds when changing map
 - Doesn't wait more time than necessary
 
-### AFK <a href="https://sourcemod.krus.dk/afk.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
+### AFK <a href="https://sourcemod.krus.dk/afk.zip"><img src="https://img.shields.io/badge/-download-informational" /></a> <a href="./afk"><img src="https://img.shields.io/badge/-More%20info-yellowgreen" /></a>
 
 - If a player is AFK in warmup, it shows [a warning](https://sourcemod.krus.dk/afk-1.jpg) to all players on their team
 - If both teams ready up and there is an AFK player, it shows [a warning](https://sourcemod.krus.dk/afk-2.jpg) to the person's team
@@ -77,11 +77,12 @@ Download all plugins in a zip file here: <a href="https://sourcemod.krus.dk/f2-s
 
 ### RestoreScore <a href="https://sourcemod.krus.dk/restorescore.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
 
-- Restores a player's score on the scoreboard when he reconnects
+- Restores a player's score on the scoreboard when they reconnect
 
 ### FixStvSlot <a href="https://sourcemod.krus.dk/fixstvslot.zip"><img src="https://img.shields.io/badge/-download-informational" /></a>
 
 - Changes the map on server start to avoid a crash related to STV slot
+- Automatically changes the level when STV is enabled, allowing the bot to join.
 
 ## Automatic updates
 
@@ -94,6 +95,7 @@ For building a plugin locally, run these commands in Powershell 6+:
 ```powershell
 git clone https://github.com/F2/F2s-sourcemod-plugins.git
 cd F2s-sourcemod-plugins
+pwsh # Start powershell if you are not already in a powershell terminal
 ./setup.ps1
 
 compile logstf

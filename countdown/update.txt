@@ -4,11 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"1.0.1"
+			"Latest"	"1.0.2"
 		}
 		
-		"Notes"	"Changes in 1.0.1:"
-		"Notes"	"- Internal updates"
+		"Notes"	"Changes in 1.0.2:"
+		"Notes"	"- Updated code to be compatible with SourceMod 1.12"
 	}
 	
 	"Files"

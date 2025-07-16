@@ -24,6 +24,10 @@ Release notes:
 - Internal updates
 
 
+---- 1.1.2 (14/07/2025) ----
+- Updated code to be compatible with SourceMod 1.12
+
+
 BUG:
 - When using sm_map twice during a match, you cannot override the 90secs delay [Not a problem with waitforstv - ForceLevelChange simply doesn't call changelevel more than once per map.]
 
@@ -31,6 +35,7 @@ BUG:
 */
 
 #pragma semicolon 1
+#pragma newdecls required
 
 #include <sourcemod>
 #include <tf2_stocks>
@@ -41,11 +46,11 @@ BUG:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.1.1"
-#define UPDATE_URL     "http://sourcemod.krus.dk/waitforstv/update.txt"
+#define PLUGIN_VERSION "1.1.2"
+#define UPDATE_URL     "https://sourcemod.krus.dk/waitforstv/update.txt"
 
 
-public Plugin:myinfo = {
+public Plugin myinfo = {
 	name = "Wait For STV",
 	author = "F2",
 	description = "Waits for STV when changing map",
@@ -54,21 +59,21 @@ public Plugin:myinfo = {
 };
 
 
-new Float:g_fMatchEndTime; // time when match ended
-new g_iStvCountdown = 0, g_iStvCountdownStartAmount;
-new String:g_sStvCountdownNextMap[128]; // which map to switch to after the countdown
-new bool:g_bMatchPlayed = false;
-new Handle:g_hCountdownTimer = INVALID_HANDLE;
-new Handle:g_cvarDelayMapChange = INVALID_HANDLE;
+float g_fMatchEndTime; // time when match ended
+int g_iStvCountdown = 0, g_iStvCountdownStartAmount;
+char g_sStvCountdownNextMap[128]; // which map to switch to after the countdown
+bool g_bMatchPlayed = false;
+Handle g_hCountdownTimer = null;
+ConVar g_cvarDelayMapChange = null;
 
 
-public OnPluginStart() {
+public void OnPluginStart() {
 	RegServerCmd("changelevel", Cmd_Changelevel);
 	RegServerCmd("stopchangelevel", Cmd_StopChangelevel);
 	
 	g_cvarDelayMapChange = FindConVar("tv_delaymapchange_protect");
 	HookConVarChange(g_cvarDelayMapChange, ConVar_DelayMapChange);
-	SetConVarInt(g_cvarDelayMapChange, 0);
+	g_cvarDelayMapChange.IntValue = 0;
 	
 	Match_OnPluginStart();
 	
@@ -77,47 +82,47 @@ public OnPluginStart() {
 		Updater_AddPlugin(UPDATE_URL);
 }
 
-public OnLibraryAdded(const String:name[]) {
+public void OnLibraryAdded(const char[] name) {
 	// Set up auto updater
 	if (StrEqual(name, "updater"))
 		Updater_AddPlugin(UPDATE_URL);
 }
 
-public OnMapStart() {
+public void OnMapStart() {
 	Match_OnMapStart();
 	g_bMatchPlayed = false;
-	g_hCountdownTimer = INVALID_HANDLE;
+	g_hCountdownTimer = null;
 	g_iStvCountdown = 0;
 }
 
-public OnMapEnd() {
+public void OnMapEnd() {
 	Match_OnMapEnd();
 }
 
-StartMatch() {
+void StartMatch() {
 	g_bMatchPlayed = false;
 }
 
-ResetMatch() {
+void ResetMatch() {
 	EndMatch(true);
 }
 
-EndMatch(bool:endedMidgame) {
+void EndMatch(bool endedMidgame) {
 	g_bMatchPlayed = true;
 	g_fMatchEndTime = GetEngineTime(); // Remember the match end-time
 }
 
 
 
-public ConVar_DelayMapChange(Handle:cvar, const String:oldVal[], const String:newVal[]) {
-	new v = StringToInt(newVal);
+public void ConVar_DelayMapChange(ConVar cvar, const char[] oldVal, const char[] newVal) {
+	int v = StringToInt(newVal);
 	if (v == 0)
 		return;
 	
-	SetConVarInt(g_cvarDelayMapChange, 0);
+	g_cvarDelayMapChange.IntValue = 0;
 }
 
-public Action:Cmd_Changelevel(args) {
+public Action Cmd_Changelevel(int args) {
 	// If no arguments are given then show the standard syntax message
 	if (args == 0)
 		return Plugin_Continue;
@@ -127,19 +132,19 @@ public Action:Cmd_Changelevel(args) {
 		return Plugin_Continue;
 	
 	// If tv is disabled then just change the map
-	new bool:tvenabled = GetConVarBool(FindConVar("tv_enable"));
+	bool tvenabled = FindConVar("tv_enable").BoolValue;
 	if (tvenabled == false)
 		return Plugin_Continue;
 	
 	// Check if the map is on the server. If not, show an error message.
-	decl String:map[128];
+	char map[128];
 	GetCmdArg(1, map, sizeof(map));
 	if (!IsMapValid(map))
 		return Plugin_Continue;
 	
 	// Retrieve the stvdelay
-	new Float:stvdelayf = GetConVarFloat(FindConVar("tv_delay"));
-	new stvdelay = RoundToCeil(stvdelayf);
+	float stvdelayf = FindConVar("tv_delay").FloatValue;
+	int stvdelay = RoundToCeil(stvdelayf);
 	if (stvdelay < 0)
 		stvdelay = 0;
 	
@@ -160,7 +165,7 @@ public Action:Cmd_Changelevel(args) {
 		// A match is over, find out how much more time we need to wait
 		stvdelay += 2; // add some extra delay, just in case
 		
-		new Float:timeuntilchange = (g_fMatchEndTime + stvdelay) - GetEngineTime();
+		float timeuntilchange = (g_fMatchEndTime + stvdelay) - GetEngineTime();
 		if (timeuntilchange < 1.0)
 			return Plugin_Continue;
 		
@@ -179,16 +184,16 @@ public Action:Cmd_Changelevel(args) {
 	return Plugin_Stop;
 }
 
-public Action:Cmd_StopChangelevel(args) {
+public Action Cmd_StopChangelevel(int args) {
 	KillTimer(g_hCountdownTimer);
-	g_hCountdownTimer = INVALID_HANDLE;
+	g_hCountdownTimer = null;
 	g_iStvCountdown = 0;
 	CPrintToChatAll2("{lightgreen}[Wait for STV] {default}Map change cancelled!");
 	
 	return Plugin_Continue;
 }
 
-public Action:StvCountdownTrigger(Handle:timer, any:edict) {
+public Action StvCountdownTrigger(Handle timer) {
 	g_iStvCountdown--;
 	
 	if (g_iStvCountdown <= 0) {
@@ -210,9 +215,6 @@ public Action:StvCountdownTrigger(Handle:timer, any:edict) {
 	return Plugin_Continue;
 }
 
-PrintTimeRemainingUntilMapChange() {
+void PrintTimeRemainingUntilMapChange() {
 	CPrintToChatAll2("{lightgreen}[Wait for STV] {default}Changing map to %s in %i second%s...", g_sStvCountdownNextMap, g_iStvCountdown, g_iStvCountdown == 1 ? "" : "s");
 }
-
-
-

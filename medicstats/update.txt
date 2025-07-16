@@ -4,11 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"1.4.1"
+			"Latest"	"1.4.2"
 		}
 		
-		"Notes"	"Changes in 1.4.1:"
-		"Notes"	"- Internal updates - by Leigh MacDonald"
+		"Notes"	"Changes in 1.4.2:"
+		"Notes"	"- Updated code to be compatible with SourceMod 1.12"
 	}
 	
 	"Files"

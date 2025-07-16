@@ -87,6 +87,10 @@ Release notes:
 - Prevent script execution timeout on startup
 
 
+---- 2.5.4 (14/07/2025) ----
+- Updated code to be compatible with SourceMod 1.12
+
+
 TODO:
 - Use GetGameTime() instead of GetEngineTime()?
 - Write comments in code :D
@@ -95,7 +99,7 @@ TODO:
 - Log Blackbox healing more precisely (perhaps use player_healonhit instead)
 */
 
-#pragma semicolon 1 // Force strict semicolon mode.
+#pragma semicolon 1
 #pragma newdecls required
 
 #include <sourcemod>
@@ -103,11 +107,11 @@ TODO:
 #include <f2stocks>
 #include <sdkhooks>
 #include <smlib>
-#include <kvizzle_newdecls>
+#include <kvizzle>
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.5.3"
+#define PLUGIN_VERSION "2.5.4"
 #define UPDATE_URL		"https://sourcemod.krus.dk/supstats2/update.txt"
 
 #define NAMELEN 64
@@ -219,10 +223,10 @@ public void OnPluginStart() {
 	g_tShotTypes.SetValue("tf_weapon_sniperrifle", SHOT_HITSCAN);
 	g_tShotTypes.SetValue("tf_weapon_revolver", SHOT_HITSCAN);
 	
-	g_hCvarEnableAccuracy = CreateConVar("supstats_accuracy", "1", "Enable accuracy");
+	g_hCvarEnableAccuracy = CreateConVar("supstats_accuracy", "1", "Enable accuracy logs");
 	HookConVarChange(g_hCvarEnableAccuracy, CvarChange_EnableAccuracy);
 	char cvarEnableAccuracy[16];
-	GetConVarString(g_hCvarEnableAccuracy, cvarEnableAccuracy, sizeof(cvarEnableAccuracy));
+	g_hCvarEnableAccuracy.GetString(cvarEnableAccuracy, sizeof(cvarEnableAccuracy));
 	CvarChange_EnableAccuracy(g_hCvarEnableAccuracy, cvarEnableAccuracy, cvarEnableAccuracy);
 	
 	char map[64];
@@ -355,7 +359,7 @@ public Action CheckPause(Handle timer, int client) {
 	return Plugin_Continue;
 }
 
-public Action Event_PlayerHealed(Handle event, const char[] name, bool dontBroadcast) {
+public Action Event_PlayerHealed(Event event, const char[] name, bool dontBroadcast) {
 	char patientName[NAMELEN];
 	char healerName[NAMELEN];
 	char patientSteamId[64];
@@ -364,11 +368,11 @@ public Action Event_PlayerHealed(Handle event, const char[] name, bool dontBroad
 	char healerTeam[64];
 	char strAirshot[64] = "";
 
-	int patientId = GetEventInt(event, "patient");
-	int healerId = GetEventInt(event, "healer");
+	int patientId = event.GetInt("patient");
+	int healerId = event.GetInt("healer");
 	int patient = GetClientOfUserId(patientId);
 	int healer = GetClientOfUserId(healerId);
-	int amount = GetEventInt(event, "amount");
+	int amount = event.GetInt("amount");
 	
 	if (lastAirshot[healer]) {
 		Format(strAirshot, sizeof(strAirshot), " (airshot \"1\") (height \"%i\")", lastAirshotHeight[healer]);
@@ -432,18 +436,18 @@ char classNames[][] = {
 };
 
 
-//public void Event_PlayerHealOnHit(Handle event, const string name[], bool dontBroadcast) {
-//	PrintToChatAll("heal on hit - amount(%i) client(%i)", GetEventInt(event, "amount"), GetEventInt(event, "entindex"));
+//public void Event_PlayerHealOnHit(Event event, const string name[], bool dontBroadcast) {
+//	PrintToChatAll("heal on hit - amount(%i) client(%i)", event.GetInt("amount"), event.GetInt("entindex"));
 //}
 
-public void Event_PlayerSpawned(Handle event, const char[] name, bool dontBroadcast) {
+public void Event_PlayerSpawned(Event event, const char[] name, bool dontBroadcast) {
 	char playerName[NAMELEN];
 	char playerSteamID[64];
 	char playerTeam[64];
 	
-	int userid = GetEventInt(event, "userid");
+	int userid = event.GetInt("userid");
 	int client = GetClientOfUserId(userid);
-	int clss = GetEventInt(event, "class");
+	int clss = event.GetInt("class");
 
 	if (!IsRealPlayer(client))
 		return; // eg. SourceTV
@@ -467,12 +471,12 @@ public void Event_PlayerSpawned(Handle event, const char[] name, bool dontBroadc
 
 
 // "%s<%i><%s><%s>" triggered "chargedeployed" (medigun "%s")
-public void EventPre_player_chargedeployed(Handle event, const char[] name, bool dontBroadcast) {
+public void EventPre_player_chargedeployed(Event event, const char[] name, bool dontBroadcast) {
 	g_bBlockLog = true;
 	strcopy(g_sBlockLog, sizeof(g_sBlockLog), "chargedeployed");
 }
 
-public void Event_player_chargedeployed(Handle event, const char[] name, bool dontBroadcast) {
+public void Event_player_chargedeployed(Event event, const char[] name, bool dontBroadcast) {
 	g_bBlockLog = false;
 	g_sBlockLog = "";
 	
@@ -481,7 +485,7 @@ public void Event_player_chargedeployed(Handle event, const char[] name, bool do
 	char playerTeam[16];
 	char medigun[64];
 	
-	int userid = GetEventInt(event, "userid");
+	int userid = event.GetInt("userid");
 	int client = GetClientOfUserId(userid);
 	GetClientName(client, playerName, sizeof(playerName));
 	GetClientAuthStringNew(client, playerAuth, sizeof(playerAuth), false);
@@ -510,10 +514,10 @@ void GetMedigunName(int client, char[] medigun, int medigunLen) {
 
 
 // Medkit pickup with healing
-public void Event_ItemPickup(Handle event, const char[] name, bool dontBroadcast) {
+public void Event_ItemPickup(Event event, const char[] name, bool dontBroadcast) {
 	char item[64];
-	GetEventString(event, "item", item, sizeof(item));
-	int userid = GetEventInt(event, "userid");
+	event.GetString("item", item, sizeof(item));
+	int userid = event.GetInt("userid");
 	int client = GetClientOfUserId(userid);
 	
 	if (strncmp(item, "medkit_", 7, true) == 0 && medpackHealAmount[client] != 0) {
@@ -779,15 +783,15 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 	return Plugin_Continue;
 }
 
-public void Event_PlayerHurt(Handle event, const char[] name, bool dontBroadcast) {
-	int victimid = GetEventInt(event, "userid");
+public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast) {
+	int victimid = event.GetInt("userid");
 	int victim = GetClientOfUserId(victimid);
-	int attackerid = GetEventInt(event, "attacker");
+	int attackerid = event.GetInt("attacker");
 	int attacker = GetClientOfUserId(attackerid);
-	int damage = GetEventInt(event, "damageamount");
+	int damage = event.GetInt("damageamount");
 	
-	bool crit = GetEventBool(event, "crit");
-	bool minicrit = GetEventBool(event, "minicrit");
+	bool crit = event.GetBool("crit");
+	bool minicrit = event.GetBool("minicrit");
 	
 	if (victim != attacker && attacker != 0) {
 		char attackerName[NAMELEN];
@@ -1161,7 +1165,7 @@ float DistanceAboveGroundBox(int victim) {
 		LogError("trace error. victim %N(%d)", victim, victim);
 	}
 	
-	CloseHandle(trace);
+	delete trace;
 	return distance;
 }
 

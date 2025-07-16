@@ -2,37 +2,38 @@ name: CI
 
 on:
   push:
-    branches:    
+    branches:
       - master
-    paths: 
-      - '**/*.sp'
-      - '**/*.inc'
-      - '**/update.txt'
-      - '**/compile.yml'
-      - 'prepare-publish.ps1'
+    paths:
+      - "**/*.sp"
+      - "**/*.inc"
+      - "**/update.txt"
+      - "**/compile.yml"
+      - "prepare-publish.ps1"
   pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Setup SourcePawn Compiler
-      uses: rumblefrog/setup-sp@v1.0.1
-      with:
-        version: '1.10.x'
-    - name: Prepare publish
-      run: |
-        pwsh prepare-publish.ps1
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        # Artifact name
-        name: ftp-files
-        # Directory containing files to upload
-        path: dist/ftp/
-  
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Setup SourcePawn Compiler
+        uses: rumblefrog/setup-sp@v1.2.4
+        with:
+          version: "1.12.x"
+
+      - name: Prepare publish
+        run: |
+          pwsh prepare-publish.ps1
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          # Artifact name
+          name: ftp-files
+          # Directory containing files to upload
+          path: dist/ftp/
+
   publish:
     if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && github.repository == 'F2/F2s-sourcemod-plugins'
     needs: build
@@ -59,13 +60,13 @@ jobs:
             const path = require('path');
             const baseDir = "ftp";
             const data = fs.readFileSync(path.join(baseDir, "f2-sourcemod-plugins.zip"));
-            
+
             const d = new Date();
             const dateString =
                 d.getUTCFullYear() + 
                 ("0" + (d.getUTCMonth()+1)).slice(-2) +
                 ("0" + d.getUTCDate()).slice(-2);
-            
+
             const entries = fs.readdirSync(baseDir, { withFileTypes: true });
             let body = '| plugin | version |\n';
             body += '| -- | -- |\n';
@@ -86,7 +87,7 @@ jobs:
               tag_name: dateString + "-" + d.getTime(),
               body: body,
             });
-            
+
             github.rest.repos.uploadReleaseAsset({
               owner: "F2",
               repo: "F2s-sourcemod-plugins",

@@ -4,11 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.6.5"
+			"Latest"	"2.6.6"
 		}
 		
-		"Notes"	"Changes in 2.6.5:"
-		"Notes"	"- logs.tf html motd now highlights the client's user"
+		"Notes"	"Changes in 2.6.6:"
+		"Notes"	"- Updated code to be compatible with SourceMod 1.12"
 	}
 	
 	"Files"
