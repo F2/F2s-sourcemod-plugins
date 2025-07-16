@@ -2,6 +2,7 @@
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
+. ./keyvalues-parser.ps1
 
 function ZipFiles($zipfilename, $sourcedir) {
     Add-Type -Assembly System.IO.Compression.FileSystem
@@ -49,7 +50,12 @@ foreach ($p in $plugins) {
     & "$spcomp" "$p.sp" "-i" (Join-Path ".." "includes") "-D" "$p"
 
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "Failed compilation of $p"
+        Write-Error "Failed compilation of $p"
+        Exit 1
+    }
+
+    if (-not (Test-UpdaterFile "./$p/update.txt")) {
+        Write-Error "Failed validation of $p/update.txt"
         Exit 1
     }
 

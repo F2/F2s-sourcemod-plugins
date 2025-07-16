@@ -7,3 +7,4 @@ private-*
 !setup.ps1
 !prepare-publish.ps1
 !compile.ps1
+!keyvalues-parser.ps1
