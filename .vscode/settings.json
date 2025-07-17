@@ -101,5 +101,8 @@
     "TabWidth: ${TabSize}",
     "UseTab: ForContinuationAndIndentation",
     "CommentPragmas: '^#define|#tryinclude'"
-  ]
+  ],
+  "[markdown]": {
+    "editor.formatOnSave": true
+  }
 }
