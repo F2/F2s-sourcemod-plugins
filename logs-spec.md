@@ -36,7 +36,7 @@ When someone unpauses the game:
     "F2<3><[U:1:1234]><Red>" triggered "matchunpause"
     World triggered "Pause_Length" (seconds "14.25")
 
-The only reason we are logging the `World triggered` logs are for backwards compatibility, but these can be ignored.
+The only reason we are logging the `World triggered` logs are for backwards compatibility, so these can be ignored.
 
 ## Heals
 
@@ -154,13 +154,13 @@ Destroying a sticky with a hitscan weapon will also be logged with `shot_hit` (a
 
 ## Medic Stats
 
-These logs are probably quite bugged for vaccinator. For example, "charge ready" is only logged at 100%, but with vaccinator you can use charge at 25%.
+**A note on vaccinator:** These logs are very bugged for vaccinator. For example, "charge ready" is only logged at 100%, but with vaccinator you can use charge at 25%. And it does not make sense talking about "uber advantage lost" when one team has uber and the other vaccinator. So, if one team uses vaccinator, think carefully about how you use these logs.
 
 ### First heal after spawn
 
 When a medic heals for the first time after having spawned:
 
-    <player> triggered "first_heal_after_spawn" (time "%.1f")
+    <medic> triggered "first_heal_after_spawn" (time "%.1f")
 
     "F2<3><[U:1:1234]><Red>" triggered "first_heal_after_spawn" (time "1.2")
 
@@ -172,7 +172,7 @@ It is also not triggered if you switch spawns.
 
 When a medic reaches 100% charge:
 
-    <player> triggered "chargeready"
+    <medic> triggered "chargeready"
 
     "F2<3><[U:1:1234]><Red>" triggered "chargeready"
 
@@ -187,3 +187,31 @@ When a medic dies, we log their uber percentage:
 It is called `medic_death_ex` because there already exists another log line called `medic_death`.
 
 The uber percentage is rounded down, so if they had 99.9% it will be logged as "99".
+
+### Empty uber
+
+When a medic's charge changes to zero, typically upon spawning or after using their charge:
+
+    <medic> triggered "empty_uber"
+
+    "F2<3><[U:1:1234]><Red>" triggered "empty_uber"
+
+### Charge ended
+
+When a medic's charge reached 0% after using a charge:
+
+    <medic> triggered "chargeended" (duration "%.1f")
+
+    "F2<3><[U:1:1234]><Red>" triggered "chargeended" (duration "6.4")
+
+The duration is in seconds.
+
+### Lost uber advantage
+
+When one team gets uber significantly before the other team, but does not use it before the other team got theirs:
+
+    <medic> triggered "lost_uber_advantage" (time "%i")
+
+    "F2<3><[U:1:1234]><Red>" triggered "lost_uber_advantage" (time "14")
+
+Alternatively, this could also be computed by looking at the "chargeready" and "chargedeployed" logs from both teams.
