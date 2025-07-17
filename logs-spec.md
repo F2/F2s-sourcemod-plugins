@@ -1,8 +1,8 @@
 # TF2 Logs Spec 3.0
 
-This is the spritual successor to [Logs.tf Spec 2.0](https://github.com/alevoska/logstf-spec).
+This document builds on [Logs.tf Spec 2.0](https://github.com/alevoska/logstf-spec) and describes all additional log lines beyond the standard ones.
 
-# General terminology
+## General terminology
 
 When demonstrating a log line, we first write the general format, and then an example:
 
@@ -16,7 +16,7 @@ When we write `<player>`, `<attacker>` or similar, they refer to this format:
 
     "F2<3><[U:1:1234]><Red>"
 
-# Supplemental logs
+# Supplemental logs (supstats2)
 
 ## Pauses
 
@@ -158,7 +158,7 @@ For Crusader's Crossbow, friendly hits will be logged as `shot_hit`.
 
 Destroying a sticky with a hitscan weapon will be logged as `shot_hit` (although it might not always be accurately detected).
 
-# Medic Stats
+# Medic Stats (medicstats)
 
 **A note on vaccinator:** These logs are very bugged for vaccinator. For example, "charge ready" is only logged at 100%, but with vaccinator you can use charge at 25%. And it does not make sense talking about "uber advantage lost" when one team has uber and the other vaccinator. So, if one team uses vaccinator, think carefully about how you use these logs.
 
