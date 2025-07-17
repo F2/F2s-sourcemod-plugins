@@ -2,7 +2,7 @@
 
 This is the spritual successor to [Logs.tf Spec 2.0](https://github.com/alevoska/logstf-spec).
 
-## General terminology
+# General terminology
 
 When demonstrating a log line, we first write the general format, and then an example:
 
@@ -15,6 +15,8 @@ When we write `<player>`, `<attacker>` or similar, they refer to this format:
     "Nickname<UserID><SteamID><Team>"
 
     "F2<3><[U:1:1234]><Red>"
+
+# Supplemental logs
 
 ## Pauses
 
@@ -48,6 +50,8 @@ When a player heals someone:
 
 The following properties are optional: `airshot`, `height`  
 These are only logged if the healing was caused by an airshot (e.g. crusader's crossbow).
+
+Note, a healer is not necessarily medic. For example, an engineer can heal with a dispenser.
 
 ## Spawning
 
@@ -146,19 +150,19 @@ When the shot actually hits someone:
 
     "F2<3><[U:1:1234]><Red>" triggered "shot_hit" (weapon "scattergun")
 
-Note that `shot_hit` will only be logged once per `shot_fired`, even if the shot hits multiple targets. This makes it possible to calculate the accuracy by using this simple formula: 
+Note that `shot_hit` will only be logged once per `shot_fired`, even if the shot hits multiple targets. This makes it possible to calculate the accuracy by using this simple formula:
 
 $$\text{Accuracy} = \frac{\text{count(shot\\_hit)}}{\text{count(shot\\_fired)}} \times 100\\%$$
 
-For Crusader's Crossbow, friendly hits will also be logged with `shot_hit`.
+For Crusader's Crossbow, friendly hits will be logged as `shot_hit`.
 
-Destroying a sticky with a hitscan weapon will also be logged with `shot_hit` (although it might not be 100% accurate).
+Destroying a sticky with a hitscan weapon will be logged as `shot_hit` (although it might not always be accurately detected).
 
-## Medic Stats
+# Medic Stats
 
 **A note on vaccinator:** These logs are very bugged for vaccinator. For example, "charge ready" is only logged at 100%, but with vaccinator you can use charge at 25%. And it does not make sense talking about "uber advantage lost" when one team has uber and the other vaccinator. So, if one team uses vaccinator, think carefully about how you use these logs.
 
-### First heal after spawn
+## First heal after spawn
 
 When a medic heals for the first time after having spawned:
 
@@ -166,11 +170,11 @@ When a medic heals for the first time after having spawned:
 
     "F2<3><[U:1:1234]><Red>" triggered "first_heal_after_spawn" (time "1.2")
 
-It is not triggered in the beginning of the round.
+It is not triggered in the beginning of a round.
 
 It is also not triggered if you switch spawns.
 
-### Ubercharge is ready
+## Ubercharge is ready
 
 When a medic reaches 100% charge:
 
@@ -178,7 +182,7 @@ When a medic reaches 100% charge:
 
     "F2<3><[U:1:1234]><Red>" triggered "chargeready"
 
-### Medic deaths
+## Medic deaths
 
 When a medic dies, we log their uber percentage:
 
@@ -190,7 +194,7 @@ It is called `medic_death_ex` because there already exists another log line call
 
 The uber percentage is rounded down, so if they had 99.9% it will be logged as "99".
 
-### Empty uber
+## Empty uber
 
 When a medic's charge changes to zero, typically upon spawning or after using their charge:
 
@@ -198,7 +202,7 @@ When a medic's charge changes to zero, typically upon spawning or after using th
 
     "F2<3><[U:1:1234]><Red>" triggered "empty_uber"
 
-### Charge ended
+## Charge ended
 
 When a medic's charge reached 0% after using a charge:
 
@@ -208,7 +212,7 @@ When a medic's charge reached 0% after using a charge:
 
 The duration is in seconds.
 
-### Lost uber advantage
+## Lost uber advantage
 
 When one team gets uber significantly before the other team, but does not use it before the other team got theirs:
 
