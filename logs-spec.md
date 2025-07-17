@@ -76,9 +76,76 @@ When a player pops their ubercharge:
 
     "F2<3><[U:1:1234]><Red>" triggered "chargedeployed" (medigun "medigun")
 
-The medigun name can be:
+The \<medigun-name\> can be:
 - `"medigun"`
 - `"kritzkrieg"`
 - `"quickfix"`
 - `"vaccinator"`
-- `"unknown"` (it could not be detected)
+- `"unknown"` — it could not be detected
+
+## Item Pickup
+
+When a player picks up an item:
+
+    <player> picked up item <item> (healing "%i")
+
+    "F2<3><[U:1:1234]><Red>" picked up item "medkit_medium" (healing "%i")
+
+The following properties are optional: `healing`
+
+The \<item\> can be:
+- `"medkit_small"`
+- `"medkit_medium"`
+- `"medkit_large"`
+- `"ammopack_small"`
+- `"ammopack_medium"`
+- `"ammopack_large"`
+- `"tf_ammo_pack"` — these are medium sized ammo packs dropped by players
+
+## Damage
+
+When a player deals damage to another player:
+
+    <attacker> triggered "damage" against <victim> (damage "%i") (realdamage "%i") (weapon "%s") (healing "%i")  (crit "%s") (airshot "1") (height "%i") (headshot "1")
+
+    "F2<3><[U:1:1234]><Red>" triggered "damage" against "dunc<8><[U:1:420]><Blue>" (damage "69") (realdamage "31") (weapon "quake_rl") (healing "20")  (crit "mini") (airshot "1") (height "33") (headshot "1")
+
+It has the following properties:
+- `damage`: The amount of damage theoretically dealt (say, _450_ for a fully charged headshot)
+- `realdamage`: _(Optional)_ The amount of damage actually dealt (say, _125_ for a fully charged headshot on a scout)  
+  If not present: The "real damage" was the same as "damage".
+- `weapon`: The weapon used to deal the damage, typically extracted from items_game.txt
+- `healing`: _(Optional)_ The amount of self-healing gained from dealing the damage (e.g. using Black Box).  
+  If not present: Healing was zero.
+- `crit`: _(Optional)_ Can either be `mini` or `crit`.  
+  If not present: It was not a crit shot.
+- `airshot`: _(Optional)_ If it is `1`, it was an airshot.  
+  If not present: It was not an airshot.
+- `height`: _(Optional)_ The distance above ground of the victim when the airshot happened.  
+  If not present: It was not an airshot.
+- `headshot`: _(Optional)_ If it is `1`, it was a headshot.  
+  If not present: It was not a headshot.
+
+Note, self damage is not logged.
+
+## Accuracy
+
+When a player shoots a weapon:
+
+    <player> triggered "shot_fired" (weapon "%s")
+
+    "F2<3><[U:1:1234]><Red>" triggered "shot_fired" (weapon "scattergun")
+
+When the shot actually hits someone:
+
+    <player> triggered "shot_hit" (weapon "%s")
+
+    "F2<3><[U:1:1234]><Red>" triggered "shot_hit" (weapon "scattergun")
+
+Note that `shot_hit` will only be logged once per `shot_fired`, even if the shot hits multiple targets. This makes it possible to calculate the accuracy by using the simple formula: $$\text{Accuracy} = \frac{\text{count(shot\_hit)}}{\text{count(shot\_fired)}} \times 100\%$$
+
+For Crusader's Crossbow, friendly hits will also be logged with `shot_hit`.
+
+Destroying a sticky with a hitscan weapon will also be logged with `shot_hit` (although it might not be 100% accurate).
+
+
