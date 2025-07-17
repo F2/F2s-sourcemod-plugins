@@ -146,7 +146,7 @@ When the shot actually hits someone:
 
     "F2<3><[U:1:1234]><Red>" triggered "shot_hit" (weapon "scattergun")
 
-Note that `shot_hit` will only be logged once per `shot_fired`, even if the shot hits multiple targets. This makes it possible to calculate the accuracy by using the simple formula: $$\text{Accuracy} = \frac{\text{count(shot\_hit)}}{\text{count(shot\_fired)}} \times 100\%$$
+Note that `shot_hit` will only be logged once per `shot_fired`, even if the shot hits multiple targets. This makes it possible to calculate the accuracy by using the simple formula: $$\text{Accuracy} = \frac{\text{count(shot{\textunderscore}hit)}}{\text{count(shot{\textunderscore}fired)}} \times 100\%$$
 
 For Crusader's Crossbow, friendly hits will also be logged with `shot_hit`.
 
