@@ -35,7 +35,7 @@ When someone unpauses the game:
     World triggered "Game_Unpaused"
     "F2<3><[U:1:1234]><Red>" triggered "matchunpause"
     World triggered "Pause_Length" (seconds "14.25")
-    
+
 The only reason we are logging the `World triggered` logs are for backwards compatibility, but these can be ignored.
 
 ## Heals
@@ -58,6 +58,7 @@ When a player spawns:
     "F2<3><[U:1:1234]><Red>" spawned as "medic"
 
 Possible values for class:
+
 - `"scout"`
 - `"sniper"`
 - `"soldier"`
@@ -77,6 +78,7 @@ When a player pops their ubercharge:
     "F2<3><[U:1:1234]><Red>" triggered "chargedeployed" (medigun "medigun")
 
 The \<medigun-name\> can be:
+
 - `"medigun"`
 - `"kritzkrieg"`
 - `"quickfix"`
@@ -94,6 +96,7 @@ When a player picks up an item:
 The following properties are optional: `healing`
 
 The \<item\> can be:
+
 - `"medkit_small"`
 - `"medkit_medium"`
 - `"medkit_large"`
@@ -111,6 +114,7 @@ When a player deals damage to another player:
     "F2<3><[U:1:1234]><Red>" triggered "damage" against "dunc<8><[U:1:420]><Blue>" (damage "69") (realdamage "31") (weapon "quake_rl") (healing "20")  (crit "mini") (airshot "1") (height "33") (headshot "1")
 
 It has the following properties:
+
 - `damage`: The amount of damage theoretically dealt (say, _450_ for a fully charged headshot)
 - `realdamage`: _(Optional)_ The amount of damage actually dealt (say, _125_ for a fully charged headshot on a scout)  
   If not present: The "real damage" was the same as "damage".
@@ -148,4 +152,38 @@ For Crusader's Crossbow, friendly hits will also be logged with `shot_hit`.
 
 Destroying a sticky with a hitscan weapon will also be logged with `shot_hit` (although it might not be 100% accurate).
 
+## Medic Stats
 
+These logs are probably quite bugged for vaccinator. For example, "charge ready" is only logged at 100%, but with vaccinator you can use charge at 25%.
+
+### First heal after spawn
+
+When a medic heals for the first time after having spawned:
+
+    <player> triggered "first_heal_after_spawn" (time "%.1f")
+
+    "F2<3><[U:1:1234]><Red>" triggered "first_heal_after_spawn" (time "1.2")
+
+It is not triggered in the beginning of the round.
+
+It is also not triggered if you switch spawns.
+
+### Ubercharge is ready
+
+When a medic reaches 100% charge:
+
+    <player> triggered "chargeready"
+
+    "F2<3><[U:1:1234]><Red>" triggered "chargeready"
+
+### Medic deaths
+
+When a medic dies, we log their uber percentage:
+
+    <medic> triggered "medic_death_ex" (uberpct "%i")
+
+    "F2<3><[U:1:1234]><Red>" triggered "medic_death_ex" (uberpct "13")
+
+It is called `medic_death_ex` because there already exists another log line called `medic_death`.
+
+The uber percentage is rounded down, so if they had 99.9% it will be logged as "99".
