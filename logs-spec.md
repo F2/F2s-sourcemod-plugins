@@ -222,9 +222,9 @@ When one team gets uber significantly before the other team, but does not use it
 
 Alternatively, this could also be computed by looking at the "chargeready" and "chargedeployed" logs from both teams.
 
-# Meta information
+# Meta data
 
-Sometimes we want to write information to the logs that are not directly triggered by in-game events. We call this _meta information_.
+Sometimes we want to write information to the logs that are not directly triggered by in-game events. We call this _meta data_.
 
 When it comes to these meta logs, **all properties are optional**.
 
@@ -232,11 +232,11 @@ More properties can be added in the future, but the format of the ones listed sh
 
 ## Player related
 
-To write meta info that is directly related to a player:
+To write meta data that is directly related to a player:
 
-    <player> triggered "meta_info" (position "%i %i %i")
+    <player> triggered "meta_data" (position "%i %i %i")
 
-    "F2<3><[U:1:1234]><Red>" triggered "meta_info" (position "478 -334 603")
+    "F2<3><[U:1:1234]><Red>" triggered "meta_data" (position "478 -334 603")
 
 It can have the following properties:
 
@@ -244,11 +244,11 @@ It can have the following properties:
 
 ## Non-player related
 
-To write meta info that is not directly related to a player:
+To write meta data that is not directly related to a player:
 
-    World triggered "meta_info" (matchid "%s") (map "%s") (title "%s")
+    World triggered "meta_data" (matchid "%s") (map "%s") (title "%s")
 
-    World triggered "meta_info" (matchid "abc123") (map "cp_badlands") (title "serveme.tf #1337")
+    World triggered "meta_data" (matchid "abc123") (map "cp_badlands") (title "serveme.tf #1337")
 
 It can have the following properties:
 
