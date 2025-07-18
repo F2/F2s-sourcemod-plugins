@@ -221,3 +221,40 @@ When one team gets uber significantly before the other team, but does not use it
     "F2<3><[U:1:1234]><Red>" triggered "lost_uber_advantage" (time "14")
 
 Alternatively, this could also be computed by looking at the "chargeready" and "chargedeployed" logs from both teams.
+
+# Meta data
+
+Sometimes we want to write information to the logs that are not directly triggered by in-game events. We call this _meta data_.
+
+When it comes to these meta logs, **all properties are optional**.
+
+More properties can be added in the future, but the format of the ones listed should not be changed.
+
+## Player related
+
+To write meta data that is directly related to a player:
+
+    <player> triggered "meta_data" (position "%i %i %i")
+
+    "F2<3><[U:1:1234]><Red>" triggered "meta_data" (position "478 -334 603")
+
+It can have the following properties:
+
+- `position`: The current location of the player
+
+## Non-player related
+
+To write meta data that is not directly related to a player:
+
+    World triggered "meta_data" (matchid "%s") (map "%s") (title "%s")
+
+    World triggered "meta_data" (matchid "abc123") (map "cp_badlands") (title "serveme.tf #1337")
+
+It can have the following properties:
+
+- `matchid`: A randomly generated match id, hopefully unique (max 32 chars).  
+  This can be used to detect duplicate logs from the same match.
+- `map`: The current map
+- `title`: A title for the match (similar to the one sent to logs.tf)
+
+There can be multiple of these log lines in a match - for example, one logging the map and another one logging the title.
