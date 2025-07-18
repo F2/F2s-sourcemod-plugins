@@ -256,3 +256,5 @@ It can have the following properties:
   This can be used to detect duplicate logs from the same match.
 - `map`: The current map
 - `title`: A title for the match (similar to the one sent to logs.tf)
+
+There can be multiple of these log lines in a match - for example, one logging the map and another one logging the title.
