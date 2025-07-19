@@ -16,7 +16,7 @@ When we write `<player>`, `<attacker>` or similar, they refer to this format:
 
     "F2<3><[U:1:1234]><Red>"
 
-# Supplemental logs (supstats2)
+# Supplemental logs
 
 ## Pauses
 
@@ -158,7 +158,7 @@ For Crusader's Crossbow, friendly hits will be logged as `shot_hit`.
 
 Destroying a sticky with a hitscan weapon will be logged as `shot_hit` (although it might not always be accurately detected).
 
-# Medic Stats (medicstats)
+# Medic Stats
 
 **A note on vaccinator:** These logs are very bugged for vaccinator. For example, "charge ready" is only logged at 100%, but with vaccinator you can use charge at 25%. And it does not make sense talking about "uber advantage lost" when one team has uber and the other vaccinator. So, if one team uses vaccinator, think carefully about how you use these logs.
 

@@ -7,13 +7,13 @@ Remember to call:
 
 Then use these functions:
 
-StartMatch() {
+void StartMatch() {
 }
 
-ResetMatch() {
+void ResetMatch() {
 }
 
-EndMatch(bool:endedMidgame) {
+void EndMatch(bool endedMidgame) {
 }
 */
 

@@ -91,6 +91,10 @@ Release notes:
 - Updated code to be compatible with SourceMod 1.12
 
 
+---- 2.6.0 (19/07/2025) ----
+- Log meta data at the start of the match (matchid, map)
+
+
 TODO:
 - Use GetGameTime() instead of GetEngineTime()?
 - Write comments in code :D
@@ -108,10 +112,11 @@ TODO:
 #include <sdkhooks>
 #include <smlib>
 #include <kvizzle>
+#include <match>
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.5.4"
+#define PLUGIN_VERSION "2.6.0"
 #define UPDATE_URL		"https://sourcemod.krus.dk/supstats2/update.txt"
 
 #define NAMELEN 64
@@ -149,6 +154,8 @@ bool g_bPlayerTakenDirectHit[MAXPLAYERS+1];
 int medpackHealAmount[MAXPLAYERS+1];
 float g_fPauseStartTime;
 char g_sTauntNames[][] = { "", "taunt_scout", "taunt_sniper", "taunt_soldier", "taunt_demoman", "taunt_medic", "taunt_heavy", "taunt_pyro", "taunt_spy", "taunt_engineer" };
+
+Handle g_hTimerMatchStarted = null;
 
 
 // ---- ACCURACY ----
@@ -195,6 +202,7 @@ public void OnPluginStart() {
 	if (LibraryExists("updater"))
 		Updater_AddPlugin(UPDATE_URL);
 	
+	Match_OnPluginStart();
 	
 	g_tShotTypes = CreateTrie();
 	g_tShotTypes.SetValue("tf_weapon_rocketlauncher", SHOT_ROCKET);
@@ -229,7 +237,7 @@ public void OnPluginStart() {
 	g_hCvarEnableAccuracy.GetString(cvarEnableAccuracy, sizeof(cvarEnableAccuracy));
 	CvarChange_EnableAccuracy(g_hCvarEnableAccuracy, cvarEnableAccuracy, cvarEnableAccuracy);
 	
-	char map[64];
+	char map[128];
 	GetCurrentMap(map, sizeof(map));
 	LogToGame("Loading map \"%s\"", map);
 
@@ -271,6 +279,8 @@ public void OnLibraryAdded(const char[] name) {
 }
 
 public void OnMapStart() {
+	Match_OnMapStart();
+
 	for (int i = 0; i < sizeof(g_iIgnoreDamageEnt); i++)
 		g_iIgnoreDamageEnt[i] = 0;
 	
@@ -279,6 +289,10 @@ public void OnMapStart() {
 			g_iStickyId[client][i] = 0;
 	}
 	g_bIsPaused = false; // The game is automatically unpaused during a map change
+}
+
+public void OnMapEnd() {
+	Match_OnMapEnd();
 }
 
 public void OnClientPutInServer(int client) {
@@ -357,6 +371,52 @@ public Action CheckPause(Handle timer, int client) {
 
 	g_bIsPaused = isPaused;
 	return Plugin_Continue;
+}
+
+void StartMatch() {
+	if (g_hTimerMatchStarted != null) {
+		delete g_hTimerMatchStarted;
+		g_hTimerMatchStarted = null;
+	}
+
+	g_hTimerMatchStarted = CreateTimer(10.0, MatchFullyStarted);
+}
+
+void ResetMatch() {
+	if (g_hTimerMatchStarted != null) {
+		delete g_hTimerMatchStarted;
+		g_hTimerMatchStarted = null;
+	}
+}
+
+void EndMatch(bool endedMidgame) {
+	if (g_hTimerMatchStarted != null) {
+		delete g_hTimerMatchStarted;
+		g_hTimerMatchStarted = null;
+	}
+}
+
+void MatchFullyStarted(Handle timer) {
+	g_hTimerMatchStarted = null;
+
+    char matchId[33];
+    FormatTime(matchId, sizeof(matchId), "%y%m%d%H%M%S");
+
+    for (int i = 12; i < 32; i++) {
+        int randVal = GetRandomInt(0, 61);
+        if (randVal < 10) {
+            matchId[i] = '0' + randVal;
+        } else if (randVal < 36) {
+            matchId[i] = 'a' + (randVal - 10);
+        } else {
+            matchId[i] = 'A' + (randVal - 36);
+        }
+    }
+    matchId[32] = '\0';
+
+    char currentMap[128];
+    GetCurrentMap(currentMap, sizeof(currentMap));
+    LogToGame("World triggered \"meta_data\" (matchid \"%s\") (map \"%s\")", matchId, currentMap);
 }
 
 public Action Event_PlayerHealed(Event event, const char[] name, bool dontBroadcast) {
