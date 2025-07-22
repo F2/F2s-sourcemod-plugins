@@ -4,11 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.6.6"
+			"Latest"	"2.6.7"
 		}
 		
-		"Notes"	"Changes in 2.6.6:"
-		"Notes"	"- Updated code to be compatible with SourceMod 1.12"
+		"Notes"	"Changes in 2.6.7:"
+		"Notes"	"- Changed match title trimming logic"
 	}
 	
 	"Files"

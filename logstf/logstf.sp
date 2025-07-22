@@ -125,6 +125,10 @@ Release notes:
 - Updated code to be compatible with SourceMod 1.12
 
 
+---- 2.6.7 (22/07/2025) ----
+- Changed match title trimming logic
+
+
 TODO:
 - Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log and -partial files have dynamic names, and don't forget to clean them up.
 - Sanitize names for < and >, since logs.tf doesn't like those
@@ -146,7 +150,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION	"2.6.6"
+#define PLUGIN_VERSION	"2.6.7"
 #define UPDATE_URL		"https://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
@@ -364,6 +368,8 @@ void EndMatch(bool endedMidgame) {
 }
 
 void CacheMatchValues() {
+	// Note: If you are making changes related to title generation, also update supstats2.
+
 	g_hCvarHostname.GetString(g_sCachedHostname, sizeof(g_sCachedHostname));
 	g_hCvarBlueTeamName.GetString(g_sCachedBluTeamName, sizeof(g_sCachedBluTeamName));
 	g_hCvarRedTeamName.GetString(g_sCachedRedTeamName, sizeof(g_sCachedRedTeamName));
@@ -372,9 +378,10 @@ void CacheMatchValues() {
 	String_Trim(g_sCachedRedTeamName, g_sCachedRedTeamName, sizeof(g_sCachedRedTeamName));
 	GetCurrentMap(g_sCachedMap, sizeof(g_sCachedMap));
 
-	// Remove last word in hostname
+	// Trim the last words in hostname if it is a long hostname
 	int spacepos = -1;
-	for (int i = strlen(g_sCachedHostname) - 1; i >= 17; i--) {
+	int hostnameLen = strlen(g_sCachedHostname);
+	for (int i = 25; i < hostnameLen; i++) {
 		if (g_sCachedHostname[i] == ' ') {
 			spacepos = i;
 			break;
@@ -690,6 +697,7 @@ void UploadLog(bool partial) {
 	g_bIsUploading = true;
 	g_bIsPartialUpload = partial;
 
+	// Note: If you are making changes related to title generation, also update supstats2.
 	char title[128];
 	g_hCvarTitle.GetString(title, sizeof(title));
 	ReplaceString(title, sizeof(title), "{server}", g_sCachedHostname, false);

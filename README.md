@@ -31,6 +31,7 @@ Download all plugins in a zip file here: <a href="https://sourcemod.krus.dk/f2-s
 - Logs players spawning
 - Logs game pauses
 - Logs shots fired and shots hit (for certain weapons)
+- Logs unique match id, map name and title at the start of the match
 
 ### LogsTF <a href="https://sourcemod.krus.dk/logstf.zip"><img src="https://img.shields.io/badge/-download-informational" /></a> <a href="./logstf"><img src="https://img.shields.io/badge/-More%20info-yellowgreen" /></a>
 

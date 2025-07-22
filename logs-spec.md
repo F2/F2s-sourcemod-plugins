@@ -252,9 +252,13 @@ To write meta data that is not directly related to a player:
 
 It can have the following properties:
 
-- `matchid`: A randomly generated match id, hopefully unique (max 32 chars).  
+- `matchid`: A randomly generated match id, hopefully unique (max 32 alphanumeric chars).  
   This can be used to detect duplicate logs from the same match.
 - `map`: The current map
 - `title`: A title for the match (similar to the one sent to logs.tf)
 
-There can be multiple of these log lines in a match - for example, one logging the map and another one logging the title.
+There can be multiple of these log lines in a match, so for example you might see this:
+
+    World triggered "meta_data" (matchid "abc123")
+    World triggered "meta_data" (map "cp_badlands")
+    World triggered "meta_data" (title "serveme.tf #1337")

@@ -8,7 +8,7 @@
 		}
 		
 		"Notes"	"Changes in 2.6.0:"
-		"Notes"	"- Log meta data at the start of the match (matchid, map)"
+		"Notes"	"- Log meta data at the start of the match (matchid, map, title)"
 	}
 	
 	"Files"
