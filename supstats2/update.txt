@@ -4,11 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.5.4"
+			"Latest"	"2.6.0"
 		}
 		
-		"Notes"	"Changes in 2.5.4:"
-		"Notes"	"- Updated code to be compatible with SourceMod 1.12"
+		"Notes"	"Changes in 2.6.0:"
+		"Notes"	"- Log meta data at the start of the match (matchid, map, title)"
 	}
 	
 	"Files"

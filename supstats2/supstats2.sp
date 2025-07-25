@@ -91,6 +91,10 @@ Release notes:
 - Updated code to be compatible with SourceMod 1.12
 
 
+---- 2.6.0 (19/07/2025) ----
+- Log meta data at the start of the match (matchid, map, title)
+
+
 TODO:
 - Use GetGameTime() instead of GetEngineTime()?
 - Write comments in code :D
@@ -108,10 +112,11 @@ TODO:
 #include <sdkhooks>
 #include <smlib>
 #include <kvizzle>
+#include <match>
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.5.4"
+#define PLUGIN_VERSION "2.6.0"
 #define UPDATE_URL		"https://sourcemod.krus.dk/supstats2/update.txt"
 
 #define NAMELEN 64
@@ -149,6 +154,12 @@ bool g_bPlayerTakenDirectHit[MAXPLAYERS+1];
 int medpackHealAmount[MAXPLAYERS+1];
 float g_fPauseStartTime;
 char g_sTauntNames[][] = { "", "taunt_scout", "taunt_sniper", "taunt_soldier", "taunt_demoman", "taunt_medic", "taunt_heavy", "taunt_pyro", "taunt_spy", "taunt_engineer" };
+
+Handle g_hTimerMatchStarted = null;
+ConVar g_hCvarLogsTitle = null;
+ConVar g_hCvarHostname = null,
+	g_hCvarRedTeamName = null,
+	g_hCvarBlueTeamName = null;
 
 
 // ---- ACCURACY ----
@@ -195,6 +206,7 @@ public void OnPluginStart() {
 	if (LibraryExists("updater"))
 		Updater_AddPlugin(UPDATE_URL);
 	
+	Match_OnPluginStart();
 	
 	g_tShotTypes = CreateTrie();
 	g_tShotTypes.SetValue("tf_weapon_rocketlauncher", SHOT_ROCKET);
@@ -228,8 +240,15 @@ public void OnPluginStart() {
 	char cvarEnableAccuracy[16];
 	g_hCvarEnableAccuracy.GetString(cvarEnableAccuracy, sizeof(cvarEnableAccuracy));
 	CvarChange_EnableAccuracy(g_hCvarEnableAccuracy, cvarEnableAccuracy, cvarEnableAccuracy);
+
+	// The "logstf_" prefix is used because we are reusing the cvar from the logstf plugin.
+	// This is done to avoid having all servers defining the title format twice.
+	g_hCvarLogsTitle = CreateConVar("logstf_title", "{server}: {blu} vs {red}", "Title for the log", FCVAR_NONE);
+	g_hCvarHostname = FindConVar("hostname");
+	g_hCvarRedTeamName = FindConVar("mp_tournament_redteamname");
+	g_hCvarBlueTeamName = FindConVar("mp_tournament_blueteamname");
 	
-	char map[64];
+	char map[128];
 	GetCurrentMap(map, sizeof(map));
 	LogToGame("Loading map \"%s\"", map);
 
@@ -271,6 +290,8 @@ public void OnLibraryAdded(const char[] name) {
 }
 
 public void OnMapStart() {
+	Match_OnMapStart();
+
 	for (int i = 0; i < sizeof(g_iIgnoreDamageEnt); i++)
 		g_iIgnoreDamageEnt[i] = 0;
 	
@@ -279,6 +300,10 @@ public void OnMapStart() {
 			g_iStickyId[client][i] = 0;
 	}
 	g_bIsPaused = false; // The game is automatically unpaused during a map change
+}
+
+public void OnMapEnd() {
+	Match_OnMapEnd();
 }
 
 public void OnClientPutInServer(int client) {
@@ -357,6 +382,108 @@ public Action CheckPause(Handle timer, int client) {
 
 	g_bIsPaused = isPaused;
 	return Plugin_Continue;
+}
+
+void StartMatch() {
+}
+
+public void StartFirstRound() {
+	if (g_hTimerMatchStarted != null) {
+		delete g_hTimerMatchStarted;
+		g_hTimerMatchStarted = null;
+	}
+
+	// First log all the players spawning etc., and then we log the meta data.
+	g_hTimerMatchStarted = CreateTimer(0.5, LogMetaData);
+}
+
+void ResetMatch() {
+	if (g_hTimerMatchStarted != null) {
+		delete g_hTimerMatchStarted;
+		g_hTimerMatchStarted = null;
+	}
+}
+
+void EndMatch(bool endedMidgame) {
+	if (g_hTimerMatchStarted != null) {
+		delete g_hTimerMatchStarted;
+		g_hTimerMatchStarted = null;
+	}
+}
+
+void LogMetaData(Handle timer) {
+	g_hTimerMatchStarted = null;
+
+    LogMatchId();
+	LogMapName();
+	LogTitle();
+}
+
+void LogMatchId() {
+	char matchId[33];
+    FormatTime(matchId, sizeof(matchId), "%y%m%d%H%M%S");
+
+    for (int i = 12; i < 32; i++) {
+        int randVal = GetRandomInt(0, 61);
+        if (randVal < 10) {
+            matchId[i] = '0' + randVal;
+        } else if (randVal < 36) {
+            matchId[i] = 'a' + (randVal - 10);
+        } else {
+            matchId[i] = 'A' + (randVal - 36);
+        }
+    }
+    matchId[32] = '\0';
+
+	LogToGame("World triggered \"meta_data\" (matchid \"%s\")", matchId);
+}
+
+void LogMapName() {
+	char currentMap[128];
+    GetCurrentMap(currentMap, sizeof(currentMap));
+    LogToGame("World triggered \"meta_data\" (map \"%s\")", currentMap);
+}
+
+void LogTitle() {
+	// Note: If you are making changes related to title generation, also update logstf.
+
+	char hostname[64];
+	char bluTeamName[32];
+	char redTeamName[32];
+
+	g_hCvarHostname.GetString(hostname, sizeof(hostname));
+	g_hCvarBlueTeamName.GetString(bluTeamName, sizeof(bluTeamName));
+	g_hCvarRedTeamName.GetString(redTeamName, sizeof(redTeamName));
+	String_Trim(hostname, hostname, sizeof(hostname));
+	String_Trim(bluTeamName, bluTeamName, sizeof(bluTeamName));
+	String_Trim(redTeamName, redTeamName, sizeof(redTeamName));
+
+	// Trim the last words in hostname if it is a long hostname
+	int spacepos = -1;
+	int hostnameLen = strlen(hostname);
+	for (int i = 25; i < hostnameLen; i++) {
+		if (hostname[i] == ' ') {
+			spacepos = i;
+			break;
+		}
+	}
+
+	if (spacepos != -1) {
+		hostname[spacepos] = '\0';
+		String_Trim(hostname, hostname, sizeof(hostname), " -:.!,;");
+	}
+
+	// Replace placeholders
+	char title[128];
+	g_hCvarLogsTitle.GetString(title, sizeof(title));
+	ReplaceString(title, sizeof(title), "{server}", hostname, false);
+	ReplaceString(title, sizeof(title), "{blu}", bluTeamName, false);
+	ReplaceString(title, sizeof(title), "{blue}", bluTeamName, false);
+	ReplaceString(title, sizeof(title), "{red}", redTeamName, false);
+
+	ReplaceString(title, sizeof(title), "\\", "", false);
+
+	LogToGame("World triggered \"meta_data\" (title \"%s\")", title);
 }
 
 public Action Event_PlayerHealed(Event event, const char[] name, bool dontBroadcast) {
