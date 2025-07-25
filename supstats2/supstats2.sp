@@ -241,7 +241,7 @@ public void OnPluginStart() {
 	g_hCvarEnableAccuracy.GetString(cvarEnableAccuracy, sizeof(cvarEnableAccuracy));
 	CvarChange_EnableAccuracy(g_hCvarEnableAccuracy, cvarEnableAccuracy, cvarEnableAccuracy);
 
-	// The "logstf_" prefix is because we are reusing the cvar from the logstf plugin.
+	// The "logstf_" prefix is used because we are reusing the cvar from the logstf plugin.
 	// This is done to avoid having all servers defining the title format twice.
 	g_hCvarLogsTitle = CreateConVar("logstf_title", "{server}: {blu} vs {red}", "Title for the log", FCVAR_NONE);
 	g_hCvarHostname = FindConVar("hostname");
@@ -387,6 +387,16 @@ public Action CheckPause(Handle timer, int client) {
 void StartMatch() {
 }
 
+public void StartFirstRound() {
+	if (g_hTimerMatchStarted != null) {
+		delete g_hTimerMatchStarted;
+		g_hTimerMatchStarted = null;
+	}
+
+	// First log all the players spawning etc., and then we log the meta data.
+	g_hTimerMatchStarted = CreateTimer(0.5, LogMetaData);
+}
+
 void ResetMatch() {
 	if (g_hTimerMatchStarted != null) {
 		delete g_hTimerMatchStarted;
@@ -399,16 +409,6 @@ void EndMatch(bool endedMidgame) {
 		delete g_hTimerMatchStarted;
 		g_hTimerMatchStarted = null;
 	}
-}
-
-public void StartFirstRound() {
-	if (g_hTimerMatchStarted != null) {
-		delete g_hTimerMatchStarted;
-		g_hTimerMatchStarted = null;
-	}
-
-	// First log all the players spawning etc., and then we log the meta data.
-	g_hTimerMatchStarted = CreateTimer(0.5, LogMetaData);
 }
 
 void LogMetaData(Handle timer) {
