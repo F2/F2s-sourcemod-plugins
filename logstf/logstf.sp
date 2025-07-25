@@ -125,7 +125,7 @@ Release notes:
 - Updated code to be compatible with SourceMod 1.12
 
 
----- 2.6.7 (22/07/2025) ----
+---- 2.7.0 (22/07/2025) ----
 - Changed match title trimming logic
 
 
@@ -150,7 +150,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION	"2.6.7"
+#define PLUGIN_VERSION	"2.7.0"
 #define UPDATE_URL		"https://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"

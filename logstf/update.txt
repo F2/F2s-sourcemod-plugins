@@ -4,10 +4,10 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.6.7"
+			"Latest"	"2.7.0"
 		}
 		
-		"Notes"	"Changes in 2.6.7:"
+		"Notes"	"Changes in 2.7.0:"
 		"Notes"	"- Changed match title trimming logic"
 	}
 	
