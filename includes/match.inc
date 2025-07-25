@@ -15,12 +15,16 @@ void ResetMatch() {
 
 void EndMatch(bool endedMidgame) {
 }
+
+Optional:
+
+public void StartFirstRound() {
+}
+
 */
 
 /*
 TODO:
-- Dont call StartMatch before the 5-4-3-2-1 countdown reaches 0.
-- Make a new callback, AllPlayersReady
 - Make a new callback, AboutToEnd (5 secs before MatchEnded)
 - g_fMatchEndTime
 - g_bCountdownStarted
@@ -156,6 +160,12 @@ public void Match_Event_round_start(Event event, const char[] name, bool dontBro
 		
 		if (!g_bFirstRoundStarted) {
 			g_bFirstRoundStarted = true;
+
+			Function func = GetFunctionByName(null, "StartFirstRound");
+			if (func != null) {
+				Call_StartFunction(null, func);
+				Call_Finish();
+			}
 		}
 	}
 }

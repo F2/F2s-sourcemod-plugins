@@ -385,12 +385,6 @@ public Action CheckPause(Handle timer, int client) {
 }
 
 void StartMatch() {
-	if (g_hTimerMatchStarted != null) {
-		delete g_hTimerMatchStarted;
-		g_hTimerMatchStarted = null;
-	}
-
-	g_hTimerMatchStarted = CreateTimer(10.0, MatchFullyStarted);
 }
 
 void ResetMatch() {
@@ -407,7 +401,17 @@ void EndMatch(bool endedMidgame) {
 	}
 }
 
-void MatchFullyStarted(Handle timer) {
+public void StartFirstRound() {
+	if (g_hTimerMatchStarted != null) {
+		delete g_hTimerMatchStarted;
+		g_hTimerMatchStarted = null;
+	}
+
+	// First log all the players spawning etc., and then we log the meta data.
+	g_hTimerMatchStarted = CreateTimer(0.5, LogMetaData);
+}
+
+void LogMetaData(Handle timer) {
 	g_hTimerMatchStarted = null;
 
     LogMatchId();

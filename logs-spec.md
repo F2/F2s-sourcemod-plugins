@@ -232,6 +232,9 @@ More properties can be added in the future, but the format of the ones listed sh
 
 ## Player related
 
+> [!WARNING]
+> Player related logs have not been finalized, and parsers should not implement this yet.
+
 To write meta data that is directly related to a player:
 
     <player> triggered "meta_data" (position "%i %i %i")
