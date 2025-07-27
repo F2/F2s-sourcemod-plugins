@@ -4,11 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.6.0"
+			"Latest"	"2.6.1"
 		}
 		
-		"Notes"	"Changes in 2.6.0:"
-		"Notes"	"- Log meta data at the start of the match (matchid, map, title)"
+		"Notes"	"Changes in 2.6.1:"
+		"Notes"	"- Fixed unnecessary tournament restart when server is almost empty"
 	}
 	
 	"Files"

@@ -129,6 +129,10 @@ Release notes:
 - Changed match title trimming logic
 
 
+---- 2.7.1 (27/07/2025) ----
+- Fixed unnecessary tournament restart when server is almost empty
+
+
 TODO:
 - Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log and -partial files have dynamic names, and don't forget to clean them up.
 - Sanitize names for < and >, since logs.tf doesn't like those
@@ -150,7 +154,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION	"2.7.0"
+#define PLUGIN_VERSION	"2.7.1"
 #define UPDATE_URL		"https://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"

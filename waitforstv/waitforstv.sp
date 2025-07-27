@@ -28,6 +28,10 @@ Release notes:
 - Updated code to be compatible with SourceMod 1.12
 
 
+---- 1.1.3 (27/07/2025) ----
+- Fixed unnecessary tournament restart when server is almost empty
+
+
 BUG:
 - When using sm_map twice during a match, you cannot override the 90secs delay [Not a problem with waitforstv - ForceLevelChange simply doesn't call changelevel more than once per map.]
 
@@ -46,7 +50,7 @@ BUG:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.1.2"
+#define PLUGIN_VERSION "1.1.3"
 #define UPDATE_URL     "https://sourcemod.krus.dk/waitforstv/update.txt"
 
 

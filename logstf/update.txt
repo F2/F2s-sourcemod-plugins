@@ -4,11 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.7.0"
+			"Latest"	"2.7.1"
 		}
 		
-		"Notes"	"Changes in 2.7.0:"
-		"Notes"	"- Changed match title trimming logic"
+		"Notes"	"Changes in 2.7.1:"
+		"Notes"	"- Fixed unnecessary tournament restart when server is almost empty"
 	}
 	
 	"Files"
