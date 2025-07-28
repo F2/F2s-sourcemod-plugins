@@ -83,7 +83,7 @@ void Match_OnPluginStart() {
 	
 	// A player disconnected
 	// Purpose: When all players have disconnected, call ResetMatch
-	HookEvent("player_disconnect", Match_Event_player_disconnect, EventHookMode_PostNoCopy);
+	HookEvent("player_disconnect", Match_Event_player_disconnect, EventHookMode_Post);
 	
 	// Hook mp_tournament_restart
 	// Purpose: Call ResetMatch when the tournament mode was reset
@@ -209,8 +209,20 @@ public void Match_Event_player_team_post(any data) {
 
 
 public void Match_Event_player_disconnect(Event event, const char[] name, bool dontBroadcast) {
-	int count = GetRealPlayerCount();
-	if (count <= 1) {
+	int userid = event.GetInt("userid");
+	int client = GetClientOfUserId(userid);
+
+	bool anyPlayersLeftOnServer = false;
+	for (int c = 1; c <= MaxClients; c++) {
+		if (c == client)
+			continue;
+		if (IsRealPlayer2(c)) {
+			anyPlayersLeftOnServer = true;
+			break;
+		}
+	}
+
+	if (!anyPlayersLeftOnServer) {
 		// The server is really weird in this case.
 		// If one team readies up, the server empties, and then you connect and join the other team and ready up, nothing happens.
 		// But if you unready the same team and ready again, it works.

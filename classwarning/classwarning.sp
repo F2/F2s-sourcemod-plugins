@@ -18,6 +18,10 @@ Release notes:
 ---- 1.1.2 (10/07/2025) ----
 - Updated code to be compatible with SourceMod 1.12
 
+
+---- 1.1.3 (27/07/2025) ----
+- Fixed unnecessary tournament restart when server is almost empty
+
 */
 
 #pragma semicolon 1
@@ -32,7 +36,7 @@ Release notes:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "1.1.2"
+#define PLUGIN_VERSION "1.1.3"
 #define UPDATE_URL		"https://sourcemod.krus.dk/classwarning/update.txt"
 
 
