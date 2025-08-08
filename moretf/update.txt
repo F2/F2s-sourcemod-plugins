@@ -1,0 +1,18 @@
+"Updater"
+{
+	"Information"
+	{
+		"Version"
+		{
+			"Latest"	"1.0.0"
+		}
+		
+		"Notes"	"Changes in 1.0.0:"
+		"Notes"	"- Initial release"
+	}
+	
+	"Files"
+	{
+		"Plugin"	"Path_SM/plugins/moretf.smx"
+	}
+}
