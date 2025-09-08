@@ -99,6 +99,10 @@ Release notes:
 - Fixed unnecessary tournament restart when server is almost empty
 
 
+---- 2.6.2 (08/09/2025) ----
+- Added accuracy logs for alternative scout weapons - by s-maurice
+
+
 TODO:
 - Use GetGameTime() instead of GetEngineTime()?
 - Write comments in code :D
@@ -120,7 +124,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.6.1"
+#define PLUGIN_VERSION "2.6.2"
 #define UPDATE_URL		"https://sourcemod.krus.dk/supstats2/update.txt"
 
 #define NAMELEN 64
@@ -229,11 +233,15 @@ public void OnPluginStart() {
 	g_tShotTypes.SetValue("tf_projectile_healing_bolt", SHOT_HEALINGBOLT);
 	
 	g_tShotTypes.SetValue("tf_weapon_scattergun", SHOT_HITSCAN);
+	g_tShotTypes.SetValue("tf_weapon_pep_brawler_blaster", SHOT_HITSCAN);
+    g_tShotTypes.SetValue("tf_weapon_handgun_scout_primary", SHOT_HITSCAN);
+    g_tShotTypes.SetValue("tf_weapon_soda_popper", SHOT_HITSCAN);
 	g_tShotTypes.SetValue("tf_weapon_shotgun_soldier", SHOT_HITSCAN);
 	g_tShotTypes.SetValue("tf_weapon_shotgun_primary", SHOT_HITSCAN);
 	g_tShotTypes.SetValue("tf_weapon_shotgun_hwg", SHOT_HITSCAN);
 	g_tShotTypes.SetValue("tf_weapon_shotgun_pyro", SHOT_HITSCAN);
 	g_tShotTypes.SetValue("tf_weapon_pistol_scout", SHOT_HITSCAN);
+	g_tShotTypes.SetValue("tf_weapon_handgun_scout_secondary", SHOT_HITSCAN);
 	g_tShotTypes.SetValue("tf_weapon_pistol", SHOT_HITSCAN);
 	g_tShotTypes.SetValue("tf_weapon_smg", SHOT_HITSCAN);
 	g_tShotTypes.SetValue("tf_weapon_sniperrifle", SHOT_HITSCAN);
