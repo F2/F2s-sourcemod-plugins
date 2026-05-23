@@ -19,7 +19,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Setup SourcePawn Compiler
-        uses: rumblefrog/setup-sp@v1.2.4
+        uses: rumblefrog/setup-sp@v1.3.1
         with:
           version: "1.12.x"
 
@@ -27,7 +27,7 @@ jobs:
         run: |
           pwsh prepare-publish.ps1
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           # Artifact name
           name: ftp-files
@@ -40,20 +40,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download files
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           # Artifact name
           name: ftp-files
           # Destination path
           path: ftp/
       - name: Set up node
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v6
         with:
-          node-version: 16
+          node-version: 24
       - name: Install npm packages
         run: npm install fs path
       - name: Create release
-        uses: actions/github-script@v6
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
