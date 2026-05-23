@@ -701,7 +701,37 @@ void UploadLog(bool partial) {
 	g_bIsUploading = true;
 	g_bIsPartialUpload = partial;
 
-	// Note: If you are making changes related to title generation, also update supstats2.
+	char path[64];
+	GetLogPath(LOG_PATH, path, sizeof(path));
+
+	if (partial) {
+		char partialpath[64];
+		GetLogPath(PLOG_PATH, partialpath, sizeof(partialpath));
+		DeleteFile(partialpath);
+		AnyHttp_CopyFile(path, partialpath, UploadLog_CopyComplete);
+	} else {
+		MC_PrintToChatAll("%s", "{lightgreen}[LogsTF] {blue}Uploading logs...");
+		UploadLog_Send(path);
+	}
+}
+
+void UploadLog_CopyComplete(bool success, any metadata) {
+	if (!success) {
+		LogError("Failed to create partial log file");
+		g_bIsUploading = false;
+		if (g_bReuploadASAP) {
+			g_bReuploadASAP = false;
+			UploadLog(false);
+		}
+		return;
+	}
+
+	char partialpath[64];
+	GetLogPath(PLOG_PATH, partialpath, sizeof(partialpath));
+	UploadLog_Send(partialpath);
+}
+
+void UploadLog_Send(const char[] logpath) {
 	char title[128];
 	g_hCvarTitle.GetString(title, sizeof(title));
 	ReplaceString(title, sizeof(title), "{server}", g_sCachedHostname, false);
@@ -709,39 +739,12 @@ void UploadLog(bool partial) {
 	ReplaceString(title, sizeof(title), "{blue}", g_sCachedBluTeamName, false);
 	ReplaceString(title, sizeof(title), "{red}", g_sCachedRedTeamName, false);
 
-	char path[64], partialpath[64];
-	GetLogPath(LOG_PATH, path, sizeof(path));
-	GetLogPath(PLOG_PATH, partialpath, sizeof(partialpath));
-
-	if (partial) {
-		DeleteFile(partialpath);
-		if (!CopyFile(path, partialpath)) {
-			LogError("Failed to create partial log file");
-			g_bIsUploading = false;
-			if (g_bReuploadASAP) {
-				g_bReuploadASAP = false;
-				UploadLog(false);
-			}
-			return;
-		}
-
-		// We should NOT add a Round_Stalemate just after a round has ended (logs.tf will not understand it)
-		//char buffer[128];
-		//char time[32];
-		//FormatTime(time, sizeof(time), "%m/%d/%Y - %H:%M:%S");
-		//FormatEx(buffer, sizeof(buffer), "\nL %s: %s\n", time, "World triggered \"Round_Stalemate\"");
-
-		//Handle file = OpenFile(partialpath, "a");
-		//WriteFileString(file, buffer, false);
-		//delete file;
-	}
-
-	if (!partial)
-		MC_PrintToChatAll("%s", "{lightgreen}[LogsTF] {blue}Uploading logs...");
+	char apiKey[64];
+	g_hCvarApikey.GetString(apiKey, sizeof(apiKey));
 
 	AnyHttpRequest req = AnyHttp.CreatePost("http://logs.tf/upload");
 
-	req.PutFile("logfile", partial ? partialpath : path);
+	req.PutFile("logfile", logpath);
 	req.PutString("title", title);
 	req.PutString("map", g_sCachedMap);
 	req.PutString("key", apiKey);
