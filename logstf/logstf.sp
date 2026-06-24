@@ -197,7 +197,10 @@ ConVar g_hCvarHostname,
 	g_hCvarAutoUpload,
 	g_hCvarMidGameUpload,
 	g_hCvarMidGameNotice,
-	g_hCvarSuppressChat;
+	g_hCvarSuppressChat,
+	g_hCvarHttps;
+
+Regex g_hIPRegex;
 
 char g_sLastLogURL[128];
 char g_sCachedHostname[64];
@@ -248,6 +251,15 @@ public void OnPluginStart() {
 	g_hCvarMidGameUpload = CreateConVar("logstf_midgameupload", "1", "Set to 0 to upload logs after the match has finished.\n - Set to 1 to upload the logs after each round.", FCVAR_NONE);
 	g_hCvarMidGameNotice = CreateConVar("logstf_midgamenotice", "1", "Set to 1 to notice players about midgame logs.\n - Set to 0 to disable it.", FCVAR_NONE);
 	g_hCvarSuppressChat = CreateConVar("logstf_suppresschat", "0", "Set to 1 to hide '!log' chats.\n - Set to 0 to show '!log' chats.", FCVAR_NONE);
+	g_hCvarHttps = CreateConVar("logstf_https", "0", "Set to 1 to upload logs over HTTPS.\n - Set to 0 to upload over plain HTTP. (default)", FCVAR_NONE);
+
+	// A canonical IPv4 octet: 250-255 | 200-249 | 100-199 | 0-99 (no leading zeros).
+	char octet[] = "25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d";
+	char ipPattern[128];
+	FormatEx(ipPattern, sizeof(ipPattern), "\\b(%s)\\.(%s)\\.(%s)\\.(%s)\\b", octet, octet, octet, octet);
+	g_hIPRegex = CompileRegex(ipPattern);
+	if (g_hIPRegex == null)
+		LogError("Could not compile IP scrubbing regex - IP scrubbing will not work");
 
 	// Events
 	HookEvent("teamplay_round_win", Event_RoundEnd);
@@ -294,6 +306,7 @@ public void OnPluginEnd() {
 	GetLogPath(LOG_PATH, path, sizeof(path));
 	DeleteFile(path);
 	delete g_hLogUploaded;
+	delete g_hIPRegex;
 }
 
 
@@ -636,9 +649,34 @@ void AddLogLine(const char[] message) {
 
 	char time[32];
 	FormatTime(time, sizeof(time), "%m/%d/%Y - %H:%M:%S");
-	FormatEx(g_sLogBuffer[g_iNextLogBuffer++], LOG_BUFFERSIZE, "L %s: %s", time, message);
+	int line = g_iNextLogBuffer++;
+	FormatEx(g_sLogBuffer[line], LOG_BUFFERSIZE, "L %s: %s", time, message);
+	ScrubIPs(g_sLogBuffer[line], LOG_BUFFERSIZE);
 	if (g_iNextLogBuffer >= LOG_FLUSHCNT)
 		FlushLog();
+}
+
+void ScrubIPs(char[] line, int maxlen) {
+	if (g_hIPRegex == null)
+		return;
+	if (StrContains(line, ".") == -1)
+		return;
+
+	int matches = g_hIPRegex.MatchAll(line);
+	if (matches <= 0)
+		return;
+
+	for (int m = 0; m < matches; m++) {
+		char original[16], octet1[4], octet2[4];
+		if (!g_hIPRegex.GetSubString(0, original, sizeof(original), m))
+			continue;
+		g_hIPRegex.GetSubString(1, octet1, sizeof(octet1), m);
+		g_hIPRegex.GetSubString(2, octet2, sizeof(octet2), m);
+
+		char redacted[16];
+		FormatEx(redacted, sizeof(redacted), "%s.%s.0.0", octet1, octet2);
+		ReplaceString(line, maxlen, original, redacted);
+	}
 }
 
 void FlushLog() {
@@ -746,7 +784,9 @@ void UploadLog_Send(const char[] logpath) {
 	char apiKey[64];
 	g_hCvarApikey.GetString(apiKey, sizeof(apiKey));
 
-	AnyHttpRequest req = AnyHttp.CreatePost("http://logs.tf/upload");
+	char uploadUrl[64];
+	FormatEx(uploadUrl, sizeof(uploadUrl), "%slogs.tf/upload", g_hCvarHttps.BoolValue ? "https://" : "http://");
+	AnyHttpRequest req = AnyHttp.CreatePost(uploadUrl);
 
 	req.PutFile("logfile", logpath);
 	req.PutString("title", title);
@@ -830,7 +870,7 @@ public bool ParseLogsResponse(const char[] contents) {
 			MC_PrintToChatAll("%s%s", "{lightgreen}[LogsTF] {blue}Logs were uploaded to: ", g_sLastLogURL);
 			MC_PrintToChatAll("%s%s", "{lightgreen}[LogsTF] {blue}To see the stats, type: {yellow}", g_sDefaultTrigger);
 		}
-		Format(g_sLastLogURL, sizeof(g_sLastLogURL), "%s%s", "http://", g_sLastLogURL);
+		Format(g_sLastLogURL, sizeof(g_sLastLogURL), "%s%s", g_hCvarHttps.BoolValue ? "https://" : "http://", g_sLastLogURL);
 
 		// Call the global forward LogUploaded()
 		if (!g_bIsPartialUpload)
