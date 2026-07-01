@@ -16,4 +16,3 @@ Features:
 | `logstf_midgameupload <0\|1>` | `1`                        | Set to 0 to upload logs after the match has finished.<br>Set to 1 to upload the logs after each round.                                              |
 | `logstf_midgamenotice <0\|1>` | `1`                        | Set to 1 to notice players about midgame logs.                                                                                                      |
 | `logstf_suppresschat <0\|1>`  | `1`                        | Set to 1 to hide '!log' chats.                                                                                                                      |
-| `logstf_https <0\|1>`         | `0`                        | Set to 1 to upload logs over HTTPS.<br>Set to 0 to upload over plain HTTP.                                                                          |

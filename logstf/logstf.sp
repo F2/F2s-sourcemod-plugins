@@ -137,6 +137,11 @@ Release notes:
 - Reduced lag during mid-round log upload - by Arie
 
 
+---- 2.9.0 (01/07/2026) ----
+- Scrub IPs from logs - by Arie
+- Use HTTPS for log uploads - by Arie
+
+
 TODO:
 - Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log and -partial files have dynamic names, and don't forget to clean them up.
 - Sanitize names for < and >, since logs.tf doesn't like those
@@ -158,7 +163,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION	"2.8.0"
+#define PLUGIN_VERSION	"2.9.0"
 #define UPDATE_URL		"https://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
@@ -197,8 +202,7 @@ ConVar g_hCvarHostname,
 	g_hCvarAutoUpload,
 	g_hCvarMidGameUpload,
 	g_hCvarMidGameNotice,
-	g_hCvarSuppressChat,
-	g_hCvarHttps;
+	g_hCvarSuppressChat;
 
 Regex g_hIPRegex;
 
@@ -251,13 +255,12 @@ public void OnPluginStart() {
 	g_hCvarMidGameUpload = CreateConVar("logstf_midgameupload", "1", "Set to 0 to upload logs after the match has finished.\n - Set to 1 to upload the logs after each round.", FCVAR_NONE);
 	g_hCvarMidGameNotice = CreateConVar("logstf_midgamenotice", "1", "Set to 1 to notice players about midgame logs.\n - Set to 0 to disable it.", FCVAR_NONE);
 	g_hCvarSuppressChat = CreateConVar("logstf_suppresschat", "0", "Set to 1 to hide '!log' chats.\n - Set to 0 to show '!log' chats.", FCVAR_NONE);
-	g_hCvarHttps = CreateConVar("logstf_https", "0", "Set to 1 to upload logs over HTTPS.\n - Set to 0 to upload over plain HTTP. (default)", FCVAR_NONE);
 
 	// A canonical IPv4 octet: 250-255 | 200-249 | 100-199 | 0-99 (no leading zeros).
-	char octet[] = "25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d";
-	char ipPattern[128];
+	char octet[] = "25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]";
+	char ipPattern[256];
 	FormatEx(ipPattern, sizeof(ipPattern), "\\b(%s)\\.(%s)\\.(%s)\\.(%s)\\b", octet, octet, octet, octet);
-	g_hIPRegex = CompileRegex(ipPattern);
+	g_hIPRegex = new Regex(ipPattern);
 	if (g_hIPRegex == null)
 		LogError("Could not compile IP scrubbing regex - IP scrubbing will not work");
 
@@ -670,8 +673,10 @@ void ScrubIPs(char[] line, int maxlen) {
 		char original[16], octet1[4], octet2[4];
 		if (!g_hIPRegex.GetSubString(0, original, sizeof(original), m))
 			continue;
-		g_hIPRegex.GetSubString(1, octet1, sizeof(octet1), m);
-		g_hIPRegex.GetSubString(2, octet2, sizeof(octet2), m);
+		if (!g_hIPRegex.GetSubString(1, octet1, sizeof(octet1), m))
+			octet1 = "0";
+		if (!g_hIPRegex.GetSubString(2, octet2, sizeof(octet2), m))
+			octet2 = "0";
 
 		char redacted[16];
 		FormatEx(redacted, sizeof(redacted), "%s.%s.0.0", octet1, octet2);
@@ -784,9 +789,7 @@ void UploadLog_Send(const char[] logpath) {
 	char apiKey[64];
 	g_hCvarApikey.GetString(apiKey, sizeof(apiKey));
 
-	char uploadUrl[64];
-	FormatEx(uploadUrl, sizeof(uploadUrl), "%slogs.tf/upload", g_hCvarHttps.BoolValue ? "https://" : "http://");
-	AnyHttpRequest req = AnyHttp.CreatePost(uploadUrl);
+	AnyHttpRequest req = AnyHttp.CreatePost("https://logs.tf/upload");
 
 	req.PutFile("logfile", logpath);
 	req.PutString("title", title);
@@ -870,7 +873,7 @@ public bool ParseLogsResponse(const char[] contents) {
 			MC_PrintToChatAll("%s%s", "{lightgreen}[LogsTF] {blue}Logs were uploaded to: ", g_sLastLogURL);
 			MC_PrintToChatAll("%s%s", "{lightgreen}[LogsTF] {blue}To see the stats, type: {yellow}", g_sDefaultTrigger);
 		}
-		Format(g_sLastLogURL, sizeof(g_sLastLogURL), "%s%s", g_hCvarHttps.BoolValue ? "https://" : "http://", g_sLastLogURL);
+		Format(g_sLastLogURL, sizeof(g_sLastLogURL), "%s%s", "https://", g_sLastLogURL);
 
 		// Call the global forward LogUploaded()
 		if (!g_bIsPartialUpload)
