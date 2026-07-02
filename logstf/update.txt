@@ -4,11 +4,12 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.8.0"
+			"Latest"	"2.9.0"
 		}
 		
-		"Notes"	"Changes in 2.8.0:"
-		"Notes"	"- Reduced lag during mid-round log upload - by Arie"
+		"Notes"	"Changes in 2.9.0:"
+		"Notes"	"- Scrub IPs from logs - by Arie"
+		"Notes"	"- Use HTTPS for log uploads - by Arie"
 	}
 	
 	"Files"
