@@ -25,6 +25,9 @@ Release notes:
 - Fixed unnecessary tournament restart when server is almost empty
 
 
+---- 1.2.0 (13/07/2026) ----
+- Treat matches lasting more than one minute as completed instead of reset
+
 */
 
 #pragma semicolon 1
@@ -37,7 +40,7 @@ Release notes:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "1.1.3"
+#define PLUGIN_VERSION "1.2.0"
 #define UPDATE_URL		"https://sourcemod.krus.dk/afk/update.txt"
 
 

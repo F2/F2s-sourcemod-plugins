@@ -4,12 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.9.0"
+			"Latest"	"3.0.0"
 		}
 		
-		"Notes"	"Changes in 2.9.0:"
-		"Notes"	"- Scrub IPs from logs - by Arie"
-		"Notes"	"- Use HTTPS for log uploads - by Arie"
+		"Notes"	"Changes in 3.0.0:"
+		"Notes"	"- Treat matches lasting more than one minute as completed instead of reset"
 	}
 	
 	"Files"
