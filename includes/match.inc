@@ -305,24 +305,7 @@ void Match_ResetMatch() {
 	
 	g_bIsBonusRoundTime = false;
 	
-	bool wasReset = true;
-	int timeleft = GetTimeLeft();
-	int winlimit = match_hCvarWinlimit.IntValue;
-	int windiff = match_hCvarWindiff.IntValue;
-	int maxrounds = match_hCvarMaxRounds.IntValue;
-	int blueScore = GetTeamScore(view_as<int>(TFTeam_Blue));
-	int redScore = GetTeamScore(view_as<int>(TFTeam_Red));
-	
-	if (GetEngineTime() - g_fMatchStartTime <= 30)
-		wasReset = true;
-	else if (timeleft != -1 && timeleft < 9 * 60) // Less than 9 minutes left
-		wasReset = false;
-	else if (winlimit > 1 && ((winlimit - blueScore) <= 1 || (winlimit - redScore) <= 1))
-		wasReset = false;
-	else if (windiff > 1 && windiff - Math_Abs(redScore - blueScore) <= 1)
-		wasReset = false;
-	else if (maxrounds > 1 && (maxrounds - g_iRoundsPlayed) <= 1)
-		wasReset = false;
+	bool wasReset = GetEngineTime() - g_fMatchStartTime <= 60.0;
 	
 	if (!wasReset) {
 		EndMatch(true);
