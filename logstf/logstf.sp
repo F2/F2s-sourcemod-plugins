@@ -146,6 +146,10 @@ Release notes:
 - Treat matches lasting more than one minute as completed instead of reset
 
 
+---- 3.0.1 (12/11/2026) ----
+- Added support for more than 32 players
+
+
 TODO:
 - Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log and -partial files have dynamic names, and don't forget to clean them up.
 - Sanitize names for < and >, since logs.tf doesn't like those
@@ -167,7 +171,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION	"3.0.0"
+#define PLUGIN_VERSION	"3.0.1"
 #define UPDATE_URL		"https://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
@@ -183,8 +187,6 @@ public Plugin myinfo = {
 	version = PLUGIN_VERSION,
 	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
-
-#define TFMAXPLAYERS 33
 
 char g_sPluginVersion[32];
 char g_sDefaultTrigger[8] = "!log";
@@ -222,7 +224,7 @@ bool g_bIsPartialUpload;
 Handle g_hTimerUploadPartialLog;
 char g_sCurrentLogID[32];
 bool g_bReuploadASAP;
-bool g_bPartialUploadNotice[TFMAXPLAYERS + 1]; // true if the player should receive a Partial Upload notice upon death
+bool g_bPartialUploadNotice[MAXPLAYERS + 1]; // true if the player should receive a Partial Upload notice upon death
 bool g_bFirstPartialUploaded;
 
 bool g_bDisableSS;
@@ -514,7 +516,7 @@ public Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadca
 // -----------------------------------
 // Handle user input
 // -----------------------------------
-float g_fSSTime[TFMAXPLAYERS + 1];
+float g_fSSTime[MAXPLAYERS + 1];
 public Action Command_say(int client, int args) {
 	if (client == 0)
 		return Plugin_Continue;
