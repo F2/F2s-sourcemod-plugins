@@ -69,9 +69,6 @@ Release notes:
 TODO:
 - The log lines should include which medigun is wielded
 - cvar to enable logging medics' self-heal (should be disabled by default)
-
-Known Bugs:
-- If a person is buffed by other means than the medic (for example Conniver's Kunai) while being healed by the medic, then the medic will get the credit for the heals. [No easy/well-performing fix]
 */
 
 #pragma semicolon 1
@@ -87,6 +84,7 @@ Known Bugs:
 #define PLUGIN_VERSION "2.0.0"
 #define UPDATE_URL "https://sourcemod.krus.dk/medicstats/update.txt"
 #define TIMER_TICK 0.15
+#define MAX_BEAM_HEAL_PER_FRAME 10 // A medigun adds 1-2 HP per frame (about 5 during a Quick-Fix uber). Kunai, Eyelander heads etc. add 15 or more at once.
 
 
 
@@ -618,6 +616,8 @@ public void OnGameFrame() {
         if (newhealth <= oldhealth)
             continue;
         g_iBuffHighest[patient] = newhealth;
+        if (newhealth - oldhealth > MAX_BEAM_HEAL_PER_FRAME)
+            continue; // Too much for a medigun in one frame, so it came from something else
 
         int maxHealth = GetEntProp(playerManager, Prop_Send, "m_iMaxHealth", _, patient);
         if (newhealth <= maxHealth)
