@@ -47,6 +47,10 @@ Release notes:
 - Updated code to be compatible with SourceMod 1.12
 
 
+---- 1.7.0 (13/11/2026) ----
+- Write chat messages during pauses to the log
+
+
 */
 
 #pragma semicolon 1
@@ -61,7 +65,7 @@ Release notes:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.6.3"
+#define PLUGIN_VERSION "1.7.0"
 #define UPDATE_URL		"https://sourcemod.krus.dk/pause/update.txt"
 
 #define PAUSE_UNPAUSE_TIME 2.0
@@ -362,13 +366,34 @@ public Action Cmd_Say(int client, const char[] command, int args) {
 			if (buffer[0] == '"')
 				strcopy(buffer, sizeof(buffer), buffer[1]);
 
-			char dead[16] = "";
-			if (TF2_GetClientTeam(client) == TFTeam_Spectator)
-				dead = "*SPEC* ";
-			else if ((TF2_GetClientTeam(client) == TFTeam_Red || TF2_GetClientTeam(client) == TFTeam_Blue) && !IsPlayerAlive(client))
-				dead = "*DEAD* ";
+			// Remove control characters, so they cannot be used to color or spoof messages
+			int len = 0;
+			bool hasText = false;
+			for (int i = 0; buffer[i] != '\0'; i++) {
+				if ((buffer[i] & 0xFF) < ' ')
+					continue;
+				if (buffer[i] != ' ')
+					hasText = true;
+				buffer[len++] = buffer[i];
+			}
+			buffer[len] = '\0';
 
-			CPrintToChatAllEx2(client, "%s{teamcolor}%N{default} :  %s", dead, client, buffer);
+			if (hasText) {
+				char dead[16] = "";
+				if (TF2_GetClientTeam(client) == TFTeam_Spectator)
+					dead = "*SPEC* ";
+				else if ((TF2_GetClientTeam(client) == TFTeam_Red || TF2_GetClientTeam(client) == TFTeam_Blue) && !IsPlayerAlive(client))
+					dead = "*DEAD* ";
+
+				CPrintToChatAllEx2(client, "%s{teamcolor}%N{default} :  %s", dead, client, buffer);
+
+				// The game does not log the message, since we block the say command
+				char steamId[64];
+				char team[64];
+				GetClientAuthStringNew(client, steamId, sizeof(steamId), false);
+				GetTeamName(GetClientTeam(client), team, sizeof(team));
+				LogToGame("\"%N<%d><%s><%s>\" say \"%s\"", client, GetClientUserId(client), steamId, team, buffer);
+			}
 		}
 
 		return Plugin_Handled;
