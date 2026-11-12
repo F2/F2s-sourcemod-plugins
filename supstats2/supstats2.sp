@@ -108,6 +108,7 @@ Release notes:
 - Fixed bug where lit huntsman headshots counted as multiple headshots on the following burn ticks
 - Fixed rare bug where an airshot was incorrectly detected after touching a grenade roller
 - Fixed rare bug where a sentry rocket from a destroyed sentry was logged incorrectly
+- Fixed rare bug where a rocket jump could be counted as a missed shot
 
 
 TODO:
@@ -1035,7 +1036,7 @@ public void OnEntityCreated(int entity, const char[] classname) {
 				}
 				
 				if (g_fRocketCreatedTime[g_iRocketCreatedNext] < oldestTime) {
-					oldest = j;
+					oldest = g_iRocketCreatedNext;
 					oldestTime = g_fRocketCreatedTime[g_iRocketCreatedNext];
 				}
 				
