@@ -103,6 +103,10 @@ Release notes:
 - Added accuracy logs for alternative scout weapons - by s-maurice
 
 
+---- 2.6.3 (12/11/2026) ----
+- Fixed bug where airshot could wrongly be logged on a heal event
+
+
 TODO:
 - Use GetGameTime() instead of GetEngineTime()?
 - Write comments in code :D
@@ -124,7 +128,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.6.2"
+#define PLUGIN_VERSION "2.6.3"
 #define UPDATE_URL		"https://sourcemod.krus.dk/supstats2/update.txt"
 
 #define NAMELEN 64
@@ -1067,6 +1071,11 @@ public void OnHealArrowTouch(int entity, int other) {
 					// Enables logging of airshots for healing arrows
 					lastAirshot[owner] = false;
 					SetLastAirshotValues(owner, other);
+					if (lastAirshot[owner]) {
+						// The heal/damage event that consumes the airshot is fired while processing this touch.
+						// If no such event fires (e.g. the teammate was at full health), clear it so it doesn't leak to the next event.
+						RequestFrame(ClearHealArrowAirshot, owner);
+					}
 
 					if (g_bEnableAccuracy) {
 						int healing;
@@ -1082,6 +1091,10 @@ public void OnHealArrowTouch(int entity, int other) {
 			}
 		}
 	}
+}
+
+public void ClearHealArrowAirshot(int client) {
+	lastAirshot[client] = false;
 }
 
 public void OnEntityDestroyed(int entity) {
