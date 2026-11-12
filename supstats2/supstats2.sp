@@ -107,6 +107,7 @@ Release notes:
 - Fixed bug where medic airshot could wrongly be logged on a heal event
 - Fixed bug where lit huntsman headshots counted as multiple headshots on the following burn ticks
 - Fixed rare bug where an airshot was incorrectly detected after touching a grenade roller
+- Fixed rare bug where a sentry rocket from a destroyed sentry was logged incorrectly
 
 
 TODO:
@@ -1341,6 +1342,11 @@ bool GetWeaponLogName(char[] logname, int lognameLen, int attacker, int weapon, 
 			if (StrEqual(logname, "tf_projectile_sentryrocket")) {
 				// A sentry rocket hurt the victim. Find the sentry entity, and consider that the inflictor.
 				sentry = GetEntPropEnt(sentry, Prop_Send, "m_hOwnerEntity");
+				if (sentry == -1) {
+					// The sentry was destroyed before the rocket landed. Only level 3 sentries fire rockets.
+					strcopy(logname, lognameLen, "obj_sentrygun3");
+					return true;
+				}
 				GetEntityClassname(sentry, logname, lognameLen);
 			}
 			
