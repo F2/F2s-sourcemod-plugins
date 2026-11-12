@@ -148,6 +148,7 @@ Release notes:
 
 ---- 3.0.1 (12/11/2026) ----
 - Added support for more than 32 players
+- Better handling of errors when clearing the log file
 
 
 TODO:
@@ -194,6 +195,7 @@ char g_sClassNamesLower[][16] = { "undefined", "scout", "sniper", "soldier", "de
 
 char g_sLogBuffer[LOG_BUFFERCNT][LOG_BUFFERSIZE];
 int g_iNextLogBuffer;
+bool g_bClearLogFile;
 bool g_bLogReady;
 bool g_bIsUploading;
 int g_iUploadAttempt;
@@ -346,11 +348,9 @@ void StartMatch() {
 		LogToGame("\"%s<%i><%s><%s>\" changed role to \"%s\"", playerName, GetClientUserId(client), playerSteamID, playerTeam, g_sClassNamesLower[TF2_GetPlayerClass(client)]);
 	}
 
-	// Clear the log file and make sure it exists
-	char path[64];
-	GetLogPath(LOG_PATH, path, sizeof(path));
-	File file = OpenFile(path, "w");
-	file.Close();
+	// Clear the log file and make sure it exists. If it fails, FlushLog will try again.
+	g_bClearLogFile = true;
+	FlushLog();
 	g_bLogReady = false;
 
 	// Set up Partial Upload
@@ -691,7 +691,7 @@ void ScrubIPs(char[] line, int maxlen) {
 }
 
 void FlushLog() {
-	if (g_iNextLogBuffer == 0)
+	if (g_iNextLogBuffer == 0 && !g_bClearLogFile)
 		return;
 
 	int lastLine = g_iNextLogBuffer;
@@ -699,12 +699,13 @@ void FlushLog() {
 	if (g_bInMatch) {
 		char path[64];
 		GetLogPath(LOG_PATH, path, sizeof(path));
-		File file = OpenFile(path, "a");
+		File file = OpenFile(path, g_bClearLogFile ? "w" : "a");
 		if (file == null) {
 			// Something is blocking us for writing to the file right now. Try again next time FlushLog is called.
 			LogError("FlushLog: Could not open file %s", path);
 			return;
 		}
+		g_bClearLogFile = false;
 
 		for (int line = 0; line < lastLine; line++) {
 			file.WriteString(g_sLogBuffer[line], false);
@@ -748,6 +749,11 @@ void UploadLog(bool partial) {
 	}
 
 	FlushLog();
+	if (g_bClearLogFile) {
+		// The log file still contains the previous match
+		LogError("UploadLog: Not uploading, since the log file could not be cleared");
+		return;
+	}
 
 	if (!partial)
 		g_bLogReady = false;
