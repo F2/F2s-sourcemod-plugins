@@ -148,7 +148,8 @@ Release notes:
 
 ---- 3.0.1 (12/11/2026) ----
 - Added support for more than 32 players
-- Better handling of errors when clearing the log file
+- Improved error handling when clearing the log file
+- Improved error handling when retrying log upload
 
 
 TODO:
@@ -916,8 +917,16 @@ public bool ParseLogsResponse(const char[] contents) {
 }
 
 public Action RetryUploadLog(Handle timer, int client) {
-	g_bLogReady = true;
 	g_bIsUploading = false;
+
+	if (g_bInMatch) {
+		// A new match has started, so the log file no longer contains the match that failed to upload
+		LogError("Not retrying upload, since a new match has started");
+		CallLogUploaded(false, "", "");
+		return Plugin_Stop;
+	}
+
+	g_bLogReady = true;
 	UploadLog(false);
 
 	return Plugin_Stop;
