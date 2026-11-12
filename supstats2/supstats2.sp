@@ -105,6 +105,7 @@ Release notes:
 
 ---- 2.6.3 (12/11/2026) ----
 - Fixed bug where airshot could wrongly be logged on a heal event
+- Fixed bug where lit huntsman headshots counted as multiple headshots on the following burn ticks
 
 
 TODO:
@@ -812,16 +813,11 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 		}
 	
 		if (attackerClass == TFClass_Sniper && GetPlayerWeaponSlot(attacker, 0) == weapon) {
-			if (defid == 56 || defid == 1005) {
-				// Huntsman
-				lastHeadshot[attacker] = (damagecustom & 1) != 0;
-			} else {
-				// All other sniper rifles
-				lastHeadshot[attacker] = (damagecustom & 8) == 0;
-			}
+			// Huntsman and sniper rifles
+			lastHeadshot[attacker] = damagecustom == TF_CUSTOM_HEADSHOT;
 		} else if (defid == 61 || defid == 1006) {
 			// Ambassador
-			lastHeadshot[attacker] = (damagecustom & 1) != 0;
+			lastHeadshot[attacker] = damagecustom == TF_CUSTOM_HEADSHOT;
 		}
 		
 		if (wasDirect && (attackerClass == TFClass_Soldier || attackerClass == TFClass_DemoMan) && GetPlayerWeaponSlot(attacker, 0) == weapon) {
