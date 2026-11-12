@@ -19,6 +19,10 @@ Release notes:
 - Updated code to be compatible with SourceMod 1.12
 
 
+---- 1.1.4 (13/11/2026) ----
+- Fixed bug where stored scores were not reset on servers with SourceTV
+
+
 Known issues:
 - Not compatible with TFTrue.
 */
@@ -34,7 +38,7 @@ Known issues:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.1.3"
+#define PLUGIN_VERSION "1.1.4"
 #define UPDATE_URL		"https://sourcemod.krus.dk/restorescore/update.txt"
 
 
@@ -133,7 +137,7 @@ public void Event_player_disconnect(Event event, const char[] name, bool dontBro
 	g_iAddScore[client] = 0;
 	
 	// Clear the old scores if the server is empty
-	if (GetClientCount() == 1) {
+	if (GetRealPlayerCount() == (IsRealPlayer(client) ? 1 : 0)) {
 		ResetOldScores();
 		return;
 	}
