@@ -104,8 +104,9 @@ Release notes:
 
 
 ---- 2.6.3 (12/11/2026) ----
-- Fixed bug where airshot could wrongly be logged on a heal event
+- Fixed bug where medic airshot could wrongly be logged on a heal event
 - Fixed bug where lit huntsman headshots counted as multiple headshots on the following burn ticks
+- Fixed rare bug where an airshot was incorrectly detected after touching a grenade roller
 
 
 TODO:
@@ -163,7 +164,7 @@ int lastHealingOnHit[MAXPLAYERS+1];
 bool lastHeadshot[MAXPLAYERS+1]; 
 bool lastAirshot[MAXPLAYERS+1]; 
 int lastAirshotHeight[MAXPLAYERS+1];
-bool g_bPlayerTakenDirectHit[MAXPLAYERS+1];
+int g_iPlayerTakenDirectHitRef[MAXPLAYERS+1]; // Entity reference of the projectile that last touched the player (0 if none)
 int medpackHealAmount[MAXPLAYERS+1];
 float g_fPauseStartTime;
 char g_sTauntNames[][] = { "", "taunt_scout", "taunt_sniper", "taunt_soldier", "taunt_demoman", "taunt_medic", "taunt_heavy", "taunt_pyro", "taunt_spy", "taunt_engineer" };
@@ -724,8 +725,9 @@ int FindStickySpot(int client, int inflictor, bool mayCreate = false) {
 }
 
 public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom) {
-	bool wasDirect = g_bPlayerTakenDirectHit[victim];
-	g_bPlayerTakenDirectHit[victim] = false; // Make sure to reset it before leaving the function
+	// Only count it as a direct hit if the projectile that touched the player is the one dealing the damage
+	bool wasDirect = g_iPlayerTakenDirectHitRef[victim] != 0 && inflictor > MaxClients && g_iPlayerTakenDirectHitRef[victim] == EntIndexToEntRef(inflictor);
+	g_iPlayerTakenDirectHitRef[victim] = 0; // Make sure to reset it before leaving the function
 	
 	if (victim == attacker) {
 		if (g_bEnableAccuracy && IsRealPlayer(attacker) && inflictor > MaxClients) {
@@ -1003,7 +1005,7 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
 
 public void OnProjectileTouch(int entity, int other) {
 	if (other > 0 && other <= MaxClients) {
-		g_bPlayerTakenDirectHit[other] = true;
+		g_iPlayerTakenDirectHitRef[other] = EntIndexToEntRef(entity);
 	}
 }
 
