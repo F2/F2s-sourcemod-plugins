@@ -61,14 +61,17 @@ Release notes:
 - Updated code to be compatible with SourceMod 1.12
 
 
+---- 2.0.0 (12/11/2026) ----
+- Changed the way buffs are detected
+
+
 
 TODO:
 - The log lines should include which medigun is wielded
 - cvar to enable logging medics' self-heal (should be disabled by default)
 
 Known Bugs:
-- When there are more than one medic on a team, the heals are likely to be credited to the wrong medic. [No easy/well-performing fix]
-- If a person is buffed by other means than the medic (for example Conniver's Kunai), then the medic will get the credit for the heals. [No easy/well-performing fix]
+- If a person is buffed by other means than the medic (for example Conniver's Kunai) while being healed by the medic, then the medic will get the credit for the heals. [No easy/well-performing fix]
 */
 
 #pragma semicolon 1
@@ -77,12 +80,11 @@ Known Bugs:
 #include <sourcemod>
 #include <tf2_stocks>
 #include <f2stocks>
-#include <smlib/arrays>
 #undef REQUIRE_PLUGIN
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.4.2"
+#define PLUGIN_VERSION "2.0.0"
 #define UPDATE_URL "https://sourcemod.krus.dk/medicstats/update.txt"
 #define TIMER_TICK 0.15
 
@@ -117,10 +119,10 @@ enum struct MedicInfo {
 }
 
 
-int g_iMaxHealth[MAXPLAYERS + 1];
-int g_iLastHealth[MAXPLAYERS + 1];
-int g_iHealedBy[MAXPLAYERS + 1];
-int g_iBuffed[MAXPLAYERS + 1];
+int g_iBeamTarget[MAXPLAYERS + 1]; // [healer] The patient the medic's beam was attached to in the last game frame
+int g_iBuffHighest[MAXPLAYERS + 1]; // [patient] The highest health the patient has had since the beam attached or since they last took damage
+int g_iBuffed[MAXPLAYERS + 1]; // [healer] The buff heals not yet logged
+int g_iBuffedPatient[MAXPLAYERS + 1]; // [healer] The patient that g_iBuffed was given to
 float g_fLastCollectBuffs;
 
 MedicInfo medic[TFTeam];
@@ -154,6 +156,7 @@ public void OnPluginStart() {
     HookEvent("player_connect", Event_player_connect, EventHookMode_Post);
     HookEvent("player_spawn", Event_player_spawn, EventHookMode_Post);
     HookEvent("player_death", Event_player_death, EventHookMode_Pre);
+    HookEvent("player_hurt", Event_player_hurt, EventHookMode_Post);
     HookEvent("player_chargedeployed", Event_player_chargedeployed, EventHookMode_Pre);
     HookEvent("player_healed", Event_player_healed, EventHookMode_Post);
 
@@ -216,9 +219,21 @@ public void OnMapStart() {
 public void Cvar_LogBuffs(Handle cvar, const char[] oldValue, const char[] newValue) {
     g_bLogBuffs = StringToInt(newValue) == 1;
 
-    Array_Fill(g_iLastHealth, sizeof(g_iLastHealth), 0);
-    Array_Fill(g_iHealedBy, sizeof(g_iHealedBy), 0);
-    Array_Fill(g_iBuffed, sizeof(g_iBuffed), 0);
+    for (int client = 1; client <= MaxClients; client++)
+        ResetBuffs(client);
+}
+
+void ResetBuffs(int client) {
+    g_iBeamTarget[client] = 0;
+    g_iBuffHighest[client] = 0;
+    g_iBuffed[client] = 0;
+    g_iBuffedPatient[client] = 0;
+
+    // Drop unlogged buffs given to this client
+    for (int healer = 1; healer <= MaxClients; healer++) {
+        if (g_iBuffedPatient[healer] == client)
+            g_iBuffed[healer] = 0;
+    }
 }
 
 public Action Event_player_connect(Event event, const char[] name, bool dontBroadcast) {
@@ -226,19 +241,13 @@ public Action Event_player_connect(Event event, const char[] name, bool dontBroa
     int client = GetClientOfUserId(userid);
 
     // ==== Buffs ====
-    g_iBuffed[client] = 0;
-    g_iHealedBy[client] = 0;
+    ResetBuffs(client);
     return Plugin_Continue;
 }
 
 public Action Event_player_spawn(Event event, const char[] name, bool dontBroadcast) {
     int userid = event.GetInt("userid");
     int client = GetClientOfUserId(userid);
-
-    // ==== Buffs ====
-    g_iMaxHealth[client] = GetClientHealth(client);
-    g_iLastHealth[client] = g_iMaxHealth[client];
-    g_iBuffed[client] = 0;
 
     // ==== Medic stats ====
     if (!IsInMatch || IsBonusRoundTime)
@@ -275,9 +284,6 @@ public Action Event_player_death(Event event, const char[] name, bool dontBroadc
     int userid = event.GetInt("userid");
     int client = GetClientOfUserId(userid);
 
-    // ==== Buffs ====
-    g_iLastHealth[client] = 0;
-
     // ==== Medic stats ====
     if (!IsInMatch || IsBonusRoundTime)
         return Plugin_Continue;
@@ -302,6 +308,16 @@ public Action Event_player_death(Event event, const char[] name, bool dontBroadc
         LogMedicDeath(client, RoundToFloor(uberPct * 100.0));
     }
 
+    return Plugin_Continue;
+}
+
+public Action Event_player_hurt(Event event, const char[] name, bool dontBroadcast) {
+    int userid = event.GetInt("userid");
+    int client = GetClientOfUserId(userid);
+
+    // ==== Buffs ====
+    // Heals that restore health lost to damage count as buffs again, even if the patient was buffed that high before.
+    g_iBuffHighest[client] = event.GetInt("health");
     return Plugin_Continue;
 }
 
@@ -363,9 +379,6 @@ public Action Event_player_healed(Event event, const char[] name, bool dontBroad
 
     TFTeam healerTeam = TF2_GetClientTeam(healer);
 
-    // ==== Buffs ====
-    g_iHealedBy[patient] = healer;
-
     // ==== Medic stats ====
     if (medic[healerTeam].MedicClient != healer) {
         ResetMedicInfo(healerTeam);
@@ -418,10 +431,6 @@ public Action Timer_CollectInfo(Handle timer) {
         int client = medic[team].MedicClient;
         if (!IsRealPlayer(client) || TF2_GetClientTeam(client) != team || TF2_GetPlayerClass(client) != TFClass_Medic) {
             medic[team].MedicClient = -1;
-        } else {
-            int target = TF2_GetHealingTarget(client);
-            if (IsRealPlayer(target))
-                g_iHealedBy[target] = client;
         }
     }
 
@@ -561,65 +570,66 @@ public Action Timer_CollectInfo(Handle timer) {
 void CollectBuffs() {
     g_fLastCollectBuffs = GetGameTime();
 
-    // Check who each medic is currently healing.
-    for (TFTeam team = TFTeam_Red; team <= TFTeam_Blue; team++) {
-        int client = medic[team].MedicClient;
-        if (!IsRealPlayer(client))
-            continue;
-        if (!IsPlayerAlive(client))
-            continue;
-        int target = TF2_GetHealingTarget(client);
-        if (IsRealPlayer(target))
-            g_iHealedBy[target] = client;
-    }
-
     // Log the recorded buffs.
-    for (int client = 1; client <= MaxClients; client++) {
-        if (g_iBuffed[client] <= 0)
-            continue;
-        if (!IsRealPlayer2(client)) {
-            g_iBuffed[client] = 0;
-            continue;
-        }
+    for (int healer = 1; healer <= MaxClients; healer++)
+        FlushBuffs(healer);
+}
 
-        if (!IsRealPlayer(g_iHealedBy[client]) || TF2_GetPlayerClass(g_iHealedBy[client]) != TFClass_Medic) {
-            TFTeam clientTeam = TF2_GetClientTeam(client);
-            g_iHealedBy[client] = medic[clientTeam].MedicClient;
-        }
-
-        if (IsRealPlayer(g_iHealedBy[client])) {
-            LogHealed(client, g_iHealedBy[client], g_iBuffed[client]);
-        }
-        g_iBuffed[client] = 0;
-    }
+void FlushBuffs(int healer) {
+    if (g_iBuffed[healer] <= 0)
+        return;
+    int patient = g_iBuffedPatient[healer];
+    if (IsRealPlayer2(healer) && IsRealPlayer(patient))
+        LogHealed(patient, healer, g_iBuffed[healer]);
+    g_iBuffed[healer] = 0;
 }
 
 public void OnGameFrame() {
     if (!g_bLogBuffs)
         return;
 
-    // Each game frame we compare all players' current health with their health in the last game frame. If someone got buffed (above 100% health), record it.
-    for (int client = 1; client <= MaxClients; client++) {
-        if (g_iLastHealth[client] <= 0)
-            continue;
-        if (!IsRealPlayer2(client)) {
-            g_iLastHealth[client] = 0;
+    int playerManager = GetPlayerResourceEntity();
+    if (playerManager == -1)
+        return;
+
+    // Each game frame we look at each medic's current patient. If the patient got buffed (above max health) higher than
+    // they have been since the beam attached or since they last took damage, record it.
+    // Only counting new highs ignores the decay/re-heal loop at the overheal cap.
+    for (int healer = 1; healer <= MaxClients; healer++) {
+        if (!IsRealPlayer(healer) || !IsPlayerAlive(healer) || TF2_GetPlayerClass(healer) != TFClass_Medic) {
+            g_iBeamTarget[healer] = 0;
             continue;
         }
 
-        if (!IsPlayerAlive(client))
+        int patient = TF2_GetHealingTarget(healer);
+        if (!IsRealPlayer(patient) || !IsPlayerAlive(patient)) {
+            g_iBeamTarget[healer] = 0;
             continue;
+        }
 
-        int newhealth = GetClientHealth(client);
-        int oldhealth = g_iLastHealth[client];
-        g_iLastHealth[client] = newhealth;
-        if (newhealth <= g_iMaxHealth[client])
-            continue;
+        int newhealth = GetClientHealth(patient);
+        if (g_iBeamTarget[healer] != patient) {
+            // The beam just attached. The first heal usually lands in the same tick, so start one HP below to count it.
+            g_iBeamTarget[healer] = patient;
+            g_iBuffHighest[patient] = newhealth - 1;
+        }
+
+        int oldhealth = g_iBuffHighest[patient];
         if (newhealth <= oldhealth)
             continue;
-        if (oldhealth < g_iMaxHealth[client])
-            oldhealth = g_iMaxHealth[client];
-        g_iBuffed[client] += newhealth - oldhealth;
+        g_iBuffHighest[patient] = newhealth;
+
+        int maxHealth = GetEntProp(playerManager, Prop_Send, "m_iMaxHealth", _, patient);
+        if (newhealth <= maxHealth)
+            continue;
+        if (oldhealth < maxHealth)
+            oldhealth = maxHealth;
+        if (g_iBuffedPatient[healer] != patient) {
+            // The medic switched patient. Log the buffs given to the previous patient.
+            FlushBuffs(healer);
+            g_iBuffedPatient[healer] = patient;
+        }
+        g_iBuffed[healer] += newhealth - oldhealth;
     }
 }
 
