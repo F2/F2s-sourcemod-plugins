@@ -817,8 +817,8 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 		}
 	
 		if (attackerClass == TFClass_Sniper && GetPlayerWeaponSlot(attacker, 0) == weapon) {
-			// Huntsman and sniper rifles
-			lastHeadshot[attacker] = damagecustom == TF_CUSTOM_HEADSHOT;
+			// Huntsman and sniper rifles. The Hitman's Heatmaker uses TF_CUSTOM_HEADSHOT_DECAPITATION.
+			lastHeadshot[attacker] = damagecustom == TF_CUSTOM_HEADSHOT || damagecustom == TF_CUSTOM_HEADSHOT_DECAPITATION;
 		} else if (defid == 61 || defid == 1006) {
 			// Ambassador
 			lastHeadshot[attacker] = damagecustom == TF_CUSTOM_HEADSHOT;

@@ -201,6 +201,8 @@ bool g_bLogReady;
 bool g_bIsUploading;
 int g_iUploadAttempt;
 int g_iPlayersInMatch;
+int g_iMatchCount; // Incremented every time a match starts
+int g_iUploadMatchCount; // The value of g_iMatchCount when the last full upload started
 
 ConVar g_hCvarHostname,
 	g_hCvarRedTeamName,
@@ -328,6 +330,7 @@ public void OnPluginEnd() {
 // -----------------------------------
 
 void StartMatch() {
+	g_iMatchCount++;
 	FlushLog();
 	g_sLastLogURL = ""; // Avoid people typing .ss towards the end of the match, only to show the old stats
 
@@ -756,8 +759,10 @@ void UploadLog(bool partial) {
 		return;
 	}
 
-	if (!partial)
+	if (!partial) {
 		g_bLogReady = false;
+		g_iUploadMatchCount = g_iMatchCount;
+	}
 	g_bIsUploading = true;
 	g_bIsPartialUpload = partial;
 
@@ -919,8 +924,8 @@ public bool ParseLogsResponse(const char[] contents) {
 public Action RetryUploadLog(Handle timer, int client) {
 	g_bIsUploading = false;
 
-	if (g_bInMatch) {
-		// A new match has started, so the log file no longer contains the match that failed to upload
+	if (g_iMatchCount != g_iUploadMatchCount) {
+		// A new match has started (and possibly been reset), so the log file no longer contains the match that failed to upload
 		LogError("Not retrying upload, since a new match has started");
 		CallLogUploaded(false, "", "");
 		return Plugin_Stop;
