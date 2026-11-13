@@ -255,17 +255,6 @@ stock void CPrintToChatAll2(const char[] message, any ...) {
 }
 
 
-stock void GetPlayerTeamStr(int team, char[] teamstr, int teamstrLen) {
-	switch (team) {
-		case (view_as<int>(TFTeam_Red)):
-			strcopy(teamstr, teamstrLen, "Red");
-		case view_as<int>(TFTeam_Blue):
-			strcopy(teamstr, teamstrLen, "Blue");
-		default:
-			strcopy(teamstr, teamstrLen, "unknown");
-	}
-}
-
 stock int TF2_GetPlayerScore(int client) {
 	if (!IsClientConnected(client))
 		return -1;
