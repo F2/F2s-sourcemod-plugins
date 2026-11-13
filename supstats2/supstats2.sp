@@ -105,6 +105,7 @@ Release notes:
 
 ---- 2.7.0 (12/11/2026) ----
 - Fixed crossbow heals logging the potential heal amount instead of the actual heal amount
+- Fixed Black Box healing being estimated imprecisely
 - Fixed bug where medic airshot could wrongly be logged on a heal event
 - Fixed bug where lit huntsman headshots counted as multiple headshots on the following burn ticks
 - Fixed rare bug where an airshot was incorrectly detected after touching a grenade roller
@@ -117,7 +118,6 @@ TODO:
 - Write comments in code :D
 - Make a separate file that deals with special weapon log-names
 - It might be possible to detect the owner of a rocket using m_hOwnerEntity
-- Log Blackbox healing more precisely (perhaps use player_healonhit instead)
 */
 
 #pragma semicolon 1
@@ -163,8 +163,8 @@ char lastWeaponDamage[MAXPLAYERS+1][MAXWEPNAMELEN];
 char lastPostHumousWeaponDamage[MAXPLAYERS+1][MAXWEPNAMELEN]; 
 float lastPostHumousWeaponDamageTime[MAXPLAYERS+1]; 
 int lastHealth[MAXPLAYERS+1];
-int lastHealingOnHit[MAXPLAYERS+1]; 
-bool lastHeadshot[MAXPLAYERS+1]; 
+int lastHealingOnHit[MAXPLAYERS+1];
+bool lastHeadshot[MAXPLAYERS+1];
 bool lastAirshot[MAXPLAYERS+1]; 
 int lastAirshotHeight[MAXPLAYERS+1];
 int lastHealArrowPatient[MAXPLAYERS+1]; // [medic] The teammate the medic's healing arrow is touching in this frame (0 if none)
@@ -173,6 +173,16 @@ int g_iPlayerTakenDirectHitRef[MAXPLAYERS+1]; // Entity reference of the project
 int medpackHealAmount[MAXPLAYERS+1];
 float g_fPauseStartTime;
 char g_sTauntNames[][] = { "", "taunt_scout", "taunt_sniper", "taunt_soldier", "taunt_demoman", "taunt_medic", "taunt_heavy", "taunt_pyro", "taunt_spy", "taunt_engineer" };
+
+// Healing from rocket launcher explosions (e.g. Black Box)
+enum struct RadiusHealingInfo {
+	int LastMaxHealing; // The max healing of the explosion that dealt the last damage (0 if not a healing explosion)
+	int Inflictor;      // The explosion currently being accumulated, identified by the inflictor and game tick
+	int Tick;
+	int Damage;         // The total damage dealt to enemies by the explosion so far
+	int Logged;         // The total healing logged for the explosion so far
+}
+RadiusHealingInfo radiusHealing[MAXPLAYERS+1];
 
 Handle g_hTimerMatchStarted = null;
 ConVar g_hCvarLogsTitle = null;
@@ -785,6 +795,7 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 	
 	TFClassType attackerClass = TF2_GetPlayerClass(attacker);
 	lastHealingOnHit[attacker] = 0;
+	radiusHealing[attacker].LastMaxHealing = 0;
 	lastHealth[attacker] = GetClientHealth(attacker);
 	lastHeadshot[attacker] = false;
 	lastAirshot[attacker] = false;
@@ -817,19 +828,23 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 		
 		if (healing > 0) {
 			if (StrEqual(lastWeaponDamage[attacker], "blackbox")) {
-				// TODO: Handle this more generic using the add_health_on_radius_damage attribute. Also, this is not perfectly precise.
-				int actualHealing = RoundToNearest(damage / 4.25);
-				if (actualHealing > healing)
-					actualHealing = healing; // The healing variable decides the maximum amount of healing
-				
-				healing = actualHealing;
-			}
-			
-			int maxHealth = GetMaxHealth(attacker);
-			if (maxHealth == -1) {
-				lastHealingOnHit[attacker] = healing;
-			} else if (lastHealth[attacker] < maxHealth) {
-				lastHealingOnHit[attacker] = min(maxHealth - lastHealth[attacker], healing);
+				// The Black Box heals once per explosion, scaled by the total damage the explosion deals to enemies.
+				// The actual damage is only known in player_hurt, so the healing is calculated there.
+				radiusHealing[attacker].LastMaxHealing = healing;
+				int tick = GetGameTickCount();
+				if (radiusHealing[attacker].Inflictor != inflictor || radiusHealing[attacker].Tick != tick) {
+					radiusHealing[attacker].Inflictor = inflictor;
+					radiusHealing[attacker].Tick = tick;
+					radiusHealing[attacker].Damage = 0;
+					radiusHealing[attacker].Logged = 0;
+				}
+			} else {
+				int maxHealth = GetMaxHealth(attacker);
+				if (maxHealth == -1) {
+					lastHealingOnHit[attacker] = healing;
+				} else if (lastHealth[attacker] < maxHealth) {
+					lastHealingOnHit[attacker] = min(maxHealth - lastHealth[attacker], healing);
+				}
 			}
 		}
 	
@@ -976,6 +991,10 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
 		char strAirshot[64] = "";
 
 		int healing = lastHealingOnHit[attacker];
+		if (radiusHealing[attacker].LastMaxHealing > 0) {
+			healing = GetRocketLauncherRadiusHealing(attacker, damage);
+			radiusHealing[attacker].LastMaxHealing = 0; // Make sure the damage is only counted once
+		}
 		if (healing != 0 && IsPlayerAlive(attacker))
 			FormatEx(strHealing, sizeof(strHealing), " (healing \"%i\")", healing);
 		
@@ -1020,6 +1039,30 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
 			strAirshot,
 			strHeadshot);
 	}
+}
+
+// Calculates the healing from a rocket launcher explosion (e.g. Black Box) the same way as CTFGameRules::RadiusDamage does it.
+// Only works for weapons with the item class tf_weapon_rocketlauncher, since it uses their base damage.
+// The game heals once after the explosion has damaged everyone, so the healing is split over the damage events of the explosion.
+// That way the healing logged for the explosion adds up to the actual healing.
+int GetRocketLauncherRadiusHealing(int attacker, int damage) {
+	radiusHealing[attacker].Damage += damage;
+
+	// The max healing is scaled by the total damage relative to the weapon's base damage
+	const float ROCKETLAUNCHER_BASE_DAMAGE = 90.0;
+	float scale = float(radiusHealing[attacker].Damage) / ROCKETLAUNCHER_BASE_DAMAGE;
+	if (scale > 1.0)
+		scale = 1.0;
+	int totalHealing = RoundToZero(float(radiusHealing[attacker].LastMaxHealing) * scale);
+
+	// The player cannot be healed above max health. The attacker's health does not change until the explosion has damaged everyone.
+	int maxHealth = GetMaxHealth(attacker);
+	if (maxHealth != -1)
+		totalHealing = min(totalHealing, max(maxHealth - lastHealth[attacker], 0));
+
+	int healing = totalHealing - radiusHealing[attacker].Logged;
+	radiusHealing[attacker].Logged = totalHealing;
+	return healing;
 }
 
 public void OnProjectileTouch(int entity, int other) {
