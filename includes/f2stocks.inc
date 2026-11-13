@@ -394,6 +394,15 @@ stock void F2_GetFileName(char[] filename, int maxsize, const char[] filepath) {
 	}
 }
 
+// Gets the current map name without the extra parts that workshop maps have,
+// e.g. "workshop/cp_process_final.ugc12345" becomes "cp_process_final".
+stock void F2_GetCurrentMapDisplayName(char[] map, int maxsize) {
+	char currentMap[PLATFORM_MAX_PATH];
+	GetCurrentMap(currentMap, sizeof(currentMap));
+	if (!GetMapDisplayName(currentMap, map, maxsize))
+		strcopy(map, maxsize, currentMap);
+}
+
 stock bool SteamID_Equal(const char[] id1, const char[] id2) {
 	// Compares two SteamIDs in the form of STEAM_0:X:YYYY, [U:1:ZZZZ] or X:YYYY
 

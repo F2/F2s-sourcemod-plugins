@@ -328,7 +328,7 @@ public void OnMapStart() {
 	for (int i = 0; i < sizeof(g_iIgnoreDamageEnt); i++)
 		g_iIgnoreDamageEnt[i] = 0;
 	
-	for (int client = 0; client < MaxClients; client++) {
+	for (int client = 1; client <= MaxClients; client++) {
 		for (int i = 0; i < MAXSTICKIES; i++)
 			g_iStickyId[client][i] = 0;
 	}

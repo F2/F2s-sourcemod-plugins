@@ -132,8 +132,8 @@ public void Match_Event_round_restart_seconds(Event event, const char[] name, bo
 }
 
 public void Match_Event_game_over(Event event, const char[] name, bool dontBroadcast) {
-	char map[64];
-	GetCurrentMap(map, sizeof(map));
+	char map[128];
+	F2_GetCurrentMapDisplayName(map, sizeof(map));
 	if (strncmp(map, "ctf_", 4, false) == 0) {
 		if ((GetEngineTime() - g_fLastRoundEnd) > 7.5)
 			return;

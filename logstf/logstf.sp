@@ -224,7 +224,7 @@ char g_sLastLogURL[128];
 char g_sCachedHostname[64];
 char g_sCachedRedTeamName[32];
 char g_sCachedBluTeamName[32];
-char g_sCachedMap[32];
+char g_sCachedMap[128];
 GlobalForward g_hLogUploaded;  // public void LogUploaded(bool success, const char[] logid, const char[] url)
 GlobalForward g_hBlockLogLine; // public Action BlockLogLine(const char[] logline)
 
@@ -319,7 +319,7 @@ public void OnLibraryAdded(const char[] name) {
 public void OnPluginEnd() {
 	// Clean up
 	RemoveGameLogHook(GameLog);
-	char path[64];
+	char path[PLATFORM_MAX_PATH];
 	GetLogPath(LOG_PATH, path, sizeof(path));
 	DeleteFile(path);
 	delete g_hLogUploaded;
@@ -413,7 +413,7 @@ void CacheMatchValues() {
 	String_Trim(g_sCachedHostname, g_sCachedHostname, sizeof(g_sCachedHostname));
 	String_Trim(g_sCachedBluTeamName, g_sCachedBluTeamName, sizeof(g_sCachedBluTeamName));
 	String_Trim(g_sCachedRedTeamName, g_sCachedRedTeamName, sizeof(g_sCachedRedTeamName));
-	GetCurrentMap(g_sCachedMap, sizeof(g_sCachedMap));
+	F2_GetCurrentMapDisplayName(g_sCachedMap, sizeof(g_sCachedMap));
 
 	ShortenHostnameForLogTitle(g_sCachedHostname, sizeof(g_sCachedHostname));
 }
@@ -692,7 +692,7 @@ void FlushLog() {
 	int lastLine = g_iNextLogBuffer;
 
 	if (g_bInMatch) {
-		char path[64];
+		char path[PLATFORM_MAX_PATH];
 		GetLogPath(LOG_PATH, path, sizeof(path));
 		File file = OpenFile(path, g_bClearLogFile ? "w" : "a");
 		if (file == null) {
@@ -757,7 +757,7 @@ void UploadLog(bool partial) {
 	g_bIsUploading = true;
 	g_bIsPartialUpload = partial;
 
-	char path[64];
+	char path[PLATFORM_MAX_PATH];
 	GetLogPath(LOG_PATH, path, sizeof(path));
 
 	if (!partial)
@@ -945,7 +945,7 @@ Action CallBlockLogLine(const char[] logline) {
 
 
 void GetLogPath(const char[] file, char[] destpath, int destpathLen) {
-	char logsdir[64];
+	char logsdir[PLATFORM_MAX_PATH];
 	g_hCvarLogsDir.GetString(logsdir, sizeof(logsdir));
 	if (DirExists(logsdir) == false) {
 		// Setting use_valve_fs=true somehow allows it true create nested directories.

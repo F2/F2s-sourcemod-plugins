@@ -27,6 +27,10 @@ Release notes:
 - Treat matches lasting more than one minute as completed instead of reset
 
 
+---- 1.2.1 (13/11/2026) ----
+- Better handling of workshop maps
+
+
 TODO:
 - Automatic zipping of match*.dem files
 
@@ -44,7 +48,7 @@ TODO:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.2.0"
+#define PLUGIN_VERSION "1.2.1"
 #define UPDATE_URL		"https://sourcemod.krus.dk/recordstv/update.txt"
 
 
@@ -165,7 +169,8 @@ void RecordToFile(const char[] path, const char[] format) {
 	
 	// Replace %map with current map
 	char map[128];
-	GetCurrentMap(map, sizeof(map));
+	F2_GetCurrentMapDisplayName(map, sizeof(map));
+	CleanFilename(map);
 	ReplaceString(filename, sizeof(filename), "%map", map, false);
 	
 	// Replace %red and %blue with current team names
