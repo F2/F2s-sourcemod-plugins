@@ -881,11 +881,11 @@ public bool ParseLogsResponse(const char[] contents) {
 			Format(error, sizeof(error), "Unknown error:\n%s", resBuff);
 		}
 
-		ReplaceString(error, size, "\n", "");
-		ReplaceString(error, size, "\\n", " ");
-		ReplaceString(error, size, "\r", "");
-		ReplaceString(error, size, "\t", "");
-		String_Trim(error, error, size);
+		ReplaceString(error, sizeof(error), "\n", "");
+		ReplaceString(error, sizeof(error), "\\n", " ");
+		ReplaceString(error, sizeof(error), "\r", "");
+		ReplaceString(error, sizeof(error), "\t", "");
+		String_Trim(error, error, sizeof(error));
 
 		if (!g_bIsPartialUpload)
 			MC_PrintToChatAll("%s%s", "{lightgreen}[LogsTF] {red}Unsuccesful upload: ", error);
