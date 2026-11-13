@@ -63,6 +63,7 @@ Release notes:
 
 ---- 2.0.0 (12/11/2026) ----
 - Changed the way buffs are detected
+- Don't log buffs to enemy spies
 
 
 
@@ -596,7 +597,8 @@ public void OnGameFrame() {
         }
 
         int patient = TF2_GetHealingTarget(healer);
-        if (!IsRealPlayer(patient) || !IsPlayerAlive(patient)) {
+        if (!IsRealPlayer(patient) || !IsPlayerAlive(patient) || GetClientTeam(patient) != GetClientTeam(healer)) {
+            // Enemy spies can be healed, but the game does not log heals to them, so don't log buffs to them either.
             g_iBeamTarget[healer] = 0;
             continue;
         }
