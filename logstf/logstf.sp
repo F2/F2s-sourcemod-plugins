@@ -152,6 +152,7 @@ Release notes:
 - Improved error handling when retrying log upload
 - Added validation of logs.tf responses
 - Reduced disk usage during mid-round log upload
+- Improved performance during upload of large logs
 
 
 TODO:
