@@ -698,7 +698,8 @@ static void cURL_Done(Handle hndl, CURLcode code) {
     if (success) {
         File fileHandle = OpenFile(filename, "r");
         if (fileHandle != null) { 
-            ReadFileString(fileHandle, buffer, size + 1);
+            int bytesRead = ReadFileString(fileHandle, buffer, size + 1, size);
+            buffer[bytesRead == -1 ? 0 : bytesRead] = '\0';
             delete fileHandle;
         }
         

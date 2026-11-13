@@ -168,10 +168,12 @@ static void AppendMultipartFile_Init(AnyHttpStringBuilder sb, const char[] name,
 
 static bool AppendMultipartFile_Process(AnyHttpMultipartData data) {
     char buffer[100 * 1024];
-    if (data.currentFile.ReadString(buffer, sizeof(buffer)) == -1) {
+    int bytesRead = data.currentFile.ReadString(buffer, sizeof(buffer), sizeof(buffer) - 1);
+    if (bytesRead == -1) {
         return false;
     }
-    
+    buffer[bytesRead] = '\0';
+
     data.sb.Append(buffer);
     return true;
 }
