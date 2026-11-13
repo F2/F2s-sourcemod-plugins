@@ -483,17 +483,13 @@ public Action Timer_CollectInfo(Handle timer) {
                 // Medic has started building uber.
 
                 if (medic[team].MedicHasUber || medic[team].MedicIsUbering) {
-                    // Uber is fully built. Calculate some stats.
-                    float buildtime = gameTime - medic[team].MedicStartedBuildTime - TIMER_TICK / 2;
-                    buildtime = max(buildtime, uberBuildTime);
+                    // Uber is fully built.
                     medic[team].MedicStartedBuildTime = -1.0;
 
                     // Notice that sometimes the medic manages to get 100% and use the uber between two ticks.
                     // In that case, LogUberReady has already been called from the 'chargedeployed' event.
                     if (medic[team].MedicHasUber)
                         LogUberReady(client);
-
-                    //PrintToSTV("[STV Stats] %s built uber in %.0f seconds", team == TFTeam_Red ? "RED" : "BLU", buildtime);
                 }
             }
 
