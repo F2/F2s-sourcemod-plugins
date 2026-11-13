@@ -135,10 +135,10 @@ stock void KvizEscape(char[] dest, int destLen, const char[] src) {
     int destPos = 0;
     while (destPos + 1 < destLen && src[srcPos] != '\0') {
         if (src[srcPos] == ':' || src[srcPos] == '.') {
-            buffer[destPos++] = '\\';
-            if (destPos == destLen) {
+            if (destPos + 2 >= destLen) {
                 break;
             }
+            buffer[destPos++] = '\\';
         }
         buffer[destPos++] = src[srcPos++];
     }
@@ -1000,6 +1000,11 @@ stock bool KvizJumpToKey(KeyValues kv, bool create, const char[] path, any ...) 
     char path2[256];
     VFormat(path2, sizeof(path2), path, 4);
 
+    if (Kviz[Kviz_iCurrentContext].Kviz_iTraversalStackLen >= Kviz_iMaxTraversalStack) {
+        LogError("Kvizzle - Traversal stack is full (%s)", path2);
+        return false;
+    }
+
     int action;
     if (!KvizGoto(kv, path2, create, action, true) || action != KVIZ_ACTION_NONE) {
         return false;
@@ -1143,6 +1148,11 @@ stock bool KvizGoto2(KeyValues kv, const char[] path, bool create, int &action, 
     int endPos = 0;
     int destPos = 0;
     while (path[endPos] != '.' && path[endPos] != '\0' && !(path[endPos] == ':' && endPos != 0)) {
+        if (destPos + 1 >= sizeof(key)) {
+            LogError("Kvizzle - Path component is too long (%s)", path);
+            return false;
+        }
+
         if (path[endPos] == '\\') {
             if (path[endPos+1] == '\0') {
                 key[destPos++] = path[endPos++];
@@ -1274,6 +1284,11 @@ stock bool KvizGoto2(KeyValues kv, const char[] path, bool create, int &action, 
     }
 
     if (!alreadyInPosition) {
+        if (depth >= Kviz_iMaxPathDepth) {
+            LogError("Kvizzle - Path is too deep (%s)", path);
+            return false;
+        }
+
         if (isPseudoClass) {
             switch (pseudoClass) {
                 case KVIZ_PSEUDO_LASTCHILD: {
