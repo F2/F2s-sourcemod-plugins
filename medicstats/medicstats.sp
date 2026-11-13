@@ -636,132 +636,55 @@ public void OnGameFrame() {
 // Log functions
 // -----------------------------------
 void LogFirstHeal(int healer, float time) {
-    char healerName[32];
-    char healerSteamId[64];
-    char healerTeam[64];
+    char healerStr[256];
+    GetPlayerLogStr(healer, healerStr, sizeof(healerStr));
 
-    GetClientAuthStringNew(healer, healerSteamId, sizeof(healerSteamId), false);
-    GetClientName(healer, healerName, sizeof(healerName));
-    GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
-
-    LogToGame("\"%s<%d><%s><%s>\" triggered \"first_heal_after_spawn\" (time \"%.1f\")", 
-        healerName,
-        GetClientUserId(healer), 
-        healerSteamId, 
-        healerTeam, 
-        time);
+    LogToGame("\"%s\" triggered \"first_heal_after_spawn\" (time \"%.1f\")", healerStr, time);
 }
 
 void LogUberReady(int healer) {
-    char healerName[32];
-    char healerSteamId[64];
-    char healerTeam[64];
+    char healerStr[256];
+    GetPlayerLogStr(healer, healerStr, sizeof(healerStr));
 
-    GetClientAuthStringNew(healer, healerSteamId, sizeof(healerSteamId), false);
-    GetClientName(healer, healerName, sizeof(healerName));
-    GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
-
-    LogToGame("\"%s<%d><%s><%s>\" triggered \"chargeready\"", 
-        healerName, 
-        GetClientUserId(healer), 
-        healerSteamId,
-        healerTeam);
+    LogToGame("\"%s\" triggered \"chargeready\"", healerStr);
 }
 
 void LogMedicDeath(int healer, int pct) {
-    char healerName[32];
-    char healerSteamId[64];
-    char healerTeam[64];
+    char healerStr[256];
+    GetPlayerLogStr(healer, healerStr, sizeof(healerStr));
 
-    GetClientAuthStringNew(healer, healerSteamId, sizeof(healerSteamId), false);
-    GetClientName(healer, healerName, sizeof(healerName));
-    GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
-
-    LogToGame("\"%s<%d><%s><%s>\" triggered \"medic_death_ex\" (uberpct \"%i\")", 
-        healerName, 
-        GetClientUserId(healer),
-        healerSteamId, 
-        healerTeam, 
-        pct);
+    LogToGame("\"%s\" triggered \"medic_death_ex\" (uberpct \"%i\")", healerStr, pct);
 }
 
 void LogEmptyUber(int healer) {
-    char healerName[32];
-    char healerSteamId[64];
-    char healerTeam[64];
+    char healerStr[256];
+    GetPlayerLogStr(healer, healerStr, sizeof(healerStr));
 
-    GetClientAuthStringNew(healer, healerSteamId, sizeof(healerSteamId), false);
-    GetClientName(healer, healerName, sizeof(healerName));
-    GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
-
-    LogToGame("\"%s<%d><%s><%s>\" triggered \"empty_uber\"", 
-        healerName, 
-        GetClientUserId(healer), 
-        healerSteamId,
-        healerTeam);
+    LogToGame("\"%s\" triggered \"empty_uber\"", healerStr);
 }
 
 void LogUberLength(int healer, float uberLength) {
-    char healerName[32];
-    char healerSteamId[64];
-    char healerTeam[64];
+    char healerStr[256];
+    GetPlayerLogStr(healer, healerStr, sizeof(healerStr));
 
-    GetClientAuthStringNew(healer, healerSteamId, sizeof(healerSteamId), false);
-    GetClientName(healer, healerName, sizeof(healerName));
-    GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
-
-    LogToGame("\"%s<%d><%s><%s>\" triggered \"chargeended\" (duration \"%.1f\")", 
-        healerName, 
-        GetClientUserId(healer),
-        healerSteamId, 
-        healerTeam, 
-        uberLength);
+    LogToGame("\"%s\" triggered \"chargeended\" (duration \"%.1f\")", healerStr, uberLength);
 }
 
 void LogLostUberAdvantage(int healer, float uberAdvSeconds) {
-    char healerName[32];
-    char healerSteamId[64];
-    char healerTeam[64];
+    char healerStr[256];
+    GetPlayerLogStr(healer, healerStr, sizeof(healerStr));
 
-    GetClientAuthStringNew(healer, healerSteamId, sizeof(healerSteamId), false);
-    GetClientName(healer, healerName, sizeof(healerName));
-    GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
-
-    LogToGame("\"%s<%d><%s><%s>\" triggered \"lost_uber_advantage\" (time \"%.0f\")", 
-        healerName,
-        GetClientUserId(healer), 
-        healerSteamId, 
-        healerTeam, 
-        uberAdvSeconds);
+    LogToGame("\"%s\" triggered \"lost_uber_advantage\" (time \"%.0f\")", healerStr, uberAdvSeconds);
 }
 
 
 
 // Borrowed from supstats.sp
 void LogHealed(int patient, int healer, int amount) {
-    char patientName[32];
-    char healerName[32];
-    char patientSteamId[64];
-    char healerSteamId[64];
-    char patientTeam[64];
-    char healerTeam[64];
+    char healerStr[256];
+    char patientStr[256];
+    GetPlayerLogStr(healer, healerStr, sizeof(healerStr));
+    GetPlayerLogStr(patient, patientStr, sizeof(patientStr));
 
-    GetClientAuthStringNew(patient, patientSteamId, sizeof(patientSteamId), false);
-    GetClientName(patient, patientName, sizeof(patientName));
-    GetClientAuthStringNew(healer, healerSteamId, sizeof(healerSteamId), false);
-    GetClientName(healer, healerName, sizeof(healerName));
-
-    GetPlayerTeamStr(GetClientTeam(patient), patientTeam, sizeof(patientTeam));
-    GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
-
-    LogToGame("\"%s<%d><%s><%s>\" triggered \"healed\" against \"%s<%d><%s><%s>\" (healing \"%d\")", 
-        healerName,
-        GetClientUserId(healer), 
-        healerSteamId, 
-        healerTeam, 
-        patientName, 
-        GetClientUserId(patient), 
-        patientSteamId,
-        patientTeam, 
-        amount);
+    LogToGame("\"%s\" triggered \"healed\" against \"%s\" (healing \"%d\")", healerStr, patientStr, amount);
 }

@@ -461,6 +461,15 @@ stock bool GetClientAuthStringNew(int client, char[] steamid, int steamidSize, b
 	return true;
 }
 
+// Formats a player the same way as the game does in its log lines: name<userid><steamid><team>
+stock void GetPlayerLogStr(int client, char[] str, int strLen) {
+	char steamId[64];
+	char team[64];
+	GetClientAuthStringNew(client, steamId, sizeof(steamId), false);
+	GetTeamName(GetClientTeam(client), team, sizeof(team));
+	FormatEx(str, strLen, "%N<%d><%s><%s>", client, GetClientUserId(client), steamId, team);
+}
+
 stock int GetClientBySteamId(const char[] auth, AuthIdType idtype, bool validate = true) {
 	char clientAuth[64];
 	for (int client = 1; client <= MaxClients; client++) {

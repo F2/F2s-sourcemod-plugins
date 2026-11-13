@@ -139,8 +139,6 @@ TODO:
 #define PLUGIN_VERSION "2.7.0"
 #define UPDATE_URL		"https://sourcemod.krus.dk/supstats2/update.txt"
 
-#define NAMELEN 64
-
 #define ITEMS_TXT_PATH "scripts/items/items_game.txt"
 #define MAXWEAPONS 2048
 #define MAXWEPSLOTS 5
@@ -389,8 +387,7 @@ public Action Listener_Pause(int client, const char[] command, int argc) {
 public Action CheckPause(Handle timer, int userId) {
 	bool isPaused = !IsServerProcessing();
 	int client = GetClientOfUserId(userId);
-	char userSteamId[64];
-	char userTeam[64];
+	char userStr[256];
 
 	if (isPaused && !g_bIsPaused) {
 		g_fPauseStartTime = GetEngineTime();
@@ -398,10 +395,8 @@ public Action CheckPause(Handle timer, int userId) {
 		LogToGame("World triggered \"Game_Paused\"");
 
 		if (client != 0) {
-			GetClientAuthStringNew(client, userSteamId, sizeof(userSteamId), false);
-			GetPlayerTeamStr(GetClientTeam(client), userTeam, sizeof(userTeam));
-
-			LogToGame("\"%N<%d><%s><%s>\" triggered \"matchpause\"", client, userId, userSteamId, userTeam);
+			GetPlayerLogStr(client, userStr, sizeof(userStr));
+			LogToGame("\"%s\" triggered \"matchpause\"", userStr);
 		}
 	}
 	if (!isPaused && g_bIsPaused) {
@@ -410,10 +405,8 @@ public Action CheckPause(Handle timer, int userId) {
 		LogToGame("World triggered \"Game_Unpaused\"");
 
 		if (client != 0) {
-			GetClientAuthStringNew(client, userSteamId, sizeof(userSteamId), false);
-			GetPlayerTeamStr(GetClientTeam(client), userTeam, sizeof(userTeam));
-
-			LogToGame("\"%N<%d><%s><%s>\" triggered \"matchunpause\"", client, userId, userSteamId, userTeam);
+			GetPlayerLogStr(client, userStr, sizeof(userStr));
+			LogToGame("\"%s\" triggered \"matchunpause\"", userStr);
 		}
 		LogToGame("World triggered \"Pause_Length\" (seconds \"%.2f\")", pauseDuration);
 	}
@@ -507,12 +500,8 @@ void LogTitle() {
 }
 
 public Action Event_PlayerHealed(Event event, const char[] name, bool dontBroadcast) {
-	char patientName[NAMELEN];
-	char healerName[NAMELEN];
-	char patientSteamId[64];
-	char healerSteamId[64];
-	char patientTeam[64];
-	char healerTeam[64];
+	char patientStr[256];
+	char healerStr[256];
 	char strAirshot[64] = "";
 
 	int patientId = event.GetInt("patient");
@@ -555,23 +544,12 @@ public Action Event_PlayerHealed(Event event, const char[] name, bool dontBroadc
 		}
 	}
 
-	GetClientAuthStringNew(patient, patientSteamId, sizeof(patientSteamId), false);
-	GetClientName(patient, patientName, sizeof(patientName));
-	GetClientAuthStringNew(healer, healerSteamId, sizeof(healerSteamId), false);
-	GetClientName(healer, healerName, sizeof(healerName));
-	
-	GetPlayerTeamStr(GetClientTeam(patient), patientTeam, sizeof(patientTeam));
-	GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
-	
-	LogToGame("\"%s<%d><%s><%s>\" triggered \"healed\" against \"%s<%d><%s><%s>\" (healing \"%d\")%s",
-		healerName,
-		healerId,
-		healerSteamId,
-		healerTeam,
-		patientName,
-		patientId,
-		patientSteamId,
-		patientTeam,
+	GetPlayerLogStr(healer, healerStr, sizeof(healerStr));
+	GetPlayerLogStr(patient, patientStr, sizeof(patientStr));
+
+	LogToGame("\"%s\" triggered \"healed\" against \"%s\" (healing \"%d\")%s",
+		healerStr,
+		patientStr,
 		amount,
 		strAirshot);
 	
@@ -600,12 +578,9 @@ char classNames[][] = {
 //}
 
 public void Event_PlayerSpawned(Event event, const char[] name, bool dontBroadcast) {
-	char playerName[NAMELEN];
-	char playerSteamID[64];
-	char playerTeam[64];
-	
-	int userid = event.GetInt("userid");
-	int client = GetClientOfUserId(userid);
+	char playerStr[256];
+
+	int client = GetClientOfUserId(event.GetInt("userid"));
 	int clss = event.GetInt("class");
 
 	if (!IsRealPlayer(client))
@@ -617,15 +592,8 @@ public void Event_PlayerSpawned(Event event, const char[] name, bool dontBroadca
 	for (int i = 0; i < MAXSTICKIES; i++)
 		g_iStickyId[client][i] = 0;
 	
-	GetClientName(client, playerName, sizeof(playerName));
-	GetClientAuthStringNew(client, playerSteamID, sizeof(playerSteamID), false);
-	GetPlayerTeamStr(GetClientTeam(client), playerTeam, sizeof(playerTeam));
-	LogToGame("\"%s<%d><%s><%s>\" spawned as \"%s\"",
-		playerName,
-		userid,
-		playerSteamID,
-		playerTeam,
-		classNames[clss]);
+	GetPlayerLogStr(client, playerStr, sizeof(playerStr));
+	LogToGame("\"%s\" spawned as \"%s\"", playerStr, classNames[clss]);
 }
 
 
@@ -639,20 +607,15 @@ public void Event_player_chargedeployed(Event event, const char[] name, bool don
 	g_bBlockLog = false;
 	g_sBlockLog = "";
 	
-	char playerName[NAMELEN];
-	char playerAuth[64];
-	char playerTeam[16];
+	char playerStr[256];
 	char medigun[64];
-	
-	int userid = event.GetInt("userid");
-	int client = GetClientOfUserId(userid);
-	GetClientName(client, playerName, sizeof(playerName));
-	GetClientAuthStringNew(client, playerAuth, sizeof(playerAuth), false);
-	GetPlayerTeamStr(GetClientTeam(client), playerTeam, sizeof(playerTeam));
+
+	int client = GetClientOfUserId(event.GetInt("userid"));
+	GetPlayerLogStr(client, playerStr, sizeof(playerStr));
 	GetMedigunName(client, medigun, sizeof(medigun));
-	
-	
-	LogToGame("\"%s<%i><%s><%s>\" triggered \"chargedeployed\" (medigun \"%s\")", playerName, userid, playerAuth, playerTeam, medigun);
+
+
+	LogToGame("\"%s\" triggered \"chargedeployed\" (medigun \"%s\")", playerStr, medigun);
 }
 
 void GetMedigunName(int client, char[] medigun, int medigunLen) {
@@ -689,26 +652,16 @@ public void Event_ItemPickup(Event event, const char[] name, bool dontBroadcast)
 }
 
 void LogItemPickup(int userid, char[] item, int healing = 0) {
-	char playerName[NAMELEN];
-	char playerSteamId[64];
-	char playerTeam[64];
+	char playerStr[256];
 	char strHealing[64] = "";
-	
+
 	int client = GetClientOfUserId(userid);
-	GetClientAuthStringNew(client, playerSteamId, sizeof(playerSteamId), false);
-	GetClientName(client, playerName, sizeof(playerName));
-	GetPlayerTeamStr(GetClientTeam(client), playerTeam, sizeof(playerTeam));
-	
+	GetPlayerLogStr(client, playerStr, sizeof(playerStr));
+
 	if (healing != 0)
 		FormatEx(strHealing, sizeof(strHealing), " (healing \"%i\")", healing);
-	
-	LogToGame("\"%s<%d><%s><%s>\" picked up item \"%s\"%s",
-		playerName,
-		userid,
-		playerSteamId,
-		playerTeam,
-		item,
-		strHealing);
+
+	LogToGame("\"%s\" picked up item \"%s\"%s", playerStr, item, strHealing);
 }
 
 
@@ -949,31 +902,19 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 }
 
 public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast) {
-	int victimid = event.GetInt("userid");
-	int victim = GetClientOfUserId(victimid);
-	int attackerid = event.GetInt("attacker");
-	int attacker = GetClientOfUserId(attackerid);
+	int victim = GetClientOfUserId(event.GetInt("userid"));
+	int attacker = GetClientOfUserId(event.GetInt("attacker"));
 	int damage = event.GetInt("damageamount");
-	
+
 	bool crit = event.GetBool("crit");
 	bool minicrit = event.GetBool("minicrit");
-	
+
 	if (victim != attacker && attacker != 0) {
-		char attackerName[NAMELEN];
-		char attackerSteamID[64];
-		char attackerTeam[32];
-		char victimName[NAMELEN];
-		char victimSteamID[64];
-		char victimTeam[32];
-		
-		GetClientName(attacker, attackerName, sizeof(attackerName));
-		GetClientAuthStringNew(attacker, attackerSteamID, sizeof(attackerSteamID), false);
-		GetPlayerTeamStr(GetClientTeam(attacker), attackerTeam, sizeof(attackerTeam));
-		
-		GetClientName(victim, victimName, sizeof(victimName));
-		GetClientAuthStringNew(victim, victimSteamID, sizeof(victimSteamID), false);
-		GetPlayerTeamStr(GetClientTeam(victim), victimTeam, sizeof(victimTeam));
-		
+		char attackerStr[256];
+		char victimStr[256];
+		GetPlayerLogStr(attacker, attackerStr, sizeof(attackerStr));
+		GetPlayerLogStr(victim, victimStr, sizeof(victimStr));
+
 		char strHealing[32] = "";
 		char strCrit[32] = "";
 		char strRealDamage[32] = "";
@@ -1012,15 +953,9 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
 
 		// Remember: The attacker can be dead!
 		
-		LogToGame("\"%s<%d><%s><%s>\" triggered \"damage\" against \"%s<%d><%s><%s>\" (damage \"%d\")%s (weapon \"%s\")%s%s%s%s",
-			attackerName,
-			attackerid,
-			attackerSteamID,
-			attackerTeam,
-			victimName,
-			victimid,
-			victimSteamID,
-			victimTeam,
+		LogToGame("\"%s\" triggered \"damage\" against \"%s\" (damage \"%d\")%s (weapon \"%s\")%s%s%s%s",
+			attackerStr,
+			victimStr,
 			damage,
 			strRealDamage,
 			lastWeaponDamage[attacker],
@@ -1242,63 +1177,21 @@ public Action TF2_CalcIsAttackCritical(int attacker, int weapon, char[] weaponna
 
 
 void LogShot(int attacker, const char[] weapon) {
-	// For performance, don't use FormatShot.
-	
-	int attackerid = GetClientUserId(attacker);
-	char attackerName[NAMELEN];
-	char attackerSteamID[64];
-	char attackerTeam[32];
-	
-	GetClientName(attacker, attackerName, sizeof(attackerName));
-	GetClientAuthStringNew(attacker, attackerSteamID, sizeof(attackerSteamID), false);
-	GetPlayerTeamStr(GetClientTeam(attacker), attackerTeam, sizeof(attackerTeam));
-	
-	LogToGame(
-		"\"%s<%d><%s><%s>\" triggered \"shot_fired\" (weapon \"%s\")",
-		attackerName,
-		attackerid,
-		attackerSteamID,
-		attackerTeam,
-		weapon);
+	char logLine[512];
+	FormatShot(attacker, weapon, logLine, sizeof(logLine));
+	LogToGame("%s", logLine);
 }
 
 void FormatShot(int attacker, const char[] weapon, char[] dest, int destlen) {
-	int attackerid = GetClientUserId(attacker);
-	char attackerName[NAMELEN];
-	char attackerSteamID[64];
-	char attackerTeam[32];
-	
-	GetClientName(attacker, attackerName, sizeof(attackerName));
-	GetClientAuthStringNew(attacker, attackerSteamID, sizeof(attackerSteamID), false);
-	GetPlayerTeamStr(GetClientTeam(attacker), attackerTeam, sizeof(attackerTeam));
-	
-	Format(dest, destlen, 
-		"\"%s<%d><%s><%s>\" triggered \"shot_fired\" (weapon \"%s\")",
-		attackerName,
-		attackerid,
-		attackerSteamID,
-		attackerTeam,
-		weapon);
-	
-	
+	char attackerStr[256];
+	GetPlayerLogStr(attacker, attackerStr, sizeof(attackerStr));
+	FormatEx(dest, destlen, "\"%s\" triggered \"shot_fired\" (weapon \"%s\")", attackerStr, weapon);
 }
 
 void LogHit(int attacker, const char[] weapon) {
-	int attackerid = GetClientUserId(attacker);
-	char attackerName[NAMELEN];
-	char attackerSteamID[64];
-	char attackerTeam[32];
-	
-	GetClientName(attacker, attackerName, sizeof(attackerName));
-	GetClientAuthStringNew(attacker, attackerSteamID, sizeof(attackerSteamID), false);
-	GetPlayerTeamStr(GetClientTeam(attacker), attackerTeam, sizeof(attackerTeam));
-	
-	LogToGame("\"%s<%d><%s><%s>\" triggered \"shot_hit\" (weapon \"%s\")",
-		attackerName,
-		attackerid,
-		attackerSteamID,
-		attackerTeam,
-		weapon);
+	char attackerStr[256];
+	GetPlayerLogStr(attacker, attackerStr, sizeof(attackerStr));
+	LogToGame("\"%s\" triggered \"shot_hit\" (weapon \"%s\")", attackerStr, weapon);
 }
 // ---- ACCURACY ----
 

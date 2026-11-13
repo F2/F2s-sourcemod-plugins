@@ -408,11 +408,9 @@ public Action Cmd_Say(int client, const char[] command, int args) {
 				CPrintToChatAllEx2(client, "%s{teamcolor}%N{default} :  %s", dead, client, buffer);
 
 				// The game does not log the message, since we block the say command
-				char steamId[64];
-				char team[64];
-				GetClientAuthStringNew(client, steamId, sizeof(steamId), false);
-				GetTeamName(GetClientTeam(client), team, sizeof(team));
-				LogToGame("\"%N<%d><%s><%s>\" say \"%s\"", client, GetClientUserId(client), steamId, team, buffer);
+				char playerStr[256];
+				GetPlayerLogStr(client, playerStr, sizeof(playerStr));
+				LogToGame("\"%s\" say \"%s\"", playerStr, buffer);
 			}
 		}
 

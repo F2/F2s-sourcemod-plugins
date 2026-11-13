@@ -346,13 +346,9 @@ void StartMatch() {
 			g_iPlayersInMatch++;
 
 		// Write "changed role to" log lines to the log, such that logs.tf can calculate the "class play-time" correctly.
-		char playerName[64];
-		char playerSteamID[64];
-		char playerTeam[64];
-		GetClientName(client, playerName, sizeof(playerName));
-		GetClientAuthStringNew(client, playerSteamID, sizeof(playerSteamID), false);
-		GetPlayerTeamStr(GetClientTeam(client), playerTeam, sizeof(playerTeam));
-		LogToGame("\"%s<%i><%s><%s>\" changed role to \"%s\"", playerName, GetClientUserId(client), playerSteamID, playerTeam, g_sClassNamesLower[TF2_GetPlayerClass(client)]);
+		char playerStr[256];
+		GetPlayerLogStr(client, playerStr, sizeof(playerStr));
+		LogToGame("\"%s\" changed role to \"%s\"", playerStr, g_sClassNamesLower[TF2_GetPlayerClass(client)]);
 	}
 
 	// Clear the log file and make sure it exists. If it fails, FlushLog will try again.
