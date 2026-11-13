@@ -32,6 +32,10 @@ Release notes:
 - Fixed unnecessary tournament restart when server is almost empty
 
 
+---- 1.1.4 (13/11/2026) ----
+- Minor fixes
+
+
 BUG:
 - When using sm_map twice during a match, you cannot override the 90secs delay [Not a problem with waitforstv - ForceLevelChange simply doesn't call changelevel more than once per map.]
 
@@ -50,7 +54,7 @@ BUG:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.1.3"
+#define PLUGIN_VERSION "1.1.4"
 #define UPDATE_URL     "https://sourcemod.krus.dk/waitforstv/update.txt"
 
 
@@ -189,6 +193,9 @@ public Action Cmd_Changelevel(int args) {
 }
 
 public Action Cmd_StopChangelevel(int args) {
+	if (g_hCountdownTimer == null)
+		return Plugin_Continue;
+
 	KillTimer(g_hCountdownTimer);
 	g_hCountdownTimer = null;
 	g_iStvCountdown = 0;
@@ -202,6 +209,7 @@ public Action StvCountdownTrigger(Handle timer) {
 	
 	if (g_iStvCountdown <= 0) {
 		g_iStvCountdown = 1; // We have to force the mapchange
+		g_hCountdownTimer = null;
 		ServerCommand("changelevel %s", g_sStvCountdownNextMap);
 		
 		return Plugin_Stop;
