@@ -31,6 +31,7 @@ Release notes:
 
 ---- 1.3.0 (13/11/2026) ----
 - Fixed some cases where we did not tell other plugins that the player was no longer AFK
+- Fixed rendering names with percentage signs in them incorrectly
 - Fixed rare bug where you could be instantly marked as AFK after a match ended
 
 */
@@ -383,7 +384,7 @@ public Action Timer_CheckAFK(Handle timer) {
 		TFTeam team = clientTeam[client];
 
 		SetHudTextParams(0.04, -1.0, 3.0, 255, 0, 0, 255, 0, 0.0, 0.0, 0.0);
-		ShowSyncHudText(client, g_hHud[team], hudText[team]);
+		ShowSyncHudText(client, g_hHud[team], "%s", hudText[team]);
 	}
 
 	return Plugin_Continue;
