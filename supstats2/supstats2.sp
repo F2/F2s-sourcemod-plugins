@@ -198,12 +198,8 @@ bool g_bEnableAccuracy;
 int g_iIgnoreDamageEnt[5];
 float g_fLastHitscanHit[MAXPLAYERS+1];
 
-const MAXROCKETS = 5;
-int g_iRocketCreatedEntity[MAXROCKETS];
-float g_fRocketCreatedTime[MAXROCKETS];
-int g_iRocketCreatedNext = 0;
-
 const float MAXROCKETJUMPTIME = 0.15;
+float g_fRocketFiredTime[MAXPLAYERS+1];
 bool g_bRocketHurtMe[MAXPLAYERS+1];
 bool g_bRocketHurtEnemy[MAXPLAYERS+1];
 char g_sRocketFiredLogLine[MAXPLAYERS+1][1024];
@@ -760,11 +756,12 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 		if (g_bEnableAccuracy && IsRealPlayer(attacker) && inflictor > MaxClients) {
 			TFClassType cls = TF2_GetPlayerClass(attacker);
 			if (cls == TFClass_Soldier) {
-				for (int i = 0; i < MAXROCKETS; i++) {
-					if (g_iRocketCreatedEntity[i] == inflictor && g_fRocketCreatedTime[i] >= GetEngineTime() - MAXROCKETJUMPTIME) {
+				if (g_fRocketFiredTime[attacker] >= GetEngineTime() - MAXROCKETJUMPTIME) {
+					char entityName[32];
+					GetEntityClassname(inflictor, entityName, sizeof(entityName));
+					int shotType;
+					if (g_tShotTypes.GetValue(entityName, shotType) && shotType == SHOT_ROCKET)
 						g_bRocketHurtMe[attacker] = true;
-						break;
-					}
 				}
 			} else if (cls == TFClass_DemoMan) {
 				if (inflictor > MaxClients) {
@@ -1080,41 +1077,6 @@ public void OnEntityCreated(int entity, const char[] classname) {
 	
 	if (shotType == SHOT_ROCKET || shotType == SHOT_PIPE) {
 		SDKHook(entity, SDKHook_Touch, OnProjectileTouch); // Detecting direct hits
-		
-		if (g_bEnableAccuracy) {
-			float now = GetEngineTime();
-			float oldestTime = now + 1.0;
-			int oldest = -1;
-			bool found = false;
-			
-			for (int j = 0; j < MAXROCKETS; j++) {
-				if (g_iRocketCreatedEntity[g_iRocketCreatedNext] == 0) {
-					g_iRocketCreatedEntity[g_iRocketCreatedNext] = entity;
-					g_fRocketCreatedTime[g_iRocketCreatedNext] = now;
-					found = true;
-					break;
-				}
-				
-				if (g_fRocketCreatedTime[g_iRocketCreatedNext] < oldestTime) {
-					oldest = g_iRocketCreatedNext;
-					oldestTime = g_fRocketCreatedTime[g_iRocketCreatedNext];
-				}
-				
-				g_iRocketCreatedNext++;
-				if (g_iRocketCreatedNext == MAXROCKETS)
-					g_iRocketCreatedNext = 0;
-			}
-			
-			if (!found) {
-				g_iRocketCreatedNext = oldest;
-				g_iRocketCreatedEntity[g_iRocketCreatedNext] = entity;
-				g_fRocketCreatedTime[g_iRocketCreatedNext] = now;
-			}
-			
-			g_iRocketCreatedNext++;
-			if (g_iRocketCreatedNext == MAXROCKETS)
-				g_iRocketCreatedNext = 0;
-		}
 	} else if (shotType == SHOT_HEALINGBOLT) {
 		SDKHook(entity, SDKHook_Touch, OnHealArrowTouch); // Detecting when a healing arrow hits
 	}
@@ -1173,13 +1135,6 @@ public void OnEntityDestroyed(int entity) {
 	for (int i = 0; i < sizeof(g_iIgnoreDamageEnt); i++) {
 		if (g_iIgnoreDamageEnt[i] == entity) {
 			g_iIgnoreDamageEnt[i] = 0;
-			break;
-		}
-	}
-	
-	for (int i = 0; i < MAXROCKETS; i++) {
-		if (g_iRocketCreatedEntity[i] == entity) {
-			g_iRocketCreatedEntity[i] = 0;
 			break;
 		}
 	}
@@ -1258,6 +1213,7 @@ public Action TF2_CalcIsAttackCritical(int attacker, int weapon, char[] weaponna
 			
 			if (shotType == SHOT_ROCKET) {
 				FormatShot(attacker, weap, g_sRocketFiredLogLine[attacker], sizeof(g_sRocketFiredLogLine[]));
+				g_fRocketFiredTime[attacker] = GetEngineTime();
 				g_bRocketHurtMe[attacker] = false;
 				g_bRocketHurtEnemy[attacker] = false;
 				CreateTimer(MAXROCKETJUMPTIME, LogRocketShot, attacker, TIMER_FLAG_NO_MAPCHANGE);
@@ -1503,113 +1459,27 @@ int g_iAllWeaponsHealingOnHit[MAXWEAPONS];
 bool g_bAllWeaponsPostHumousDamage[MAXWEAPONS];
 int g_iAllWeaponsCount = 0;
 
-int g_iSlotWeaponDefid[MAXWEAPONS];
-int g_iSlotWeaponSlot[MAXWEAPONS]; // translates defid -> weapon slot
-int g_iSlotWeaponCount = 0;
-
-int WeaponIndexFromName(const char[] weaponname) {
-	int size = g_hAllWeaponsName.Length;
-	
-	int partialmatch = -1;
-	
-	for (int i = 0; i < size; i++) {
-		char cname[MAXWEPNAMELEN];
-		g_hAllWeaponsName.GetString(i, cname, sizeof(cname));
-		
-		if (StrEqual(cname, weaponname, false)) {
-			return g_iAllWeaponsDefid[i];
-		}
-		
-		if (partialmatch == -1 && StrContains(cname, weaponname, false) != -1) {
-			partialmatch = g_iAllWeaponsDefid[i];
-		}
-	}
-	
-	return partialmatch;
-}
-
-const int WEPCACHESIZE = 50;
-const int MAXDEFID = 2048;
-int g_iCachedWeaponBucket[MAXDEFID+1];
-int g_iCachedWeaponDefid[WEPCACHESIZE];
-int g_iCachedWeaponTime[WEPCACHESIZE];
-char g_sCachedWeaponName[WEPCACHESIZE][MAXWEPNAMELEN];
-int g_iCachedWeaponHealing[WEPCACHESIZE];
-bool g_bCachedWeaponPostHumousDamage[WEPCACHESIZE];
-int g_iCachedWeaponLength = 0;
-
-void InitWeaponCache() {
-	g_iCachedWeaponLength = 0;
-	Array_Fill(g_iCachedWeaponBucket, sizeof(g_iCachedWeaponBucket), -1);
-	Array_Fill(g_iCachedWeaponDefid, sizeof(g_iCachedWeaponDefid), -1);
-}
+const int MAXDEFID = 65535;
+int g_iWeaponIndexFromDefid[MAXDEFID+1]; // translates defid -> index in the g_*AllWeapons* arrays (-1 if not a weapon)
 
 bool WeaponFromDefid(int defid, char[] name, int maxlen, int &healing, bool &postHumousDamage) {
-	if (defid <= MAXDEFID) {
-		int bucket = g_iCachedWeaponBucket[defid];
-		if (bucket != -1) {
-			g_iCachedWeaponTime[bucket] = GetTime(); // I benchmarked GetTime(). On my computer it can run roughly 10,000,000 times per second. That is 18,000,000,000 per 30 minutes. In a normal match there are around 2,500 damage log lines.
-			strcopy(name, maxlen, g_sCachedWeaponName[bucket]);
-			healing = g_iCachedWeaponHealing[bucket];
-			postHumousDamage = g_bCachedWeaponPostHumousDamage[bucket];
-			return true;
-		}
-	} else {
-		for (int i = 0; i < g_iCachedWeaponLength; i++) {
-			if (g_iCachedWeaponDefid[i] == defid) {
-				g_iCachedWeaponTime[i] = GetTime();
-				strcopy(name, maxlen, g_sCachedWeaponName[i]);
-				healing = g_iCachedWeaponHealing[i];
-				postHumousDamage = g_bCachedWeaponPostHumousDamage[i];
-				return true;
-			}
-		}
-	}
-	
-	//LogToGame2("[WeaponFromDefid] Cache miss: %i", defid);
-	
-	for (int i = 0; i < g_iAllWeaponsCount; i++) {
-		if (g_iAllWeaponsDefid[i] == defid) {
-			g_hAllWeaponsName.GetString(i, name, maxlen);
-			healing = g_iAllWeaponsHealingOnHit[i];
-			postHumousDamage = g_bAllWeaponsPostHumousDamage[i];
-			
-			int insertAt = -1;
-			int time = GetTime();
-			if (g_iCachedWeaponLength < WEPCACHESIZE) {
-				insertAt = g_iCachedWeaponLength;
-				g_iCachedWeaponLength++;
-			} else {
-				int minTime = time + 1;
-				for (int j = 0; j < g_iCachedWeaponLength; j++) {
-					if (g_iCachedWeaponTime[j] < minTime) {
-						minTime = g_iCachedWeaponTime[j];
-						insertAt = j;
-					}
-				}
-				
-				if (g_iCachedWeaponDefid[insertAt] <= MAXDEFID)
-					g_iCachedWeaponBucket[g_iCachedWeaponDefid[insertAt]] = -1;
-			}
-			
-			g_iCachedWeaponDefid[insertAt] = defid;
-			strcopy(g_sCachedWeaponName[insertAt], MAXWEPNAMELEN, name);
-			g_iCachedWeaponHealing[insertAt] = healing;
-			g_bCachedWeaponPostHumousDamage[insertAt] = postHumousDamage;
-			if (defid <= MAXDEFID)
-				g_iCachedWeaponBucket[defid] = insertAt;
-			
-			return true;
-		}
-	}
-	
-	return false;
+	if (defid < 0 || defid > MAXDEFID)
+		return false;
+
+	int i = g_iWeaponIndexFromDefid[defid];
+	if (i == -1)
+		return false;
+
+	g_hAllWeaponsName.GetString(i, name, maxlen);
+	healing = g_iAllWeaponsHealingOnHit[i];
+	postHumousDamage = g_bAllWeaponsPostHumousDamage[i];
+	return true;
 }
 
 void ImportWeaponDefinitions() {
 	g_hAllWeaponsName = CreateArray(MAXWEPNAMELEN);
 	g_iAllWeaponsCount = 0;
-	g_iSlotWeaponCount = 0;
+	Array_Fill(g_iWeaponIndexFromDefid, sizeof(g_iWeaponIndexFromDefid), -1);
 	if (!FileExists(ITEMS_TXT_PATH, true))
 		SetFailState("Could not find items_game.txt: %s", ITEMS_TXT_PATH);
 	
@@ -1689,32 +1559,9 @@ public Action ImportWeaponDefinitionsChunk(Handle timer, int startId) {
 		// Check if the item is a weapon
 		bool isWeapon = (slot >= 0 && slot <= 4) && (StrEqual(craftclass, "weapon", false) == true || StrEqual(craftclass, "", false) == true);
 		
-		// Check if the item is a hat
-		bool isHat = (slot == 5 || slot == 6) && (StrEqual(itemclass, "tf_wearable_item", false) == true);
-		
 		// Check if the item is a medigun
 		bool isMedigun = StrEqual(itemclass, "tf_weapon_medigun");
-		
-		// Save the slot (in case we want to replace the player's weapon later)
-		if (isWeapon || isHat) {
-			if (g_iSlotWeaponCount >= MAXWEAPONS)
-				SetFailState("Too many weapons. (%i)", g_iSlotWeaponCount);
-			
-			int pos = g_iSlotWeaponCount - 1;
-			
-			// Insert slot & defid using insertion sort
-			while (pos >= 0 && g_iSlotWeaponDefid[pos] > defid) {
-				g_iSlotWeaponDefid[pos + 1] = g_iSlotWeaponDefid[pos];
-				g_iSlotWeaponSlot[pos + 1] = g_iSlotWeaponSlot[pos];
-				
-				pos--;
-			}
-			g_iSlotWeaponDefid[pos + 1] = defid;
-			g_iSlotWeaponSlot[pos + 1] = slot;
-			
-			g_iSlotWeaponCount++;
-		}
-		
+
 		// Save the weapon and corresponding defid if it's not a stock weapon
 		if (isWeapon) {
 			if (g_iAllWeaponsCount >= MAXWEAPONS)
@@ -1776,6 +1623,10 @@ public Action ImportWeaponDefinitionsChunk(Handle timer, int startId) {
 				g_iAllWeaponsHealingOnHit[g_iAllWeaponsCount] = StringToInt(attr);
 			}
 			g_bAllWeaponsPostHumousDamage[g_iAllWeaponsCount] = GetItemTag(g_kvItems, g_kvPrefabs, "can_deal_posthumous_damage", false);
+			if (defid < 0 || defid > MAXDEFID)
+				LogError("Weapon defid is out of range: %i (%s)", defid, itemname);
+			else if (g_iWeaponIndexFromDefid[defid] == -1)
+				g_iWeaponIndexFromDefid[defid] = g_iAllWeaponsCount;
 			g_iAllWeaponsCount++;
 		
 		}
@@ -1795,8 +1646,6 @@ public Action ImportWeaponDefinitionsChunk(Handle timer, int startId) {
 
 	g_kvItems = null;
 	g_kvPrefabs = null;
-	
-	InitWeaponCache();
 
 	FinalizePluginInitialization();
 
