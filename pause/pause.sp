@@ -50,6 +50,7 @@ Release notes:
 ---- 1.7.0 (13/11/2026) ----
 - Write chat messages during pauses to the log
 - Added a 2 second cooldown to the "repause" command
+- Fixed spies getting unlimited cloak if the plugin was unloaded during a pause with pause_restore_cloak enabled
 
 
 */
@@ -160,6 +161,13 @@ public void OnPluginStart() {
 	// Set up auto updater
 	if (LibraryExists("updater"))
 		Updater_AddPlugin(UPDATE_URL);
+}
+
+public void OnPluginEnd() {
+	// If the game is paused, the spies' cloak meters are set to a very large number.
+	// Restore them, so spies do not get unlimited cloak if the plugin is unloaded during a pause.
+	// Also restore the other values, so they are stored correctly if the plugin is reloaded during the pause.
+	RestoreState();
 }
 
 public void OnLibraryAdded(const char[] name) {
