@@ -134,7 +134,7 @@ stock void KvizEscape(char[] dest, int destLen, const char[] src) {
     int srcPos = 0;
     int destPos = 0;
     while (destPos + 1 < destLen && src[srcPos] != '\0') {
-        if (src[srcPos] == ':' || src[srcPos] == '.') {
+        if (src[srcPos] == ':' || src[srcPos] == '.' || src[srcPos] == '\\') {
             if (destPos + 2 >= destLen) {
                 break;
             }

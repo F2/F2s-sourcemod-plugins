@@ -366,7 +366,7 @@ public Action Event_player_healed(Event event, const char[] name, bool dontBroad
     if (healer == 0) {
         // Caused by medpacks
         return Plugin_Continue;
-    } else if (healer == 0 || patient == 0) {
+    } else if (patient == 0) {
         // This has been observed to happen by http://www.teamfortress.tv/post/631052/medicstats-sourcemod-plugin
         LogMessage("Wrong player-healed event detected: patient=%i/%i, healer=%i/%i", patientId, patient, healerId, healer);
         return Plugin_Continue;

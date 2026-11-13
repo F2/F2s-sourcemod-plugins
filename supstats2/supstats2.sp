@@ -378,7 +378,7 @@ public Action Listener_Pause(int client, const char[] command, int argc) {
 	if (client == 0)
 		return Plugin_Continue; // Using "rcon pause" won't do anything
 	
-	CreateTimer(0.1, CheckPause, GetClientUserId(client));
+	CreateTimer(0.1, CheckPause, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 
 	return Plugin_Continue;
 }

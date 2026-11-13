@@ -759,9 +759,9 @@ void UploadLog_Send(const char[] logpath) {
 	char apiKey[64];
 	g_hCvarApikey.GetString(apiKey, sizeof(apiKey));
 
-	AnyHttpRequest req = AnyHttp.CreatePost("https://logs.tf/upload");
+	AnyHttpRequest req = AnyHttp.CreatePost("https://logs.tf/upload", g_iMatchCount);
 	if (!req.IsValid) {
-		UploadLog_Complete(false, "Could not create HTTP request", 0);
+		UploadLog_Complete(false, "Could not create HTTP request", 0, g_iMatchCount);
 		return;
 	}
 
@@ -777,8 +777,14 @@ void UploadLog_Send(const char[] logpath) {
 	AnyHttp.Send(req, UploadLog_Complete);
 }
 
-public void UploadLog_Complete(bool success, const char[] contents, int responseCode) {
+public void UploadLog_Complete(bool success, const char[] contents, int responseCode, any matchCount) {
 	g_Upload.inProgress = false;
+
+	if (g_Upload.partial && matchCount != g_iMatchCount) {
+		// A new match has started, so this response belongs to the previous match
+		g_Upload.partial = false;
+		return;
+	}
 
 	if (success) {
 		success = ParseLogsResponse(contents);
@@ -828,7 +834,7 @@ public void UploadLog_Complete(bool success, const char[] contents, int response
 	}
 }
 
-public bool ParseLogsResponse(const char[] contents) {
+bool ParseLogsResponse(const char[] contents) {
 	// {"log_id":29897, "url":"/29897", "success":true}
 	int size = strlen(contents) + 1;
 	char[] resBuff = new char[size];

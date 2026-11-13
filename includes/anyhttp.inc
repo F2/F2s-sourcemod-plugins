@@ -18,7 +18,7 @@ Public functions:
 
 Callbacks:
 - AnyHttp_Result: 
-    public void HttpRequestDone(bool success, const char[] contents, int httpCode, int metadata) { }
+    public void HttpRequestDone(bool success, const char[] contents, int httpCode, any metadata) { }
     public void HttpRequestDone(bool success, const char[] contents, int httpCode) { }
     public void HttpRequestDone(bool success, const char[] contents) { }
 
@@ -50,7 +50,7 @@ TODO:
 
 #define ANYHTTP_VERSION		     "3.0.1"
 #define SimultaneousConnections  16
-#define USERAGENT                "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+#define USERAGENT                "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36"
 
 #pragma dynamic 5242880 // Make sure we can allocate enough space for uploading files. Here's 20MB.
 
@@ -61,7 +61,7 @@ enum AnyHttp_Extension {
 };
 
 typeset AnyHttp_Result {
-    function void (bool success, const char[] contents, int httpCode, int metadata);
+    function void (bool success, const char[] contents, int httpCode, any metadata);
     function void (bool success, const char[] contents, int httpCode);
     function void (bool success, const char[] contents);
 };
@@ -416,6 +416,8 @@ static void GenerateUniqueFilename(char[] filename, int maxsize) {
 
 static bool SteamWorks_Get(const char[] url, AnyHttp_Result callback, any metadata = 0) {
     Handle handle = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, url);
+    if (handle == null)
+        return false;
 
     AnyHttpRequest request = NewRequest();
     request.ExtensionHandle = handle;
@@ -433,6 +435,8 @@ static bool SteamWorks_Get(const char[] url, AnyHttp_Result callback, any metada
 
 static AnyHttpRequest SteamWorks_CreatePostForm(const char[] url, any metadata = 0) {
     Handle handle = SteamWorks_CreateHTTPRequest(k_EHTTPMethodPOST, url);
+    if (handle == null)
+        return InvalidRequest;
 
     AnyHttpRequest request = NewRequest();
     request.ExtensionHandle = handle;
