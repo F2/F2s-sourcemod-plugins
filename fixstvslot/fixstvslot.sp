@@ -13,6 +13,10 @@ Release notes:
 - Only change map if the server is empty
 
 
+---- 2.0.2 (13/11/2026) ----
+- Minor fixes
+
+
 */
 
 #pragma semicolon 1
@@ -24,7 +28,7 @@ Release notes:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.0.1"
+#define PLUGIN_VERSION "2.0.2"
 #define UPDATE_URL     "https://sourcemod.krus.dk/fixstvslot/update.txt"
 
 public Plugin myinfo = {
@@ -72,11 +76,15 @@ public void OnSTVChanged(ConVar convar, char[] oldValue, char[] newValue) {
 		// We use the TIMER_FLAG_NO_MAPCHANGE so that,
 		// if someone quickly changes the level before the timer hits 0, it won't change the level twice.
 		// Also this maintains compatibility with the rglqol plugin.
-		CreateTimer(1.0, ChangeMap, TIMER_FLAG_NO_MAPCHANGE);
+		CreateTimer(1.0, ChangeMap, _, TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
 
 public Action ChangeMap(Handle timer) {
+	// A player may have joined while the timer was running
+	if (GetRealPlayerCount() > 0)
+		return Plugin_Stop;
+
 	char map[128];
 	GetCurrentMap(map, sizeof(map));
 	ForceChangeLevel(map, "STV joined! Forcibly changing level so the bot can join.");
