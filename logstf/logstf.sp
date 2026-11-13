@@ -201,11 +201,17 @@ char g_sLogBuffer[LOG_BUFFERCNT][LOG_BUFFERSIZE];
 int g_iNextLogBuffer;
 bool g_bClearLogFile;
 bool g_bLogReady;
-bool g_bIsUploading;
-int g_iUploadAttempt;
 int g_iPlayersInMatch;
 int g_iMatchCount; // Incremented every time a match starts
-int g_iUploadMatchCount; // The value of g_iMatchCount when the last full upload started
+
+enum struct UploadState {
+	bool inProgress; // true while a request is in flight, or a retry is pending
+	bool partial; // true if the current upload is a Partial Upload
+	int attempt; // Attempt number of the current full upload (1-based)
+	int matchCount; // The value of g_iMatchCount when the current full upload started
+	bool reuploadASAP; // true if a full upload was requested while a partial upload was in flight
+}
+UploadState g_Upload;
 
 ConVar g_hCvarHostname,
 	g_hCvarRedTeamName,
@@ -228,10 +234,7 @@ char g_sCachedMap[128];
 GlobalForward g_hLogUploaded;  // public void LogUploaded(bool success, const char[] logid, const char[] url)
 GlobalForward g_hBlockLogLine; // public Action BlockLogLine(const char[] logline)
 
-bool g_bIsPartialUpload;
-Handle g_hTimerUploadPartialLog;
 char g_sCurrentLogID[32];
-bool g_bReuploadASAP;
 bool g_bPartialUploadNotice[MAXPLAYERS + 1]; // true if the player should receive a Partial Upload notice upon death
 bool g_bFirstPartialUploaded;
 
@@ -334,7 +337,7 @@ public void OnPluginEnd() {
 
 void StartMatch() {
 	g_iMatchCount++;
-	FlushLog();
+	g_iNextLogBuffer = 0; // Discard buffered log lines from before the match
 	g_sLastLogURL = ""; // Avoid people typing .ss towards the end of the match, only to show the old stats
 
 	g_iPlayersInMatch = 0;
@@ -358,9 +361,8 @@ void StartMatch() {
 
 	// Set up Partial Upload
 	// It is too much of a performance hit to upload regularly. Only do it at the end of each round.
-	//g_hTimerUploadPartialLog = CreateTimer(120.0, Timer_UploadPartialLog, _, TIMER_FLAG_NO_MAPCHANGE | TIMER_REPEAT);
 	g_sCurrentLogID = "";
-	g_bReuploadASAP = false;
+	g_Upload.reuploadASAP = false;
 	g_bFirstPartialUploaded = false;
 	Array_Fill(g_bPartialUploadNotice, sizeof(g_bPartialUploadNotice), false);
 
@@ -369,24 +371,14 @@ void StartMatch() {
 }
 
 void ResetMatch() {
-	if (g_hTimerUploadPartialLog != null) {
-		delete g_hTimerUploadPartialLog;
-		g_hTimerUploadPartialLog = null;
-	}
-
 	FlushLog();
 }
 
 void EndMatch(bool endedMidgame) {
 	FlushLog();
 
-	if (g_hTimerUploadPartialLog != null) {
-		delete g_hTimerUploadPartialLog;
-		g_hTimerUploadPartialLog = null;
-	}
-
 	g_bLogReady = true;
-	g_iUploadAttempt = 1;
+	g_Upload.attempt = 1;
 
 	int autoupload = g_hCvarAutoUpload.IntValue;
 	if (autoupload == 1) {
@@ -519,11 +511,11 @@ public Action Command_say(int client, int args) {
 	}
 	String_Trim(text, text, sizeof(text));
 
-	if (StrEqual(text, "!ul", false) || StrEqual(text, ".ul", false)) {
+	if (IsUploadTrigger(text)) {
 		if (Client_IsAdmin(client)) {
 			char nickname[32];
 			GetClientName(client, nickname, sizeof(nickname));
-			if (g_bIsUploading && g_bLogReady == false) {
+			if (g_Upload.inProgress && g_bLogReady == false) {
 				MC_PrintToChat(client, "%s%s%s", "{lightgreen}[LogsTF] {blue}", nickname, ": Log is already being uploaded...");
 			} else if (g_bLogReady == false) {
 				MC_PrintToChat(client, "%s%s%s", "{lightgreen}[LogsTF] {red}", nickname, ": There are no logs ready to be uploaded.");
@@ -532,15 +524,7 @@ public Action Command_say(int client, int args) {
 			}
 			return Plugin_Stop;
 		}
-	} else if (
-		(!g_bDisableSS && (StrEqual(text, ".ss", false) || StrEqual(text, "!ss", false)))
-		|| StrEqual(text, ".stats", false)
-		|| StrEqual(text, "!stats", false)
-		|| StrEqual(text, ".log", false)
-		|| StrEqual(text, "!log", false)
-		|| StrEqual(text, ".logs", false)
-		|| StrEqual(text, "!logs", false)
-	) {
+	} else if (IsStatsTrigger(text)) {
 		if (strlen(g_sLastLogURL) != 0) {
 			// If the person has used .ss, don't show the Partial Upload notice
 			g_bPartialUploadNotice[client] = false;
@@ -556,6 +540,20 @@ public Action Command_say(int client, int args) {
 	}
 
 	return Plugin_Continue;
+}
+
+bool IsUploadTrigger(const char[] text) {
+	return StrEqual(text, "!ul", false) || StrEqual(text, ".ul", false);
+}
+
+bool IsStatsTrigger(const char[] text) {
+	return (!g_bDisableSS && (StrEqual(text, ".ss", false) || StrEqual(text, "!ss", false)))
+		|| StrEqual(text, ".stats", false)
+		|| StrEqual(text, "!stats", false)
+		|| StrEqual(text, ".log", false)
+		|| StrEqual(text, "!log", false)
+		|| StrEqual(text, ".logs", false)
+		|| StrEqual(text, "!logs", false);
 }
 
 public void QueryConVar_DisableHtmlMotd(QueryCookie cookie, int client, ConVarQueryResult result, const char[] cvarName, const char[] cvarValue) {
@@ -586,17 +584,9 @@ public void QueryConVar_DisableHtmlMotd(QueryCookie cookie, int client, ConVarQu
 public Action BlockSay(int client, const char[] text, bool teamSay) {
 	if (teamSay)
 		return Plugin_Continue;
-	if (StrEqual(text, "!ul", false) && Client_IsAdmin(client))
+	if (IsUploadTrigger(text) && Client_IsAdmin(client))
 		return Plugin_Handled;
-	if (g_hCvarSuppressChat.BoolValue && (
-		(!g_bDisableSS && (StrEqual(text, ".ss", false) || StrEqual(text, "!ss", false)))
-		|| StrEqual(text, ".stats", false) 
-		|| StrEqual(text, "!stats", false) 
-		|| StrEqual(text, ".log", false) 
-		|| StrEqual(text, "!log", false) 
-		|| StrEqual(text, ".logs", false) 
-		|| StrEqual(text, "!logs", false)
-	))
+	if (g_hCvarSuppressChat.BoolValue && IsStatsTrigger(text))
 		return Plugin_Handled;
 	return Plugin_Continue;
 }
@@ -722,9 +712,9 @@ void UploadLog(bool partial) {
 		return;
 	}
 
-	if (g_bIsUploading) {
-		if (!partial && g_bIsPartialUpload) {
-			g_bReuploadASAP = true;
+	if (g_Upload.inProgress) {
+		if (!partial && g_Upload.partial) {
+			g_Upload.reuploadASAP = true;
 		}
 
 		return;
@@ -748,10 +738,10 @@ void UploadLog(bool partial) {
 
 	if (!partial) {
 		g_bLogReady = false;
-		g_iUploadMatchCount = g_iMatchCount;
+		g_Upload.matchCount = g_iMatchCount;
 	}
-	g_bIsUploading = true;
-	g_bIsPartialUpload = partial;
+	g_Upload.inProgress = true;
+	g_Upload.partial = partial;
 
 	char path[PLATFORM_MAX_PATH];
 	GetLogPath(LOG_PATH, path, sizeof(path));
@@ -788,28 +778,28 @@ void UploadLog_Send(const char[] logpath) {
 }
 
 public void UploadLog_Complete(bool success, const char[] contents, int responseCode) {
-	g_bIsUploading = false;
+	g_Upload.inProgress = false;
 
 	if (success) {
 		success = ParseLogsResponse(contents);
 	} else {
-		if (!g_bIsPartialUpload)
+		if (!g_Upload.partial)
 			MC_PrintToChatAll("%s", "{lightgreen}[LogsTF] {red}Error occurred when uploading logs :(");
 
 		char truncatedContents[512];
 		strcopy(truncatedContents, sizeof(truncatedContents), contents);
-		LogError("Error uploading %slogs (HTTP %i)\n%s", g_bIsPartialUpload ? "partial " : "", responseCode, truncatedContents);
+		LogError("Error uploading %slogs (HTTP %i)\n%s", g_Upload.partial ? "partial " : "", responseCode, truncatedContents);
 	}
 
-	if (!g_bIsPartialUpload && success) {
+	if (!g_Upload.partial && success) {
 		g_sCurrentLogID = "";
 	}
 
-	if (g_bIsPartialUpload) {
-		g_bIsPartialUpload = false;
+	if (g_Upload.partial) {
+		g_Upload.partial = false;
 
-		if (g_bReuploadASAP) {
-			g_bReuploadASAP = false;
+		if (g_Upload.reuploadASAP) {
+			g_Upload.reuploadASAP = false;
 			UploadLog(false);
 		} else {
 			if (success && g_bFirstPartialUploaded == false && g_sLastLogURL[0] != '\0') { // success can be true with g_sLastLogURL being empty, if logid validation passed but log url validation failed
@@ -823,12 +813,11 @@ public void UploadLog_Complete(bool success, const char[] contents, int response
 			}
 		}
 	} else if (!success) {
-		if (g_iUploadAttempt < 3) {
-			int waittime = (g_iUploadAttempt - 1) * 10 + 5;
-			if (!g_bIsPartialUpload)
-				MC_PrintToChatAll("%s%i%s", "{lightgreen}[LogsTF] {red}Retrying upload in ", waittime, " seconds...");
-			g_iUploadAttempt++;
-			g_bIsUploading = true;
+		if (g_Upload.attempt < 3) {
+			int waittime = (g_Upload.attempt - 1) * 10 + 5;
+			MC_PrintToChatAll("%s%i%s", "{lightgreen}[LogsTF] {red}Retrying upload in ", waittime, " seconds...");
+			g_Upload.attempt++;
+			g_Upload.inProgress = true;
 			CreateTimer(float(waittime), RetryUploadLog);
 		} else {
 			g_sCurrentLogID = "";
@@ -856,21 +845,21 @@ public bool ParseLogsResponse(const char[] contents) {
 		if (validLogID)
 			strcopy(g_sCurrentLogID, sizeof(g_sCurrentLogID), logid); // Keep it even if the url is invalid, so later partial uploads update the same log
 		if (!validLogID || SimpleRegexMatch(url, "^/[A-Za-z0-9_/-]+$") <= 0) {
-			if (!g_bIsPartialUpload)
+			if (!g_Upload.partial)
 				MC_PrintToChatAll("%s", "{lightgreen}[LogsTF] {red}Unexpected response from logs.tf");
 			LogError("Unexpected response from logs.tf: log_id=%s url=%s", logid, url);
 			return true; // The log was uploaded, so retrying would only create duplicates
 		}
 
 		FormatEx(g_sLastLogURL, sizeof(g_sLastLogURL), "%s%s", "logs.tf", url);
-		if (!g_bIsPartialUpload) {
+		if (!g_Upload.partial) {
 			MC_PrintToChatAll("%s%s", "{lightgreen}[LogsTF] {blue}Logs were uploaded to: ", g_sLastLogURL);
 			MC_PrintToChatAll("%s%s", "{lightgreen}[LogsTF] {blue}To see the stats, type: {yellow}", g_sDefaultTrigger);
 		}
 		Format(g_sLastLogURL, sizeof(g_sLastLogURL), "%s%s", "https://", g_sLastLogURL);
 
 		// Call the global forward LogUploaded()
-		if (!g_bIsPartialUpload)
+		if (!g_Upload.partial)
 			CallLogUploaded(true, g_sCurrentLogID, g_sLastLogURL);
 
 		return true;
@@ -887,9 +876,9 @@ public bool ParseLogsResponse(const char[] contents) {
 		ReplaceString(error, sizeof(error), "\t", "");
 		String_Trim(error, error, sizeof(error));
 
-		if (!g_bIsPartialUpload)
+		if (!g_Upload.partial)
 			MC_PrintToChatAll("%s%s", "{lightgreen}[LogsTF] {red}Unsuccesful upload: ", error);
-		LogError("Error uploading %slogs: %s", g_bIsPartialUpload ? "partial " : "", error);
+		LogError("Error uploading %slogs: %s", g_Upload.partial ? "partial " : "", error);
 		if (StrContains(error, "Invalid log file", false) != -1 || StrContains(error, "Not enough", false) != -1)
 			return true; // Retrying won't help
 
@@ -898,9 +887,9 @@ public bool ParseLogsResponse(const char[] contents) {
 }
 
 public Action RetryUploadLog(Handle timer, int client) {
-	g_bIsUploading = false;
+	g_Upload.inProgress = false;
 
-	if (g_iMatchCount != g_iUploadMatchCount) {
+	if (g_iMatchCount != g_Upload.matchCount) {
 		// A new match has started (and possibly been reset), so the log file no longer contains the match that failed to upload
 		LogError("Not retrying upload, since a new match has started");
 		CallLogUploaded(false, "", "");
