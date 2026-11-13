@@ -49,6 +49,7 @@ Release notes:
 
 ---- 1.7.0 (13/11/2026) ----
 - Write chat messages during pauses to the log
+- Added a 2 second cooldown to the "repause" command
 
 
 */
@@ -69,6 +70,7 @@ Release notes:
 #define UPDATE_URL		"https://sourcemod.krus.dk/pause/update.txt"
 
 #define PAUSE_UNPAUSE_TIME 2.0
+#define REPAUSE_COOLDOWN_TIME 2.0
 #define UNPAUSE_WAIT_TIME 5
 
 enum PauseState {
@@ -90,6 +92,7 @@ ConVar g_cvarRestoreCloak = null;
 
 PauseState g_iPauseState;
 float g_fLastPause;
+float g_fLastRepause;
 int g_iClientUnpausing;
 int g_iCountdown;
 int g_iPauseTimeMinutes;
@@ -169,6 +172,7 @@ public void OnMapEnd() {
 	// The game is automatically unpaused during a map change
 	g_iPauseState = Unpaused;
 	g_fLastPause = -10.0;
+	g_fLastRepause = -10.0;
 	g_hCountdownTimer = null;
 	g_hPauseTimeTimer = null;
 
@@ -219,6 +223,14 @@ public Action Cmd_UnpausePause(int client, const char[] command, int args) {
 
 	if (g_iPauseState != Paused)
 		return Plugin_Handled;
+
+	float timeSinceLastRepause = GetTickedTime() - g_fLastRepause;
+	if (timeSinceLastRepause < REPAUSE_COOLDOWN_TIME) {
+		float waitTime = REPAUSE_COOLDOWN_TIME - timeSinceLastRepause;
+		CPrintToChat2(client, "{lightgreen}[Pause] {default}You have to wait %.1f second%s before repausing again.", waitTime, (waitTime >= 0.95 && waitTime < 1.05) ? "" : "s");
+		return Plugin_Handled;
+	}
+	g_fLastRepause = GetTickedTime();
 
 	g_iPauseState = Ignore__Repause1;
 	FirePauseCommand(client);
