@@ -541,7 +541,7 @@ public Action Timer_CollectInfo(Handle timer) {
                     medic[team].MedicCurrentBiggestAdvantage = 0.0;
                 medic[team].MedicHasHadAdvantage = true;
                 medic[team].MedicCurrentBiggestAdvantage =
-                    max(medic[team].MedicCurrentBiggestAdvantage,
+                    fmax(medic[team].MedicCurrentBiggestAdvantage,
                         medic[oppteam].MedicTimeToUber - medic[team].MedicTimeToUber);
             }
 

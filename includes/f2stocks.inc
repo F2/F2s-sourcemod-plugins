@@ -125,11 +125,19 @@ stock int TF2_GetHealingTarget(int client) {
 	return -1;
 }
 
-stock any max(any val1, any val2) {
+stock int max(int val1, int val2) {
 	return val1 > val2 ? val1 : val2;
 }
 
-stock any min(any val1, any val2) {
+stock int min(int val1, int val2) {
+	return val1 < val2 ? val1 : val2;
+}
+
+stock float fmax(float val1, float val2) {
+	return val1 > val2 ? val1 : val2;
+}
+
+stock float fmin(float val1, float val2) {
 	return val1 < val2 ? val1 : val2;
 }
 
