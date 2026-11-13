@@ -31,6 +31,7 @@ Release notes:
 
 ---- 1.3.0 (13/11/2026) ----
 - Fixed some cases where we did not tell other plugins that the player was no longer AFK
+- Fixed rare bug where you could be instantly marked as AFK after a match ended
 
 */
 
@@ -215,6 +216,8 @@ void EnablePlugin() {
 		g_fAfkTime[client] = 0.0;
 		g_bIsAfk[client] = false;
 	}
+
+	g_fLastCheck = GetGameTime();
 
 	HookEvent("player_spawn", Event_player_spawn, EventHookMode_Post);
 	HookEvent("player_team", Event_player_team, EventHookMode_Post);
