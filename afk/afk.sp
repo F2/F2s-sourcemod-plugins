@@ -28,6 +28,10 @@ Release notes:
 ---- 1.2.0 (13/07/2026) ----
 - Treat matches lasting more than one minute as completed instead of reset
 
+
+---- 1.3.0 (13/11/2026) ----
+- Fixed some cases where we did not tell other plugins that the player was no longer AFK
+
 */
 
 #pragma semicolon 1
@@ -40,7 +44,7 @@ Release notes:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "1.2.0"
+#define PLUGIN_VERSION "1.3.0"
 #define UPDATE_URL		"https://sourcemod.krus.dk/afk/update.txt"
 
 
@@ -231,6 +235,7 @@ void DisablePlugin() {
 		if (team != TFTeam_Blue && team != TFTeam_Red)
 			continue;
 
+		SetAfkState(client, false);
 		ClearSyncHud(client, g_hHud[team]);
 	}
 
@@ -259,7 +264,7 @@ public void Event_player_team(Event event, const char[] name, bool dontBroadcast
 	int client = GetClientOfUserId(userid);
 
 	g_fAfkTime[client] = 0.0;
-	g_bIsAfk[client] = false;
+	SetAfkState(client, false);
 
 	ClearSyncHud(client, g_hHud[TFTeam_Red]);
 	ClearSyncHud(client, g_hHud[TFTeam_Blue]);
@@ -270,14 +275,12 @@ public Action Timer_CheckAFK(Handle timer) {
 	float span = now - g_fLastCheck;
 	g_fLastCheck = now;
 
-	bool afkBefore[MAXPLAYERS + 1];
 	bool relevantClient[MAXPLAYERS + 1];
 	TFTeam clientTeam[MAXPLAYERS + 1];
 
 	int realPlayerCount = GetRealPlayerCount();
 
 	for (int client = 1; client <= MaxClients; client++) {
-		afkBefore[client] = g_bIsAfk[client];
 		relevantClient[client] = false;
 
 		if (!IsRealPlayer(client) || IsFakeClient(client)) {
@@ -288,7 +291,7 @@ public Action Timer_CheckAFK(Handle timer) {
 		TFTeam team = TF2_GetClientTeam(client);
 		clientTeam[client] = team;
 		if (team != TFTeam_Red && team != TFTeam_Blue) {
-			g_bIsAfk[client] = false;
+			SetAfkState(client, false);
 			continue;
 		}
 
@@ -324,30 +327,13 @@ public Action Timer_CheckAFK(Handle timer) {
 		if ((buttons & buttonsCheck) != 0)
 			g_fAfkTime[client] = 0.0;
 
-		g_bIsAfk[client] = false;
+		bool isAfk = false;
 		if (g_fMaxAfkTime >= 1.0) {
 			if (g_fAfkTime[client] >= g_fMaxAfkTime && realPlayerCount >= g_iMinPlayers) {
-				g_bIsAfk[client] = true;
+				isAfk = true;
 			}
 		}
-	}
-
-	for (int client = 1; client <= MaxClients; client++) {
-		if (!relevantClient[client])
-			continue;
-		if (afkBefore[client] == g_bIsAfk[client])
-			continue;
-
-		// Call forward
-		Call_StartForward(g_hOnAfkStateChanged);
-
-		// Push parameters one at a time
-		Call_PushCell(client);
-		Call_PushCell(g_bIsAfk[client]);
-
-		// Finish the call, get the result
-		if (Call_Finish() != SP_ERROR_NONE)
-			LogError("Call to forward g_hOnAfkStateChanged failed");
+		SetAfkState(client, isAfk);
 	}
 
 	char hudText[TFTeam][256];
@@ -398,6 +384,23 @@ public Action Timer_CheckAFK(Handle timer) {
 	}
 
 	return Plugin_Continue;
+}
+
+void SetAfkState(int client, bool afk) {
+	if (g_bIsAfk[client] == afk)
+		return;
+	g_bIsAfk[client] = afk;
+
+	// Call forward
+	Call_StartForward(g_hOnAfkStateChanged);
+
+	// Push parameters one at a time
+	Call_PushCell(client);
+	Call_PushCell(afk);
+
+	// Finish the call, get the result
+	if (Call_Finish() != SP_ERROR_NONE)
+		LogError("Call to forward g_hOnAfkStateChanged failed");
 }
 
 bool IsPlayerAFK(int client) {
