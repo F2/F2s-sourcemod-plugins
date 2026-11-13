@@ -151,10 +151,11 @@ Release notes:
 - Improved error handling when clearing the log file
 - Improved error handling when retrying log upload
 - Added validation of logs.tf responses
+- Reduced disk usage during mid-round log upload
 
 
 TODO:
-- Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log and -partial files have dynamic names, and don't forget to clean them up.
+- Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log file have a dynamic name, and don't forget to clean them up.
 - Sanitize names for < and >, since logs.tf doesn't like those
 - Perhaps also sanitize names containing "connect xx"
 - Check if midgameupload works for mini-rounds
@@ -178,7 +179,6 @@ TODO:
 #define UPDATE_URL		"https://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
-#define PLOG_PATH "logstf-partial.log"
 #define LOG_BUFFERSIZE 768 // I have seen log lines longer than 512
 #define LOG_FLUSHCNT 100
 #define LOG_BUFFERCNT 150
@@ -771,31 +771,9 @@ void UploadLog(bool partial) {
 	char path[64];
 	GetLogPath(LOG_PATH, path, sizeof(path));
 
-	if (partial) {
-		char partialpath[64];
-		GetLogPath(PLOG_PATH, partialpath, sizeof(partialpath));
-		DeleteFile(partialpath);
-		AnyHttp_CopyFile(path, partialpath, UploadLog_CopyComplete);
-	} else {
+	if (!partial)
 		MC_PrintToChatAll("%s", "{lightgreen}[LogsTF] {blue}Uploading logs...");
-		UploadLog_Send(path);
-	}
-}
-
-void UploadLog_CopyComplete(bool success, any metadata) {
-	if (!success) {
-		LogError("Failed to create partial log file");
-		g_bIsUploading = false;
-		if (g_bReuploadASAP) {
-			g_bReuploadASAP = false;
-			UploadLog(false);
-		}
-		return;
-	}
-
-	char partialpath[64];
-	GetLogPath(PLOG_PATH, partialpath, sizeof(partialpath));
-	UploadLog_Send(partialpath);
+	UploadLog_Send(path);
 }
 
 void UploadLog_Send(const char[] logpath) {
