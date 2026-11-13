@@ -382,6 +382,8 @@ void ResetMatch() {
 }
 
 void EndMatch(bool endedMidgame) {
+	FlushLog();
+
 	if (g_hTimerUploadPartialLog != null) {
 		delete g_hTimerUploadPartialLog;
 		g_hTimerUploadPartialLog = null;
