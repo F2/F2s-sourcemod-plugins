@@ -643,7 +643,7 @@ public Action GameLog(const char[] message) {
 }
 
 void AddLogLine(const char[] message) {
-	if (strlen(message) >= LOG_BUFFERSIZE) {
+	if (strlen(message) + 25 >= LOG_BUFFERSIZE) { // 25 = length of "L MM/DD/YYYY - HH:MM:SS: "
 		LogError("Log line too long (%i): %s", strlen(message), message);
 		return;
 	}
