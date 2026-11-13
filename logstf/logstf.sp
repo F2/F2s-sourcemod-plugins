@@ -657,8 +657,9 @@ void AddLogLine(const char[] message) {
 		LogError("Log line too long (%i): %s", strlen(message), message);
 		return;
 	}
+
 	if (g_iNextLogBuffer >= LOG_BUFFERCNT)
-		SetFailState("%s", "Wrong log buffer");
+		SetFailState("%s", "Log buffer is full, since " ... LOG_PATH ... " could not be written to");
 
 	char time[32];
 	FormatTime(time, sizeof(time), "%m/%d/%Y - %H:%M:%S");
