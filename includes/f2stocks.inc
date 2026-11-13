@@ -110,27 +110,6 @@ stock float TF2_GetPlayerUberBuildTime(int client) {
 	return 40.0;
 }
 
-stock void F2_GetMedigunName(int client, char[] medigun, int medigunLen) {
-	int weaponid = GetPlayerWeaponSlot(client, 1);
-	if (weaponid >= 0) {
-		int defid = GetEntProp(weaponid, Prop_Send, "m_iItemDefinitionIndex");
-		switch (defid) {
-			case 29, 211, 663, 796, 805, 885, 894, 903, 912, 961, 970, 15008, 15010, 15025, 15039, 15050, 15078, 15097, 15120, 15121, 15122, 15145, 15146, 16001, 16013, 16024:
-				strcopy(medigun, medigunLen, "medigun");
-			case 35:
-				strcopy(medigun, medigunLen, "kritzkrieg");
-			case 411:
-				strcopy(medigun, medigunLen, "quickfix");
-			case 998:
-				strcopy(medigun, medigunLen, "vaccinator");
-			default:
-				strcopy(medigun, medigunLen, "unknown");
-		}
-	} else {
-		strcopy(medigun, medigunLen, "");
-	}
-}
-
 stock int TF2_GetHealingTarget(int client) {
 	char classname[64];
 	int index = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
@@ -146,14 +125,6 @@ stock int TF2_GetHealingTarget(int client) {
 	return -1;
 }
 
-stock void TF2_GetCurrentWeaponClass(int client, char[] name, int maxlength) {
-	if (client > 0) {
-		int index = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
-		if (index > 0)
-			GetEntityNetClass(index, name, maxlength);
-	}
-}
-
 stock any max(any val1, any val2) {
 	return val1 > val2 ? val1 : val2;
 }
@@ -166,16 +137,8 @@ stock bool IsClientValid(int client) {
 	return client > 0 && client <= MaxClients && IsClientConnected(client) && IsClientInGame(client) && !IsClientSourceTV(client);
 }
 
-stock bool IsValidClient(int client) {
-	return IsClientValid(client);
-}
-
 stock bool IsClientValid2(int client) {
 	return IsClientConnected(client) && IsClientInGame(client) && !IsClientSourceTV(client);
-}
-
-stock bool IsValidClient2(int client) {
-	return IsClientValid2(client);
 }
 
 stock bool IsRealPlayer(int client) {
@@ -464,29 +427,6 @@ stock bool SteamID_Equal(const char[] id1, const char[] id2) {
 	}
 
 	return steam1 == steam2;
-}
-
-stock bool SteamID_ToOldFormat(char[] oldID, int oldIDsize, const char[] newID) {
-	// Converts [U:1:ZZZZ] to STEAM_0:X:YYYY
-
-	int steamidNum;
-	if (StringToIntEx(newID[5], steamidNum) != strlen(newID) - 5 - 1)
-		return false;
-
-	FormatEx(oldID, oldIDsize, "STEAM_0:%i:%i", steamidNum & 1, steamidNum >> 1);
-	return true;
-}
-
-stock bool GetClientAuthStringOld(int client, char[] steamid, int steamidSize, bool validate = true) {
-	if (!GetClientAuthId(client, AuthId_Steam2, steamid, steamidSize, validate)) {
-		strcopy(steamid, steamidSize, "");
-		return false;
-	}
-	if (F2_String_StartsWith(steamid, "STEAM_", false))
-		return true;
-	if (!SteamID_ToOldFormat(steamid, steamidSize, steamid))
-		return false;
-	return true;
 }
 
 stock bool GetClientAuthStringNew(int client, char[] steamid, int steamidSize, bool validate = true) {
