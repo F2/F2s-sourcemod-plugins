@@ -1002,7 +1002,10 @@ public void OnEntityCreated(int entity, const char[] classname) {
 	int shotType;
 	if (!g_tShotTypes.GetValue(classname, shotType))
 		return;
-	
+
+	if (!F2_String_StartsWith(classname, "tf_projectile_"))
+		return; // g_tShotTypes also contains weapons, which we don't want to hook
+
 	if (shotType == SHOT_ROCKET || shotType == SHOT_PIPE) {
 		SDKHook(entity, SDKHook_Touch, OnProjectileTouch); // Detecting direct hits
 	} else if (shotType == SHOT_HEALINGBOLT) {
@@ -1340,7 +1343,6 @@ KeyValues g_kvPrefabs = null;
 KeyValues g_kvItems = null;
 
 ArrayList g_hAllWeaponsName = null; // names of all weapons saved in an Array
-int g_iAllWeaponsDefid[MAXWEAPONS]; // defids of all weapons
 int g_iAllWeaponsHealingOnHit[MAXWEAPONS];
 bool g_bAllWeaponsPostHumousDamage[MAXWEAPONS];
 int g_iAllWeaponsCount = 0;
@@ -1501,7 +1503,6 @@ public Action ImportWeaponDefinitionsChunk(Handle timer, int startId) {
 			String_ToLower(itemname, itemname, sizeof(itemname));
 
 			PushArrayString(g_hAllWeaponsName, itemname);
-			g_iAllWeaponsDefid[g_iAllWeaponsCount] = defid;
 			g_iAllWeaponsHealingOnHit[g_iAllWeaponsCount] = 0;
 			char attr[16];
 			if (GetItemAttribute(g_kvItems, g_kvPrefabs, "add_onhit_addhealth", attr, sizeof(attr)) || GetItemAttribute(g_kvItems, g_kvPrefabs, "add_health_on_radius_damage", attr, sizeof(attr))) {
