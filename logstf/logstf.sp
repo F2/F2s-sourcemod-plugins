@@ -146,10 +146,11 @@ Release notes:
 - Treat matches lasting more than one minute as completed instead of reset
 
 
----- 3.0.1 (12/11/2026) ----
+---- 3.1.0 (12/11/2026) ----
 - Added support for more than 32 players
 - Improved error handling when clearing the log file
 - Improved error handling when retrying log upload
+- Added validation of logs.tf responses
 
 
 TODO:
@@ -173,7 +174,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION	"3.0.1"
+#define PLUGIN_VERSION	"3.1.0"
 #define UPDATE_URL		"https://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
@@ -880,12 +881,18 @@ public bool ParseLogsResponse(const char[] contents) {
 	char[] resBuff = new char[size];
 	strcopy(resBuff, size, contents);
 
-	char url[64], success[16];
+	char url[64], success[16], logid[32];
 	if (FindJsonValue(resBuff, "success", success, sizeof(success)) && StrEqual(success, "true", false) && FindJsonValue(resBuff, "url", url, sizeof(url))) {
-		if (!FindJsonValue(resBuff, "log_id", g_sCurrentLogID, sizeof(g_sCurrentLogID))) {
+		if (!FindJsonValue(resBuff, "log_id", logid, sizeof(logid))) {
 			MC_PrintToChatAll("%s", "{lightgreen}[LogsTF] {blue}log_id not found");
 			return false;
 		}
+
+		if (SimpleRegexMatch(logid, "^[0-9]+$") <= 0 || SimpleRegexMatch(url, "^/[A-Za-z0-9_/-]+$") <= 0) {
+			LogError("Unexpected response from logs.tf: log_id=%s url=%s", logid, url);
+			return false;
+		}
+		strcopy(g_sCurrentLogID, sizeof(g_sCurrentLogID), logid);
 
 		FormatEx(g_sLastLogURL, sizeof(g_sLastLogURL), "%s%s", "logs.tf", url);
 		if (!g_bIsPartialUpload) {
