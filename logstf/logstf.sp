@@ -848,7 +848,7 @@ public void UploadLog_Complete(bool success, const char[] contents, int response
 			g_bReuploadASAP = false;
 			UploadLog(false);
 		} else {
-			if (success && g_bFirstPartialUploaded == false) {
+			if (success && g_bFirstPartialUploaded == false && g_sLastLogURL[0] != '\0') { // success can be true with g_sLastLogURL being empty, if logid validation passed but log url validation failed
 				g_bFirstPartialUploaded = true;
 				for (int i = 1; i <= MaxClients; i++) {
 					if (!IsRealPlayer(i))
@@ -888,11 +888,15 @@ public bool ParseLogsResponse(const char[] contents) {
 			return false;
 		}
 
-		if (SimpleRegexMatch(logid, "^[0-9]+$") <= 0 || SimpleRegexMatch(url, "^/[A-Za-z0-9_/-]+$") <= 0) {
+		bool validLogID = SimpleRegexMatch(logid, "^[0-9]+$") > 0;
+		if (validLogID)
+			strcopy(g_sCurrentLogID, sizeof(g_sCurrentLogID), logid); // Keep it even if the url is invalid, so later partial uploads update the same log
+		if (!validLogID || SimpleRegexMatch(url, "^/[A-Za-z0-9_/-]+$") <= 0) {
+			if (!g_bIsPartialUpload)
+				MC_PrintToChatAll("%s", "{lightgreen}[LogsTF] {red}Unexpected response from logs.tf");
 			LogError("Unexpected response from logs.tf: log_id=%s url=%s", logid, url);
-			return false;
+			return true; // The log was uploaded, so retrying would only create duplicates
 		}
-		strcopy(g_sCurrentLogID, sizeof(g_sCurrentLogID), logid);
 
 		FormatEx(g_sLastLogURL, sizeof(g_sLastLogURL), "%s%s", "logs.tf", url);
 		if (!g_bIsPartialUpload) {
