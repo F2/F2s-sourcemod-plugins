@@ -64,6 +64,7 @@ Release notes:
 ---- 2.0.0 (12/11/2026) ----
 - Changed the way buffs are detected
 - Don't log buffs to enemy spies
+- Fixed uber stats being wrong when the game is paused during an uber
 
 
 
@@ -452,6 +453,10 @@ public Action Timer_CollectInfo(Handle timer) {
 
     // Don't calculate medic statas in warmup
     if (!IsInMatch || IsBonusRoundTime)
+        return Plugin_Continue;
+
+    // The uber meter is frozen while the game is paused, which would look like the uber ended
+    if (!IsServerProcessing())
         return Plugin_Continue;
 
     // Get info about each medic
