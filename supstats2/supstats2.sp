@@ -112,6 +112,7 @@ Release notes:
 - Fixed rare bug where a sentry rocket from a destroyed sentry was logged incorrectly
 - Fixed rare bug where a rocket jump could be counted as a missed shot
 - Fixed pauses not being logged when using setpause/unpause, or when the player left right after pausing
+- Fixed telefrags being logged as taunts
 
 
 TODO:
@@ -795,7 +796,9 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 	//IntToBits(damagecustom, strDamagecustom);
 	//PrintToChatAll("vic(%i) att(%i) infl(%i) weap(%i) dmg(%.0f) dmgtype(%s) dmgcus(%s)", victim, attacker, inflictor, weapon, damage, strDamagetype, strDamagecustom);
 	
-	if ((damagetype & DMG_CRIT) != DMG_CRIT && ((damage >= 500.0 && (damagetype & (1 << 27)) != (1 << 27) /* not a backstab */) || (damage >= 300.0 && (damagetype & DMG_BLAST) == DMG_BLAST /* soldier equalizer taunt, perhaps others */))) {
+	if (damagecustom == TF_CUSTOM_TELEFRAG) {
+		strcopy(lastWeaponDamage[attacker], MAXWEPNAMELEN, "telefrag");
+	} else if ((damagetype & DMG_CRIT) != DMG_CRIT && ((damage >= 500.0 && (damagetype & (1 << 27)) != (1 << 27) /* not a backstab */) || (damage >= 300.0 && (damagetype & DMG_BLAST) == DMG_BLAST /* soldier equalizer taunt, perhaps others */))) {
 		strcopy(lastWeaponDamage[attacker], MAXWEPNAMELEN, g_sTauntNames[attackerClass]);
 	} else {
 		int healing; 
