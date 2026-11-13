@@ -774,6 +774,10 @@ void UploadLog_Send(const char[] logpath) {
 	g_hCvarApikey.GetString(apiKey, sizeof(apiKey));
 
 	AnyHttpRequest req = AnyHttp.CreatePost("https://logs.tf/upload");
+	if (!req.IsValid) {
+		UploadLog_Complete(false, "Could not create HTTP request", 0);
+		return;
+	}
 
 	req.PutFile("logfile", logpath);
 	req.PutString("title", title);
