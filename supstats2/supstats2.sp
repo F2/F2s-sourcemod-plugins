@@ -129,6 +129,7 @@ TODO:
 #include <sdkhooks>
 #include <smlib>
 #include <kvizzle>
+#include <logtitle>
 #include <match>
 #undef REQUIRE_PLUGIN
 #include <updater>
@@ -474,8 +475,6 @@ void LogMapName() {
 }
 
 void LogTitle() {
-	// Note: If you are making changes related to title generation, also update logstf.
-
 	char hostname[64];
 	char bluTeamName[32];
 	char redTeamName[32];
@@ -487,28 +486,12 @@ void LogTitle() {
 	String_Trim(bluTeamName, bluTeamName, sizeof(bluTeamName));
 	String_Trim(redTeamName, redTeamName, sizeof(redTeamName));
 
-	// Trim the last words in hostname if it is a long hostname
-	int spacepos = -1;
-	int hostnameLen = strlen(hostname);
-	for (int i = 25; i < hostnameLen; i++) {
-		if (hostname[i] == ' ') {
-			spacepos = i;
-			break;
-		}
-	}
-
-	if (spacepos != -1) {
-		hostname[spacepos] = '\0';
-		String_Trim(hostname, hostname, sizeof(hostname), " -:.!,;");
-	}
+	ShortenHostnameForLogTitle(hostname, sizeof(hostname));
 
 	// Replace placeholders
 	char title[128];
 	g_hCvarLogsTitle.GetString(title, sizeof(title));
-	ReplaceString(title, sizeof(title), "{server}", hostname, false);
-	ReplaceString(title, sizeof(title), "{blu}", bluTeamName, false);
-	ReplaceString(title, sizeof(title), "{blue}", bluTeamName, false);
-	ReplaceString(title, sizeof(title), "{red}", redTeamName, false);
+	ReplaceLogTitlePlaceholders(title, sizeof(title), hostname, bluTeamName, redTeamName);
 
 	ReplaceString(title, sizeof(title), "\\", "", false);
 

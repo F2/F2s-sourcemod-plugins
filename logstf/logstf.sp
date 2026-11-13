@@ -172,6 +172,7 @@ TODO:
 #include <anyhttp>
 #include <regex>
 #include <f2stocks>
+#include <logtitle>
 #include <match>
 #undef REQUIRE_PLUGIN
 #include <updater>
@@ -404,8 +405,6 @@ void EndMatch(bool endedMidgame) {
 }
 
 void CacheMatchValues() {
-	// Note: If you are making changes related to title generation, also update supstats2.
-
 	g_hCvarHostname.GetString(g_sCachedHostname, sizeof(g_sCachedHostname));
 	g_hCvarBlueTeamName.GetString(g_sCachedBluTeamName, sizeof(g_sCachedBluTeamName));
 	g_hCvarRedTeamName.GetString(g_sCachedRedTeamName, sizeof(g_sCachedRedTeamName));
@@ -414,20 +413,7 @@ void CacheMatchValues() {
 	String_Trim(g_sCachedRedTeamName, g_sCachedRedTeamName, sizeof(g_sCachedRedTeamName));
 	GetCurrentMap(g_sCachedMap, sizeof(g_sCachedMap));
 
-	// Trim the last words in hostname if it is a long hostname
-	int spacepos = -1;
-	int hostnameLen = strlen(g_sCachedHostname);
-	for (int i = 25; i < hostnameLen; i++) {
-		if (g_sCachedHostname[i] == ' ') {
-			spacepos = i;
-			break;
-		}
-	}
-
-	if (spacepos != -1) {
-		g_sCachedHostname[spacepos] = '\0';
-		String_Trim(g_sCachedHostname, g_sCachedHostname, sizeof(g_sCachedHostname), " -:.!,;");
-	}
+	ShortenHostnameForLogTitle(g_sCachedHostname, sizeof(g_sCachedHostname));
 }
 
 void AnnounceLogReady() {
@@ -780,10 +766,7 @@ void UploadLog(bool partial) {
 void UploadLog_Send(const char[] logpath) {
 	char title[128];
 	g_hCvarTitle.GetString(title, sizeof(title));
-	ReplaceString(title, sizeof(title), "{server}", g_sCachedHostname, false);
-	ReplaceString(title, sizeof(title), "{blu}", g_sCachedBluTeamName, false);
-	ReplaceString(title, sizeof(title), "{blue}", g_sCachedBluTeamName, false);
-	ReplaceString(title, sizeof(title), "{red}", g_sCachedRedTeamName, false);
+	ReplaceLogTitlePlaceholders(title, sizeof(title), g_sCachedHostname, g_sCachedBluTeamName, g_sCachedRedTeamName);
 
 	char apiKey[64];
 	g_hCvarApikey.GetString(apiKey, sizeof(apiKey));
