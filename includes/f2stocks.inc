@@ -347,9 +347,25 @@ stock bool GetPlayerOutline(int client) {
 
 
 
+// Returns the player's max health, including modifiers from items and player state (e.g. Eyelander heads).
+// The value is read from the player resource entity, which copies the value of the game's GetMaxHealth() roughly every
+// 0.1 seconds. So right after the max health changes, the old value may be returned for a few ticks.
+// Use GetMaxHealth_RealTime() if the current value is needed.
+// Returns -1 if the player resource entity cannot be found.
+stock int GetMaxHealth(int client) {
+	int entity = GetPlayerResourceEntity();
+	if (entity == -1)
+		return -1;
+
+	return GetEntProp(entity, Prop_Send, "m_iMaxHealth", _, client);
+}
+
+// Returns the current max health by calling the game's GetMaxHealth() directly, so unlike GetMaxHealth() there is no delay.
+// This depends on the GetMaxHealth offset in the sdkhooks.games gamedata. If a game update changes the offset before the
+// gamedata is updated, this may return garbage or crash the server. Prefer GetMaxHealth() unless the delay matters.
 // Based on psychonic's post https://forums.alliedmods.net/showpost.php?p=1865459&postcount=3
 Handle fnGetMaxHealth = null;
-stock int GetMaxHealth(int client) {
+stock int GetMaxHealth_RealTime(int client) {
 	if (fnGetMaxHealth == null) {
 		Handle hConf = LoadGameConfigFile("sdkhooks.games");
 		if (hConf == null)

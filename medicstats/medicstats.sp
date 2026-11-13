@@ -586,10 +586,6 @@ public void OnGameFrame() {
     if (!g_bLogBuffs)
         return;
 
-    int playerManager = GetPlayerResourceEntity();
-    if (playerManager == -1)
-        return;
-
     // Each game frame we look at each medic's current patient. If the patient got buffed (above max health) higher than
     // they have been since the beam attached or since they last took damage, record it.
     // Only counting new highs ignores the decay/re-heal loop at the overheal cap.
@@ -619,8 +615,8 @@ public void OnGameFrame() {
         if (newhealth - oldhealth > MAX_BEAM_HEAL_PER_FRAME)
             continue; // Too much for a medigun in one frame, so it came from something else
 
-        int maxHealth = GetEntProp(playerManager, Prop_Send, "m_iMaxHealth", _, patient);
-        if (newhealth <= maxHealth)
+        int maxHealth = GetMaxHealth(patient);
+        if (maxHealth == -1 || newhealth <= maxHealth)
             continue;
         if (oldhealth < maxHealth)
             oldhealth = maxHealth;

@@ -103,7 +103,8 @@ Release notes:
 - Added accuracy logs for alternative scout weapons - by s-maurice
 
 
----- 2.6.3 (12/11/2026) ----
+---- 2.7.0 (12/11/2026) ----
+- Fixed crossbow heals logging the potential heal amount instead of the actual heal amount
 - Fixed bug where medic airshot could wrongly be logged on a heal event
 - Fixed bug where lit huntsman headshots counted as multiple headshots on the following burn ticks
 - Fixed rare bug where an airshot was incorrectly detected after touching a grenade roller
@@ -132,7 +133,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.6.3"
+#define PLUGIN_VERSION "2.7.0"
 #define UPDATE_URL		"https://sourcemod.krus.dk/supstats2/update.txt"
 
 #define NAMELEN 64
@@ -166,6 +167,8 @@ int lastHealingOnHit[MAXPLAYERS+1];
 bool lastHeadshot[MAXPLAYERS+1]; 
 bool lastAirshot[MAXPLAYERS+1]; 
 int lastAirshotHeight[MAXPLAYERS+1];
+int lastHealArrowPatient[MAXPLAYERS+1]; // [medic] The teammate the medic's healing arrow is touching in this frame (0 if none)
+int lastHealArrowPatientHealth[MAXPLAYERS+1]; // [medic] The patient's health before the healing arrow healed them
 int g_iPlayerTakenDirectHitRef[MAXPLAYERS+1]; // Entity reference of the projectile that last touched the player (0 if none)
 int medpackHealAmount[MAXPLAYERS+1];
 float g_fPauseStartTime;
@@ -542,7 +545,19 @@ public Action Event_PlayerHealed(Event event, const char[] name, bool dontBroadc
 		// Do not log self-heal
 		return Plugin_Continue;
 	}
-	
+
+	if (lastHealArrowPatient[healer] == patient) {
+		// The game reports the healing arrow's full heal amount, even if the patient was missing less health.
+		// Healing arrows do not overheal, so limit the amount to the health the patient was missing.
+		lastHealArrowPatient[healer] = 0;
+		int maxHealth = GetMaxHealth(patient);
+		if (maxHealth != -1) {
+			amount = min(amount, maxHealth - lastHealArrowPatientHealth[healer]);
+			if (amount <= 0)
+				return Plugin_Continue;
+		}
+	}
+
 	GetClientAuthStringNew(patient, patientSteamId, sizeof(patientSteamId), false);
 	GetClientName(patient, patientName, sizeof(patientName));
 	GetClientAuthStringNew(healer, healerSteamId, sizeof(healerSteamId), false);
@@ -811,7 +826,9 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 			}
 			
 			int maxHealth = GetMaxHealth(attacker);
-			if (lastHealth[attacker] < maxHealth) {
+			if (maxHealth == -1) {
+				lastHealingOnHit[attacker] = healing;
+			} else if (lastHealth[attacker] < maxHealth) {
 				lastHealingOnHit[attacker] = min(maxHealth - lastHealth[attacker], healing);
 			}
 		}
@@ -1077,6 +1094,11 @@ public void OnHealArrowTouch(int entity, int other) {
 						RequestFrame(ClearHealArrowAirshot, owner);
 					}
 
+					// Used to compute the actual healing amount. The heal event is fired while processing this touch.
+					lastHealArrowPatient[owner] = other;
+					lastHealArrowPatientHealth[owner] = GetClientHealth(other);
+					RequestFrame(ClearHealArrowPatient, owner);
+
 					if (g_bEnableAccuracy) {
 						int healing;
 						int defid;
@@ -1095,6 +1117,10 @@ public void OnHealArrowTouch(int entity, int other) {
 
 public void ClearHealArrowAirshot(int client) {
 	lastAirshot[client] = false;
+}
+
+public void ClearHealArrowPatient(int client) {
+	lastHealArrowPatient[client] = 0;
 }
 
 public void OnEntityDestroyed(int entity) {
