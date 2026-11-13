@@ -445,6 +445,12 @@ static void SteamWorks_SendPostForm(AnyHttpRequest request) {
 }
 
 static void SteamWorks_SendPostForm_RequestCreated(bool success, AnyHttpStringBuilder sb, AnyHttpRequest request) {
+    if (!success) {
+        sb.Dispose();
+        SteamWorks_Done(request.ExtensionHandle, true, false, k_EHTTPStatusCodeInvalid);
+        return;
+    }
+
     char contentType[256] = "multipart/form-data; boundary=";
     StrCat(contentType, sizeof(contentType), AnyHttp_MultiPartBoundary);
 
