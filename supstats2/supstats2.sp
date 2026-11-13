@@ -111,6 +111,7 @@ Release notes:
 - Fixed rare bug where an airshot was incorrectly detected after touching a grenade roller
 - Fixed rare bug where a sentry rocket from a destroyed sentry was logged incorrectly
 - Fixed rare bug where a rocket jump could be counted as a missed shot
+- Fixed pauses not being logged when using setpause/unpause, or when the player left right after pausing
 
 
 TODO:
@@ -300,7 +301,9 @@ void FinalizePluginInitialization() {
 	HookEvent("player_chargedeployed", Event_player_chargedeployed);
 
 	AddCommandListener(Listener_Pause, "pause");
-	
+	AddCommandListener(Listener_Pause, "setpause");
+	AddCommandListener(Listener_Pause, "unpause");
+
 	
 	for (int client = 1; client <= MaxClients; client++) {
 		if (IsClientInGame(client) && !IsClientSourceTV(client)) {
@@ -376,15 +379,15 @@ public Action Listener_Pause(int client, const char[] command, int argc) {
 	if (client == 0)
 		return Plugin_Continue; // Using "rcon pause" won't do anything
 	
-	CreateTimer(0.1, CheckPause, client);
+	CreateTimer(0.1, CheckPause, GetClientUserId(client));
 
 	return Plugin_Continue;
 }
 
 
-public Action CheckPause(Handle timer, int client) {
+public Action CheckPause(Handle timer, int userId) {
 	bool isPaused = !IsServerProcessing();
-	int userId = GetClientUserId(client);
+	int client = GetClientOfUserId(userId);
 	char userSteamId[64];
 	char userTeam[64];
 
@@ -393,20 +396,24 @@ public Action CheckPause(Handle timer, int client) {
 
 		LogToGame("World triggered \"Game_Paused\"");
 
-		GetClientAuthStringNew(client, userSteamId, sizeof(userSteamId), false);
-		GetPlayerTeamStr(GetClientTeam(client), userTeam, sizeof(userTeam));
+		if (client != 0) {
+			GetClientAuthStringNew(client, userSteamId, sizeof(userSteamId), false);
+			GetPlayerTeamStr(GetClientTeam(client), userTeam, sizeof(userTeam));
 
-		LogToGame("\"%N<%d><%s><%s>\" triggered \"matchpause\"", client, userId, userSteamId, userTeam);
+			LogToGame("\"%N<%d><%s><%s>\" triggered \"matchpause\"", client, userId, userSteamId, userTeam);
+		}
 	}
 	if (!isPaused && g_bIsPaused) {
 		float pauseDuration = GetEngineTime() - g_fPauseStartTime;
 
 		LogToGame("World triggered \"Game_Unpaused\"");
 
-		GetClientAuthStringNew(client, userSteamId, sizeof(userSteamId), false);
-		GetPlayerTeamStr(GetClientTeam(client), userTeam, sizeof(userTeam));
+		if (client != 0) {
+			GetClientAuthStringNew(client, userSteamId, sizeof(userSteamId), false);
+			GetPlayerTeamStr(GetClientTeam(client), userTeam, sizeof(userTeam));
 
-		LogToGame("\"%N<%d><%s><%s>\" triggered \"matchunpause\"", client, userId, userSteamId, userTeam);
+			LogToGame("\"%N<%d><%s><%s>\" triggered \"matchunpause\"", client, userId, userSteamId, userTeam);
+		}
 		LogToGame("World triggered \"Pause_Length\" (seconds \"%.2f\")", pauseDuration);
 	}
 
