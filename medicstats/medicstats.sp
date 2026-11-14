@@ -159,7 +159,6 @@ public void OnPluginStart() {
     g_hCvarLogBuffs.GetString(cvarLogBuffs, sizeof(cvarLogBuffs));
     Cvar_LogBuffs(g_hCvarLogBuffs, "", cvarLogBuffs);
 
-    HookEvent("player_connect", Event_player_connect, EventHookMode_Post);
     HookEvent("player_spawn", Event_player_spawn, EventHookMode_Post);
     HookEvent("player_death", Event_player_death, EventHookMode_Pre);
     HookEvent("player_hurt", Event_player_hurt, EventHookMode_Post);
@@ -301,13 +300,9 @@ void ResetBuffs(int client) {
     }
 }
 
-public Action Event_player_connect(Event event, const char[] name, bool dontBroadcast) {
-    int userid = event.GetInt("userid");
-    int client = GetClientOfUserId(userid);
-
+public void OnClientConnected(int client) {
     // ==== Buffs ====
     ResetBuffs(client);
-    return Plugin_Continue;
 }
 
 public Action Event_player_spawn(Event event, const char[] name, bool dontBroadcast) {
