@@ -184,6 +184,7 @@ TODO:
 #define LOG_BUFFERSIZE 768 // I have seen log lines longer than 512
 #define LOG_FLUSHCNT 100
 #define LOG_BUFFERCNT 150
+#define UPLOAD_TIMEOUT 120.0 // Safety net in case the HTTP callback never arrives. Must be longer than the HTTP extension's own timeouts.
 
 public Plugin myinfo = {
 	name = "Logs.TF Uploader",
@@ -210,6 +211,7 @@ enum struct UploadState {
 	int attempt; // Attempt number of the current full upload (1-based)
 	int matchCount; // The value of g_iMatchCount when the current full upload started
 	bool reuploadASAP; // true if a full upload was requested while a partial upload was in flight
+	int requestId; // Incremented when a request is sent and when it completes, times out or is abandoned, so a late response or timeout is ignored
 }
 UploadState g_Upload;
 
@@ -363,6 +365,12 @@ void StartMatch() {
 	// It is too much of a performance hit to upload regularly. Only do it at the end of each round.
 	g_sCurrentLogID = "";
 	g_Upload.reuploadASAP = false;
+	if (g_Upload.inProgress && g_Upload.partial) {
+		// Ignore the response, since it belongs to the previous match
+		g_Upload.requestId++;
+		g_Upload.inProgress = false;
+		g_Upload.partial = false;
+	}
 	g_bFirstPartialUploaded = false;
 	Array_Fill(g_bPartialUploadNotice, sizeof(g_bPartialUploadNotice), false);
 
@@ -759,9 +767,10 @@ void UploadLog_Send(const char[] logpath) {
 	char apiKey[64];
 	g_hCvarApikey.GetString(apiKey, sizeof(apiKey));
 
-	AnyHttpRequest req = AnyHttp.CreatePost("https://logs.tf/upload", g_iMatchCount);
+	g_Upload.requestId++;
+	AnyHttpRequest req = AnyHttp.CreatePost("https://logs.tf/upload", g_Upload.requestId);
 	if (!req.IsValid) {
-		UploadLog_Complete(false, "Could not create HTTP request", 0, g_iMatchCount);
+		UploadLog_Complete(false, "Could not create HTTP request", 0);
 		return;
 	}
 
@@ -774,17 +783,29 @@ void UploadLog_Send(const char[] logpath) {
 	if (g_sCurrentLogID[0] != '\0')
 		req.PutString("updatelog", g_sCurrentLogID);
 
-	AnyHttp.Send(req, UploadLog_Complete);
+	CreateTimer(UPLOAD_TIMEOUT, Timer_UploadTimeout, g_Upload.requestId);
+	AnyHttp.Send(req, UploadLog_Response);
 }
 
-public void UploadLog_Complete(bool success, const char[] contents, int responseCode, any matchCount) {
-	g_Upload.inProgress = false;
+public void UploadLog_Response(bool success, const char[] contents, int responseCode, any requestId) {
+	if (requestId != g_Upload.requestId)
+		return; // The request has already timed out
 
-	if (g_Upload.partial && matchCount != g_iMatchCount) {
-		// A new match has started, so this response belongs to the previous match
-		g_Upload.partial = false;
-		return;
-	}
+	g_Upload.requestId++; // Make the timeout timer do nothing
+	UploadLog_Complete(success, contents, responseCode);
+}
+
+public Action Timer_UploadTimeout(Handle timer, int requestId) {
+	if (requestId != g_Upload.requestId)
+		return Plugin_Stop; // The response has already arrived
+
+	g_Upload.requestId++; // Ignore the response if it arrives later
+	UploadLog_Complete(false, "Timed out waiting for a response", 0);
+	return Plugin_Stop;
+}
+
+void UploadLog_Complete(bool success, const char[] contents, int responseCode) {
+	g_Upload.inProgress = false;
 
 	if (success) {
 		success = ParseLogsResponse(contents);
