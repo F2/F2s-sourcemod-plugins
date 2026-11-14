@@ -42,7 +42,6 @@ TODO:
     #define REQUIRE_EXTENSIONS
 #endif
 
-#include <kvizzle>
 #include <f2stocks>
 #include <anyhttp_file>
 #include <anyhttp_stringbuilder>
@@ -77,11 +76,7 @@ enum struct AnyHttpRequestData {
     Handle filehandle;
     AnyHttpStringBuilder httpBody;
 
-    KeyValues fields;
-    /*  - type (string / file)
-        - name
-        - value
-    */
+    ArrayList fields; // AnyHttpField
 }
 
 static AnyHttpRequestData requests[SimultaneousConnections];
@@ -124,9 +119,9 @@ methodmap AnyHttpRequest {
         }
     }
 
-    property KeyValues Fields {
+    property ArrayList Fields {
         public get() { return requests[this.Id].fields; }
-        public set(KeyValues fields) {
+        public set(ArrayList fields) {
             requests[this.Id].fields = fields;
         }
     }
@@ -147,21 +142,18 @@ methodmap AnyHttpRequest {
     }
     
     public void PutString(const char[] name, const char[] value) {
-        KeyValues kv = this.Fields;
-
-        int id = KvizGetNum(kv, 0, ":count") + 1;
-        KvizSetString(kv, name, "%i.name", id);
-        KvizSetString(kv, "string", "%i.type", id);
-        KvizSetString(kv, value, "%i.value", id);
+        AnyHttpField field;
+        strcopy(field.name, sizeof(field.name), name);
+        field.isFile = false;
+        strcopy(field.value, sizeof(field.value), value);
+        this.Fields.PushArray(field);
     }
 
     public void PutFile(const char[] name, const char[] filepath) {
-        KeyValues kv = this.Fields;
-
-        int id = KvizGetNum(kv, 0, ":count") + 1;
-        KvizSetString(kv, name, "%i.name", id);
-        KvizSetString(kv, "file", "%i.type",  id);
-        KvizSetString(kv, "true", "%i.cleanup",  id);
+        AnyHttpField field;
+        strcopy(field.name, sizeof(field.name), name);
+        field.isFile = true;
+        field.cleanup = true;
 
         // To avoid locking the file, we copy it to a temporary location.
         // Put the temp file in the same directory as the file to be uploaded
@@ -180,15 +172,16 @@ methodmap AnyHttpRequest {
         GenerateUniqueFilename(tempFilename, sizeof(tempFilename));
         StrCat(tempFilepath, sizeof(tempFilepath), tempFilename);
 
-        KvizSetString(kv, tempFilepath, "%i.value", id);
-        KvizSetNum(kv, 0, "%i.ready", id);
-        KvizSetString(kv, filepath, "%i.originalPath", id);
+        strcopy(field.value, sizeof(field.value), tempFilepath);
+        field.ready = false;
+        strcopy(field.originalPath, sizeof(field.originalPath), filepath);
+        int id = this.Fields.PushArray(field);
 
-        // We copy the file in the background. 
+        // We copy the file in the background.
         // Copying files directly lags the server, which reveals a round-end to SourceTV viewers.
 
         DataPack pack = new DataPack();
-        pack.WriteCell(kv);
+        pack.WriteCell(this.Fields);
         pack.WriteCell(id);
         AnyHttp_CopyFile(filepath, tempFilepath, AnyHttp_PutFile_Finished, pack);
     }
@@ -197,16 +190,11 @@ methodmap AnyHttpRequest {
         // Checks that all files are ready to be sent.
 
         if (this.Fields != null) {
-            char type[64];
-            for (int i = 1; KvizGetStringExact(this.Fields, type, sizeof(type), "%i.type", i); i++) {
-                if (StrEqual(type, "file")) {
-                    int ready = 0;
-                    if (!KvizGetNumExact(this.Fields, ready, "%i.ready", i))
-                        ThrowError("'ready' should always be present - %i", i);
-                    
-                    if (ready == 0)
-                        return false;
-                }
+            AnyHttpField field;
+            for (int i = 0; i < this.Fields.Length; i++) {
+                this.Fields.GetArray(i, field);
+                if (field.isFile && !field.ready)
+                    return false;
             }
         }
 
@@ -218,21 +206,22 @@ static AnyHttpRequest InvalidRequest = view_as<AnyHttpRequest>(-1);
 
 public void AnyHttp_PutFile_Finished(bool success, DataPack pack) {
     pack.Reset();
-    KeyValues kv = pack.ReadCell();
+    ArrayList fields = pack.ReadCell();
     int id = pack.ReadCell();
     delete pack;
 
-    if (!success) {
-        char originalFilepath[128], tempFilepath[128];
-        KvizGetStringExact(kv, originalFilepath, sizeof(originalFilepath), "%i.originalPath", id);
-        KvizGetStringExact(kv, tempFilepath, sizeof(tempFilepath), "%i.value", id);
-        KvizSetString(kv, originalFilepath, "%i.value", id);
-        KvizSetString(kv, "false", "%i.cleanup", id);
+    AnyHttpField field;
+    fields.GetArray(id, field);
 
-        LogError("Could not copy file from %s to %s", originalFilepath, tempFilepath);
+    if (!success) {
+        LogError("Could not copy file from %s to %s", field.originalPath, field.value);
+
+        strcopy(field.value, sizeof(field.value), field.originalPath);
+        field.cleanup = false;
     }
 
-    KvizSetNum(kv, 1, "%i.ready", id);
+    field.ready = true;
+    fields.SetArray(id, field);
 }
 
 
@@ -343,7 +332,7 @@ static AnyHttpRequest NewRequest() {
     request.Initialized = true;
     //request.Callback = null;
     request.MetaData = 0;
-    request.Fields = KvizCreate("field");
+    request.Fields = new ArrayList(sizeof(AnyHttpField));
     request.SetFileName("");
     request.FileHandle = null;
     requests[request.Id].httpBody.Init();
@@ -365,21 +354,16 @@ static void CleanUpRequest(AnyHttpRequest request) {
         request.FileHandle = null;
     }
     if (request.Fields != null) {
-        char type[64];
-        for (int i = 1; KvizGetStringExact(request.Fields, type, sizeof(type), "%i.type", i); i++) {
-            if (StrEqual(type, "file")) {
-                char cleanup[16];
-                KvizGetStringExact(request.Fields, cleanup, sizeof(cleanup), "%i.cleanup", i);
-                if (StrEqual(cleanup, "true")) {
-                    char filepath[1024];
-                    KvizGetStringExact(request.Fields, filepath, sizeof(filepath), "%i.value", i);
-                    if (!DeleteFile(filepath, false))
-                        LogError("Could not delete %s", filepath);
-                }
+        AnyHttpField field;
+        for (int i = 0; i < request.Fields.Length; i++) {
+            request.Fields.GetArray(i, field);
+            if (field.isFile && field.cleanup) {
+                if (!DeleteFile(field.value, false))
+                    LogError("Could not delete %s", field.value);
             }
         }
 
-        KvizClose(request.Fields);
+        delete request.Fields;
         request.Fields = null;
     }
     requests[request.Id].httpBody.Dispose();
@@ -609,29 +593,20 @@ static AnyHttpRequest cURL_CreatePostForm(const char[] url, any metadata = 0) {
 
 static bool cURL_SendPostForm(AnyHttpRequest request) {
     Handle hCurlForm = curl_httppost();
-    char type[64];
-    
-    for (int i = 1; KvizGetStringExact(request.Fields, type, sizeof(type), "%i.type", i); i++) {
-        if (StrEqual(type, "string")) {
-            char name[1024];
-            KvizGetStringExact(request.Fields, name, sizeof(name), "%i.name", i);
-            char contents[1024];
-            KvizGetStringExact(request.Fields, contents, sizeof(contents), "%i.value", i);
-            if (curl_formadd(hCurlForm, CURLFORM_COPYNAME, name, CURLFORM_COPYCONTENTS, contents, CURLFORM_END) != CURL_FORMADD_OK) {
-                CleanUpRequest(request);
-                return false;
-            }
-        } else if (StrEqual(type, "file")) {
-            char name[1024];
-            KvizGetStringExact(request.Fields, name, sizeof(name), "%i.name", i);
-            char filepath[PLATFORM_MAX_PATH];
-            KvizGetStringExact(request.Fields, filepath, sizeof(filepath), "%i.value", i);
-            if (curl_formadd(hCurlForm, CURLFORM_COPYNAME, name, CURLFORM_FILE, filepath, CURLFORM_END) != CURL_FORMADD_OK) {
+    AnyHttpField field;
+
+    for (int i = 0; i < request.Fields.Length; i++) {
+        request.Fields.GetArray(i, field);
+        if (!field.isFile) {
+            if (curl_formadd(hCurlForm, CURLFORM_COPYNAME, field.name, CURLFORM_COPYCONTENTS, field.value, CURLFORM_END) != CURL_FORMADD_OK) {
                 CleanUpRequest(request);
                 return false;
             }
         } else {
-            ThrowError("Unknown type");
+            if (curl_formadd(hCurlForm, CURLFORM_COPYNAME, field.name, CURLFORM_FILE, field.value, CURLFORM_END) != CURL_FORMADD_OK) {
+                CleanUpRequest(request);
+                return false;
+            }
         }
     }
     
