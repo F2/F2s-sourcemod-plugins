@@ -142,6 +142,7 @@ TODO:
 
 #define ITEMS_TXT_PATH "scripts/items/items_game.txt"
 #define MAXWEAPONS 2048
+#define MAXENTITIES 2048 // Max number of networked entities (edicts)
 #define MAXWEPSLOTS 5
 #define MAXWEPNAMELEN 72
 #define MAXITEMCLASSLEN 64
@@ -197,7 +198,7 @@ ConVar g_hCvarHostname = null,
 ConVar g_hCvarEnableAccuracy = null;
 bool g_bEnableAccuracy;
 
-int g_iIgnoreDamageEnt[5];
+bool g_bIgnoreDamageEnt[MAXENTITIES]; // [entity] The projectile has already been counted as a hit
 
 const float MAXROCKETJUMPTIME = 0.15;
 float g_fRocketFiredTime[MAXPLAYERS+1];
@@ -330,8 +331,8 @@ public void OnLibraryAdded(const char[] name) {
 public void OnMapStart() {
 	Match_OnMapStart();
 
-	for (int i = 0; i < sizeof(g_iIgnoreDamageEnt); i++)
-		g_iIgnoreDamageEnt[i] = 0;
+	for (int i = 0; i < sizeof(g_bIgnoreDamageEnt); i++)
+		g_bIgnoreDamageEnt[i] = false;
 	
 	for (int client = 1; client <= MaxClients; client++) {
 		g_iHitscanWeapon[client] = 0;
@@ -843,28 +844,10 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 					bool isSticky = shotType == SHOT_STICKY && attackerClass == TFClass_DemoMan;
 					bool isNeedle = shotType == SHOT_NEEDLE && attackerClass == TFClass_Medic;
 					if (isRocket || isGrenade || isNeedle) {
-						bool foundIgnore = false;
-						int foundEmpty = -1;
-						if (!isNeedle) {
-							for (int i = 0; i < sizeof(g_iIgnoreDamageEnt); i++) {
-								if (g_iIgnoreDamageEnt[i] == inflictor) {
-									foundIgnore = true;
-									break;
-								}
-								
-								if (foundEmpty == -1 && g_iIgnoreDamageEnt[i] == 0)
-									foundEmpty = i;
-							}
-						}
-						
-						if (!foundIgnore) {
-							if (!isNeedle) {
-								if (foundEmpty != -1)
-										g_iIgnoreDamageEnt[foundEmpty] = inflictor;
-								else
-									LogError("Did not find empty IgnoreDamage spot (%i,%i,%i,%i,%i)", g_iIgnoreDamageEnt[0], g_iIgnoreDamageEnt[1], g_iIgnoreDamageEnt[2], g_iIgnoreDamageEnt[3], g_iIgnoreDamageEnt[4]);
-							}
-							
+						if (isNeedle || !g_bIgnoreDamageEnt[inflictor]) {
+							if (!isNeedle)
+								g_bIgnoreDamageEnt[inflictor] = true;
+
 							if (isRocket) {
 								g_bRocketHurtEnemy[attacker] = true;
 								LogHit(attacker, lastWeaponDamage[attacker]);
@@ -1068,12 +1051,7 @@ public void OnEntityDestroyed(int entity) {
 	if (entity <= MaxClients)
 		return;
 	
-	for (int i = 0; i < sizeof(g_iIgnoreDamageEnt); i++) {
-		if (g_iIgnoreDamageEnt[i] == entity) {
-			g_iIgnoreDamageEnt[i] = 0;
-			break;
-		}
-	}
+	g_bIgnoreDamageEnt[entity] = false;
 	
 	if (g_bEnableAccuracy) {
 		char clsname[32];
