@@ -156,7 +156,9 @@ $$\text{Accuracy} = \frac{\text{count(shot\\_hit)}}{\text{count(shot\\_fired)}} 
 
 For Crusader's Crossbow, friendly hits will be logged as `shot_hit`.
 
-Destroying a sticky with a hitscan weapon will be logged as `shot_hit` (although it might not always be accurately detected).
+A hitscan shot that destroys a sticky without hitting an enemy player is not logged. If the same shot also hits an enemy player, it is logged as one shot and one hit.
+
+You cannot assume that the accuracy events are logged in any particular order. For example, it is completely valid that a shot first logs "damage", then "shot_hit", and then "shot_fired".
 
 # Medic Stats
 

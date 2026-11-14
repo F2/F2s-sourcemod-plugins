@@ -114,6 +114,7 @@ Release notes:
 - Fixed pauses not being logged when using setpause/unpause, or when the player left right after pausing
 - Fixed telefrags being logged as taunts
 - Improved detection of shooting/clearing stickies
+- Removed limit of 2048 weapon definitions
 
 
 TODO:
@@ -141,7 +142,6 @@ TODO:
 #define UPDATE_URL		"https://sourcemod.krus.dk/supstats2/update.txt"
 
 #define ITEMS_TXT_PATH "scripts/items/items_game.txt"
-#define MAXWEAPONS 2048
 #define MAXENTITIES 2048 // Max number of networked entities (edicts)
 #define MAXWEPSLOTS 5
 #define MAXWEPNAMELEN 72
@@ -1319,8 +1319,8 @@ KeyValues g_kvPrefabs = null;
 KeyValues g_kvItems = null;
 
 ArrayList g_hAllWeaponsName = null; // names of all weapons saved in an Array
-int g_iAllWeaponsHealingOnHit[MAXWEAPONS];
-bool g_bAllWeaponsPostHumousDamage[MAXWEAPONS];
+ArrayList g_hAllWeaponsHealingOnHit = null;
+ArrayList g_hAllWeaponsPostHumousDamage = null;
 int g_iAllWeaponsCount = 0;
 
 const int MAXDEFID = 65535;
@@ -1335,13 +1335,15 @@ bool WeaponFromDefid(int defid, char[] name, int maxlen, int &healing, bool &pos
 		return false;
 
 	g_hAllWeaponsName.GetString(i, name, maxlen);
-	healing = g_iAllWeaponsHealingOnHit[i];
-	postHumousDamage = g_bAllWeaponsPostHumousDamage[i];
+	healing = g_hAllWeaponsHealingOnHit.Get(i);
+	postHumousDamage = g_hAllWeaponsPostHumousDamage.Get(i);
 	return true;
 }
 
 void ImportWeaponDefinitions() {
-	g_hAllWeaponsName = CreateArray(MAXWEPNAMELEN);
+	g_hAllWeaponsName = new ArrayList(MAXWEPNAMELEN);
+	g_hAllWeaponsHealingOnHit = new ArrayList();
+	g_hAllWeaponsPostHumousDamage = new ArrayList();
 	g_iAllWeaponsCount = 0;
 	Array_Fill(g_iWeaponIndexFromDefid, sizeof(g_iWeaponIndexFromDefid), -1);
 	if (!FileExists(ITEMS_TXT_PATH, true))
@@ -1428,9 +1430,6 @@ public Action ImportWeaponDefinitionsChunk(Handle timer, int startId) {
 
 		// Save the weapon and corresponding defid if it's not a stock weapon
 		if (isWeapon) {
-			if (g_iAllWeaponsCount >= MAXWEAPONS)
-				SetFailState("Too many weapons. (%i)", g_iAllWeaponsCount);
-			
 			char itemname[MAXWEPNAMELEN] = "";
 			
 			if (defid == 130) {
@@ -1478,14 +1477,15 @@ public Action ImportWeaponDefinitionsChunk(Handle timer, int startId) {
 			
 			String_ToLower(itemname, itemname, sizeof(itemname));
 
-			PushArrayString(g_hAllWeaponsName, itemname);
-			g_iAllWeaponsHealingOnHit[g_iAllWeaponsCount] = 0;
+			g_hAllWeaponsName.PushString(itemname);
+			int healingOnHit = 0;
 			char attr[16];
 			if (GetItemAttribute(g_kvItems, g_kvPrefabs, "add_onhit_addhealth", attr, sizeof(attr)) || GetItemAttribute(g_kvItems, g_kvPrefabs, "add_health_on_radius_damage", attr, sizeof(attr))) {
 				//PrintToChatAll("health on hit(%i) name(%s)", attr, itemname);
-				g_iAllWeaponsHealingOnHit[g_iAllWeaponsCount] = StringToInt(attr);
+				healingOnHit = StringToInt(attr);
 			}
-			g_bAllWeaponsPostHumousDamage[g_iAllWeaponsCount] = GetItemTag(g_kvItems, g_kvPrefabs, "can_deal_posthumous_damage", false);
+			g_hAllWeaponsHealingOnHit.Push(healingOnHit);
+			g_hAllWeaponsPostHumousDamage.Push(GetItemTag(g_kvItems, g_kvPrefabs, "can_deal_posthumous_damage", false));
 			if (defid < 0 || defid > MAXDEFID)
 				LogError("Weapon defid is out of range: %i (%s)", defid, itemname);
 			else if (g_iWeaponIndexFromDefid[defid] == -1)
