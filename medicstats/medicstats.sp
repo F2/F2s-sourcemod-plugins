@@ -64,6 +64,7 @@ Release notes:
 ---- 2.0.0 (12/11/2026) ----
 - Changed the way buffs are detected
 - Don't log buffs to enemy spies
+- Fixed uber stats being wrong when uber is drained (e.g. by the Pomson) or gained during an uber (e.g. by the Ubersaw)
 - Fixed uber stats being wrong when the game is paused during an uber
 
 
@@ -71,6 +72,7 @@ Release notes:
 TODO:
 - The log lines should include which medigun is wielded
 - cvar to enable logging medics' self-heal (should be disabled by default)
+- Vaccinator ubers are not detected properly (m_bChargeRelease is never true for it), so they are logged with a duration of 0 followed by an empty_uber
 */
 
 #pragma semicolon 1
@@ -106,7 +108,6 @@ enum struct MedicInfo {
     bool MedicHasUber;   // True if the medic has 100% uber
     bool MedicIsUbering; // True if the medic is currently ubering
     float MedicTimeToUber; // How far away from uber the medic is (the last time it was checked by the CollectInfo timer)
-    float MedicLastUberPct; // The percentage of uber the medic has (the last time it was checked by the CollectInfo timer)
     float MedicStartedBuildTime; // The GameTime of when the medic had 0% - when the medic has 100%, or is ubering, it is set to -1.0
     float MedicInitialHealSpawnTime; // The GameTime of when the medic spawned (the beginning of a round doesn't count) - when the medic starts to heal, it is set to -1.0
     float MedicFullyChargedTime; // The GameTime of when the uber is fully charged - when the uber is used, it is set to -1.0
@@ -193,7 +194,6 @@ void ResetMedicInfo(TFTeam team) {
     medic[team].MedicHasUber = false;
     medic[team].MedicIsUbering = false;
     medic[team].MedicTimeToUber = TF2_GetPlayerUberBuildTime(medic[team].MedicClient);
-    medic[team].MedicLastUberPct = 0.0;
     medic[team].MedicStartedBuildTime = -1.0;
     medic[team].MedicInitialHealSpawnTime = -1.0;
     medic[team].MedicFullyChargedTime = -1.0;
@@ -333,7 +333,6 @@ public Action Event_player_chargedeployed(Event event, const char[] name, bool d
         if (medic[team].MedicHasUber == false)
             LogUberReady(client);
 
-        medic[team].MedicLastUberPct = 1.0;
         medic[team].MedicHasUber = false;
         medic[team].MedicHasHadAdvantage = false;
         medic[team].MedicIsUbering = true;
@@ -455,7 +454,7 @@ public Action Timer_CollectInfo(Handle timer) {
     if (!IsInMatch || IsBonusRoundTime)
         return Plugin_Continue;
 
-    // The uber meter is frozen while the game is paused, which would look like the uber ended
+    // Don't count time while the game is paused
     if (!IsServerProcessing())
         return Plugin_Continue;
 
@@ -469,12 +468,12 @@ public Action Timer_CollectInfo(Handle timer) {
             float uberPct = TF2_GetPlayerUberLevel(client, medic[team].MedicMedigun);
             float uberBuildTime = TF2_GetPlayerUberBuildTime(client);
 
-            medic[team].MedicIsUbering = uberPct < medic[team].MedicLastUberPct && uberPct != 0.0;
+            int medigun = medic[team].MedicMedigun;
+            medic[team].MedicIsUbering = medigun > 0 && GetEntProp(medigun, Prop_Send, "m_bChargeRelease") != 0;
             medic[team].MedicHasUber =
                 uberPct >= 1.0 &&
                 !medic[team].MedicIsUbering; // The "!medic[team].MedicIsUbering" should not be necessary, but just to be sure. We never want (HasUber && IsUbering) to be true.
             medic[team].MedicTimeToUber = uberBuildTime * (1 - uberPct);
-            medic[team].MedicLastUberPct = uberPct;
 
             if (medic[team].MedicStartedBuildTime < 0.0) {
                 // Medic has not started building yet.
@@ -521,7 +520,7 @@ public Action Timer_CollectInfo(Handle timer) {
             if (medic[team].MedicUberStartTime >= 0.0 && medic[team].MedicIsUbering == false) {
                 // If the medic ubered and the uber faded, remember how long it lasted.
 
-                float uberTime = gameTime - medic[team].MedicUberStartTime - TIMER_TICK / 2;
+                float uberTime = fmax(0.0, gameTime - medic[team].MedicUberStartTime - TIMER_TICK / 2); // Vaccinator ubers end immediately
                 //PrintToSTV("[STV Stats] %s's uber lasted %.1f seonds", team == TFTeam_Red ? "RED" : "BLU", uberTime);
                 LogUberLength(client, uberTime);
                 medic[team].MedicUberStartTime = -1.0;
