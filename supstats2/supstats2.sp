@@ -1095,12 +1095,13 @@ public void OnEntityDestroyed(int entity) {
 					int healing;
 					int defid;
 					bool postHumousDamage;
-					GetWeaponLogName(weap, sizeof(weap), owner, GetPlayerWeaponSlot(owner, 1), healing, defid, postHumousDamage, entity); // We are setting inflictor = attacker
-					
-					if (shot) 
-						LogShot(owner, weap);
-					if (hit)
-						LogHit(owner, weap);
+					int weapon = GetEntPropEnt(entity, Prop_Send, "m_hLauncher"); // The owner may have died or changed class, so don't look at the owner's current weapon
+					if (GetWeaponLogName(weap, sizeof(weap), owner, weapon, healing, defid, postHumousDamage, entity)) {
+						if (shot)
+							LogShot(owner, weap);
+						if (hit)
+							LogHit(owner, weap);
+					}
 				}
 			}
 		}
