@@ -51,6 +51,7 @@ Release notes:
 - Write chat messages during pauses to the log
 - Added a 2 second cooldown to the "repause" command
 - Fixed spies getting unlimited cloak if the plugin was unloaded during a pause with pause_restore_cloak enabled
+- Cut chat text length to 127 characters like the game does
 
 
 */
@@ -387,9 +388,10 @@ public Action Cmd_Say(int client, const char[] command, int args) {
 				strcopy(buffer, sizeof(buffer), buffer[1]);
 
 			// Remove control characters, so they cannot be used to color or spoof messages
+			// Also cap the length at 127 like the game does, so the message is not too big to be sent
 			int len = 0;
 			bool hasText = false;
-			for (int i = 0; buffer[i] != '\0'; i++) {
+			for (int i = 0; buffer[i] != '\0' && len < 127; i++) {
 				if ((buffer[i] & 0xFF) < ' ')
 					continue;
 				if (buffer[i] != ' ')
