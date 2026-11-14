@@ -1349,20 +1349,21 @@ void ImportWeaponDefinitions() {
 	if (!FileExists(ITEMS_TXT_PATH, true))
 		SetFailState("Could not find items_game.txt: %s", ITEMS_TXT_PATH);
 	
-	// Load items_game.txt for prefabs
-	g_kvPrefabs = KvizCreateFromFile("items_game", ITEMS_TXT_PATH);
-	if (g_kvPrefabs == null)
-		SetFailState("Could not load items_game.txt");
-	
-	// Go to prefabs section
-	if (!KvizJumpToKey(g_kvPrefabs, false, "prefabs"))
-		SetFailState("items_game.txt: '%s' key not found", "prefabs");
-	
 	// Load items_game.txt for items traversal
 	g_kvItems = KvizCreateFromFile("items_game", ITEMS_TXT_PATH);
 	if (g_kvItems == null)
 		SetFailState("Could not load items_game.txt");
-	
+
+	// Copy the prefabs section into its own KeyValues, so it can be traversed independently without parsing the items_game.txt file twice.
+	// Uses the native cursor while it is still at the root, and returns it there afterwards to keep Kvizzle in sync.
+	if (!g_kvItems.JumpToKey("prefabs"))
+		SetFailState("items_game.txt: '%s' key not found", "prefabs");
+	g_kvPrefabs = KvizCreate("prefabs");
+	if (g_kvPrefabs == null)
+		SetFailState("Could not create prefabs KeyValues");
+	g_kvPrefabs.Import(g_kvItems);
+	g_kvItems.GoBack();
+
 	// Go to items section
 	if (!KvizJumpToKey(g_kvItems, false, "items"))
 		SetFailState("items_game.txt: '%s' key not found", "items");
@@ -1502,8 +1503,7 @@ public Action ImportWeaponDefinitionsChunk(Handle timer, int startId) {
 
 	// Clean up
 	KvizGoBack(g_kvItems);
-	KvizGoBack(g_kvPrefabs);
-	
+
 	KvizClose(g_kvItems);
 	KvizClose(g_kvPrefabs);
 
