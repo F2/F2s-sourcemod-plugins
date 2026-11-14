@@ -63,10 +63,12 @@ Release notes:
 
 ---- 2.0.0 (12/11/2026) ----
 - Changed the way buffs are detected
+- Medic stats are now always logged, also during warmup
 - Don't log buffs to enemy spies
 - Fixed uber stats being wrong when uber is drained (e.g. by the Pomson) or gained during an uber (e.g. by the Ubersaw)
 - Fixed uber stats being wrong when the game is paused during an uber
 - Fixed uber stats being wrong when a team has more than one medic
+- Fixed STV Stats messages being shown in warmup after a match was cancelled
 
 
 
@@ -82,6 +84,7 @@ TODO:
 #include <sourcemod>
 #include <tf2_stocks>
 #include <f2stocks>
+#include <match>
 #undef REQUIRE_PLUGIN
 #include <updater>
 
@@ -133,9 +136,6 @@ float g_fLastCollectBuffs;
 MedicInfo medic[MAXPLAYERS + 1];
 TeamInfo teams[TFTeam];
 
-bool CountdownStarted;
-bool IsInMatch;
-bool IsBonusRoundTime;
 float LastRoundStart;
 //float LastCollectInfoTime;
 
@@ -165,11 +165,10 @@ public void OnPluginStart() {
     HookEvent("player_hurt", Event_player_hurt, EventHookMode_Post);
     HookEvent("player_chargedeployed", Event_player_chargedeployed, EventHookMode_Pre);
 
-    HookEvent("teamplay_round_win", Event_round_win, EventHookMode_PostNoCopy);
-    HookEvent("teamplay_round_restart_seconds", Event_round_restart_seconds, EventHookMode_PostNoCopy);
     HookEvent("teamplay_round_start", Event_teamplay_round_start, EventHookMode_PostNoCopy);
-    HookEvent("tf_game_over", Event_game_over, EventHookMode_Pre);
-    HookEvent("teamplay_game_over", Event_game_over, EventHookMode_Pre);
+
+    // Match.inc
+    Match_OnPluginStart();
 
     //LastCollectInfoTime = GetGameTime();
     CreateTimer(TIMER_TICK, Timer_CollectInfo, _, TIMER_REPEAT);
@@ -257,12 +256,29 @@ public void OnMapStart() {
     for (int client = 1; client <= MaxClients; client++)
         ResetMedic(client);
 
-    CountdownStarted = false;
-    IsInMatch = false;
-    IsBonusRoundTime = false;
     LastRoundStart = 0.0;
     g_fLastCollectBuffs = 0.0;
     //LastCollectInfoTime = GetGameTime();
+
+    Match_OnMapStart();
+}
+
+public void OnMapEnd() {
+    Match_OnMapEnd();
+}
+
+void StartMatch() {
+}
+
+void ResetMatch() {
+}
+
+void EndMatch(bool endedMidgame) {
+}
+
+// ShouldPrintToSTV() returns true if STV Stats messages should be shown - i.e. not in warmup.
+bool ShouldPrintToSTV() {
+    return g_bInMatch && g_bFirstRoundStarted;
 }
 
 public void Cvar_LogBuffs(Handle cvar, const char[] oldValue, const char[] newValue) {
@@ -299,7 +315,7 @@ public Action Event_player_spawn(Event event, const char[] name, bool dontBroadc
     int client = GetClientOfUserId(userid);
 
     // ==== Medic stats ====
-    if (!IsInMatch || IsBonusRoundTime)
+    if (g_bIsBonusRoundTime)
         return Plugin_Continue;
 
     if (!IsRealPlayer(client))
@@ -328,7 +344,7 @@ public Action Event_player_death(Event event, const char[] name, bool dontBroadc
     int client = GetClientOfUserId(userid);
 
     // ==== Medic stats ====
-    if (!IsInMatch || IsBonusRoundTime)
+    if (g_bIsBonusRoundTime)
         return Plugin_Continue;
 
     if (!IsRealPlayer(client))
@@ -340,14 +356,16 @@ public Action Event_player_death(Event event, const char[] name, bool dontBroadc
 
     float uberPct = TF2_GetPlayerUberLevel(client, medic[client].MedicMedigun);
 
-    if (uberPct == 1) {
-        CPrintToSTV("{default}[STV Stats] %s{default}'s medic DROPPED!",
-                    team == TFTeam_Red ? "{red}RED" : "{blue}BLU");
-    } else if (uberPct >= 0.95) {
-        CPrintToSTV("{default}[STV Stats] %s{default}'s medic died with %s%i%%{default} uber",
-                    team == TFTeam_Red ? "{red}RED" : "{blue}BLU",
-                    team == TFTeam_Red ? "{red}" : "{blue}",
-                    RoundToFloor(uberPct * 100.0));
+    if (ShouldPrintToSTV()) {
+        if (uberPct == 1) {
+            CPrintToSTV("{default}[STV Stats] %s{default}'s medic DROPPED!",
+                        team == TFTeam_Red ? "{red}RED" : "{blue}BLU");
+        } else if (uberPct >= 0.95) {
+            CPrintToSTV("{default}[STV Stats] %s{default}'s medic died with %s%i%%{default} uber",
+                        team == TFTeam_Red ? "{red}RED" : "{blue}BLU",
+                        team == TFTeam_Red ? "{red}" : "{blue}",
+                        RoundToFloor(uberPct * 100.0));
+        }
     }
     medic[client].MedicLastDeath = GetGameTime();
 
@@ -392,7 +410,7 @@ public Action Event_player_chargedeployed(Event event, const char[] name, bool d
         medic[client].MedicFullyChargedTime = -1.0;
     }
 
-    if (waitTime >= 30.0) {
+    if (waitTime >= 30.0 && ShouldPrintToSTV()) {
         CPrintToSTV("{default}[STV Stats] %s{default} had uber for %s%i seconds{default} before using it",
                      team == TFTeam_Red ? "{red}RED" : "{blue}BLU", team == TFTeam_Red ? "{red}" : "{blue}",
                      RoundToNearest(waitTime));
@@ -400,39 +418,11 @@ public Action Event_player_chargedeployed(Event event, const char[] name, bool d
     return Plugin_Continue;
 }
 
-public void Event_round_win(Event event, const char[] name, bool dontBroadcast) {
-    IsBonusRoundTime = true;
-}
-
-public void Event_round_restart_seconds(Event event, const char[] name, bool dontBroadcast) {
-    CountdownStarted = true;
-    IsInMatch = false;
-}
-
 public void Event_teamplay_round_start(Event event, const char[] name, bool dontBroadcast) {
-    if (CountdownStarted) {
-        CountdownStarted = false;
+    for (int client = 1; client <= MaxClients; client++)
+        ResetMedicInfo(client);
 
-        for (int client = 1; client <= MaxClients; client++)
-            ResetMedic(client);
-
-        IsInMatch = true;
-    } else if (IsInMatch) {
-        for (int client = 1; client <= MaxClients; client++)
-            ResetMedicInfo(client);
-    }
-    IsBonusRoundTime = false;
     LastRoundStart = GetGameTime();
-}
-
-public Action Event_game_over(Event event, const char[] name, bool dontBroadcast) {
-    if (!IsInMatch)
-        return Plugin_Continue;
-
-    IsInMatch = false;
-    IsBonusRoundTime = false;
-
-    return Plugin_Continue;
 }
 
 public Action Timer_CollectInfo(Handle timer) {
@@ -449,8 +439,8 @@ public Action Timer_CollectInfo(Handle timer) {
         CollectBuffs();
     }
 
-    // Don't calculate medic statas in warmup
-    if (!IsInMatch || IsBonusRoundTime)
+    // Don't calculate medic stats after a round has been won
+    if (g_bIsBonusRoundTime)
         return Plugin_Continue;
 
     // Don't count time while the game is paused
@@ -502,7 +492,7 @@ public Action Timer_CollectInfo(Handle timer) {
                 float timeBeforeHealing = gameTime - medic[client].MedicInitialHealSpawnTime;
                 medic[client].MedicInitialHealSpawnTime = -1.0;
 
-                if (timeBeforeHealing >= 5.0) {
+                if (timeBeforeHealing >= 5.0 && ShouldPrintToSTV()) {
                     CPrintToSTV(
                         "{default}[STV Stats] %s{default} spent %s%.1f seconds{default} after spawning before healing",
                         team == TFTeam_Red ? "{red}RED" : "{blue}BLU", 
@@ -555,10 +545,12 @@ public Action Timer_CollectInfo(Handle timer) {
                 // If the team has had an uber advantage, and the opposing team has gotten uber in the meantime, remember the uber advantage loss.
 
                 LogLostUberAdvantage(teams[team].TeamAdvantageMedic, teams[team].TeamBiggestAdvantage);
-                CPrintToSTV("{default}[STV Stats] %s{default} lost their uber advantage of %s%.0f seconds{default}",
-                             team == TFTeam_Red ? "{red}RED" : "{blue}BLU",
-                             team == TFTeam_Red ? "{red}" : "{blue}",
-                             teams[team].TeamBiggestAdvantage);
+                if (ShouldPrintToSTV()) {
+                    CPrintToSTV("{default}[STV Stats] %s{default} lost their uber advantage of %s%.0f seconds{default}",
+                                 team == TFTeam_Red ? "{red}RED" : "{blue}BLU",
+                                 team == TFTeam_Red ? "{red}" : "{blue}",
+                                 teams[team].TeamBiggestAdvantage);
+                }
 
                 ResetAdvantage(teams[team].TeamAdvantageMedic);
             }
