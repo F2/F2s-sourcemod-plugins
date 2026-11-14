@@ -32,7 +32,7 @@ Release notes:
 - Fixed unnecessary tournament restart when server is almost empty
 
 
----- 1.1.4 (13/11/2026) ----
+---- 1.2.0 (13/11/2026) ----
 - Minor fixes
 
 
@@ -54,7 +54,7 @@ BUG:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.1.4"
+#define PLUGIN_VERSION "1.2.0"
 #define UPDATE_URL     "https://sourcemod.krus.dk/waitforstv/update.txt"
 
 
@@ -108,11 +108,9 @@ public void OnMapEnd() {
 }
 
 void StartMatch() {
-	g_bMatchPlayed = false;
 }
 
 void ResetMatch() {
-	EndMatch(true);
 }
 
 void EndMatch(bool endedMidgame) {
