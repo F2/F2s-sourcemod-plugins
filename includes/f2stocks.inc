@@ -186,8 +186,9 @@ stock void CPrintToChatEx2(int client, int author, const char[] message, any ...
 	char buffer2[MC_MAX_MESSAGE_LENGTH];
 	SetGlobalTransTarget(client);
 	Format(buffer, sizeof(buffer), "\x01%s", message);
-	MC_ReplaceColorCodes(buffer, author);
+	MC_ReplaceColorCodes(buffer, author, false, sizeof(buffer));
 	VFormat(buffer2, sizeof(buffer2), buffer, 4);
+	ReplaceString(buffer2, sizeof(buffer2), "%", "\xEF\xBC\x85"); // The client cuts off messages at %s, so use a fullwidth percent sign (U+FF05) instead
 	MC_SendMessage(client, buffer2, author);
 }
 
@@ -210,8 +211,9 @@ stock void CPrintToChatAllEx2(int author, const char[] message, any ...) {
 		}
 		SetGlobalTransTarget(i);
 		Format(buffer, sizeof(buffer), "\x01%s", message);
-		MC_ReplaceColorCodes(buffer, author);
+		MC_ReplaceColorCodes(buffer, author, false, sizeof(buffer));
 		VFormat(buffer2, sizeof(buffer2), buffer, 3);
+		ReplaceString(buffer2, sizeof(buffer2), "%", "\xEF\xBC\x85"); // The client cuts off messages at %s, so use a fullwidth percent sign (U+FF05) instead
 		MC_SendMessage(i, buffer2, author);
 	}
 }
@@ -230,8 +232,9 @@ stock void CPrintToChat2(int client, const char[] message, any ...) {
 	char buffer2[MC_MAX_MESSAGE_LENGTH];
 	SetGlobalTransTarget(client);
 	Format(buffer, sizeof(buffer), "\x01%s", message);
-	MC_ReplaceColorCodes(buffer);
+	MC_ReplaceColorCodes(buffer, 0, false, sizeof(buffer));
 	VFormat(buffer2, sizeof(buffer2), buffer, 3);
+	ReplaceString(buffer2, sizeof(buffer2), "%", "\xEF\xBC\x85"); // The client cuts off messages at %s, so use a fullwidth percent sign (U+FF05) instead
 	MC_SendMessage(client, buffer2);
 }
 
@@ -248,8 +251,9 @@ stock void CPrintToChatAll2(const char[] message, any ...) {
 		}
 		SetGlobalTransTarget(i);
 		Format(buffer, sizeof(buffer), "\x01%s", message);
-		MC_ReplaceColorCodes(buffer);
+		MC_ReplaceColorCodes(buffer, 0, false, sizeof(buffer));
 		VFormat(buffer2, sizeof(buffer2), buffer, 2);
+		ReplaceString(buffer2, sizeof(buffer2), "%", "\xEF\xBC\x85"); // The client cuts off messages at %s, so use a fullwidth percent sign (U+FF05) instead
 		MC_SendMessage(i, buffer2);
 	}
 }
