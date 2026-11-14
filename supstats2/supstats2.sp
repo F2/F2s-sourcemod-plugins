@@ -113,6 +113,7 @@ Release notes:
 - Fixed rare bug where a rocket jump could be counted as a missed shot
 - Fixed pauses not being logged when using setpause/unpause, or when the player left right after pausing
 - Fixed telefrags being logged as taunts
+- Improved detection of shooting/clearing stickies
 
 
 TODO:
@@ -197,7 +198,6 @@ ConVar g_hCvarEnableAccuracy = null;
 bool g_bEnableAccuracy;
 
 int g_iIgnoreDamageEnt[5];
-float g_fLastHitscanHit[MAXPLAYERS+1];
 
 const float MAXROCKETJUMPTIME = 0.15;
 float g_fRocketFiredTime[MAXPLAYERS+1];
@@ -205,10 +205,16 @@ bool g_bRocketHurtMe[MAXPLAYERS+1];
 bool g_bRocketHurtEnemy[MAXPLAYERS+1];
 char g_sRocketFiredLogLine[MAXPLAYERS+1][1024];
 
-const float MAXHITSCANTIME = 0.05;
+// Hitscan shots are tracked from when the weapon fires until the end of the player's PostThink. Everything below happens inside PostThink, in this order:
+//   1. TF2_CalcIsAttackCritical: The weapon fires. Starts tracking the shot.
+//   2. The bullets deal their damage:
+//      - OnTakeDamage: An enemy player is hit. Sets g_bHitscanHurtEnemy.
+//      - Event_PlayerDestroyedPipebomb: An enemy sticky is destroyed. Sets g_bHitscanDestroyedSticky.
+//   3. LogHitscanShot (PostThinkPost): Logs the shot, unless it only destroyed stickies, and logs the hit.
+int g_iHitscanWeapon[MAXPLAYERS+1]; // Weapon entity of the hitscan shot being fired right now, or 0 if none. Reset in PostThinkPost when the shot is logged.
 bool g_bHitscanHurtEnemy[MAXPLAYERS+1];
-char g_sHitscanFiredLogLine[MAXPLAYERS+1][1024];
-
+bool g_bHitscanDestroyedSticky[MAXPLAYERS+1]; // The current hitscan shot destroyed an enemy sticky
+char g_sHitscanWeapon[MAXPLAYERS+1][MAXWEPNAMELEN]; // Log name of the weapon that fired the current hitscan shot
 const MAXSTICKIES = 14;
 bool g_bStickyHurtMe[MAXPLAYERS+1][MAXSTICKIES];
 bool g_bStickyHurtEnemy[MAXPLAYERS+1][MAXSTICKIES];
@@ -221,9 +227,7 @@ const SHOT_HEALINGBOLT = 2;
 const SHOT_PIPE = 3;
 const SHOT_STICKY = 4;
 const SHOT_PROJECTILE_MAX = 8; // exclusive
-const SHOT_HITSCAN_MIN = 16; // inclusive
 const SHOT_HITSCAN = 16;
-const SHOT_HITSCAN_MAX = 32; // exclusive
 StringMap g_tShotTypes = null; // Using a Trie seems to be over twice as fast as StrEqual()
 // ---- ACCURACY ----
 
@@ -294,6 +298,7 @@ void FinalizePluginInitialization() {
 	HookEvent("player_hurt", Event_PlayerHurt);
 	HookEvent("player_healed", Event_PlayerHealed);
 	HookEvent("player_spawn", Event_PlayerSpawned);
+	HookEvent("player_destroyed_pipebomb", Event_PlayerDestroyedPipebomb);
 	//HookEvent("player_healonhit", Event_PlayerHealOnHit);
 	
 	HookEvent("player_chargedeployed", EventPre_player_chargedeployed, EventHookMode_Pre);
@@ -307,6 +312,7 @@ void FinalizePluginInitialization() {
 	for (int client = 1; client <= MaxClients; client++) {
 		if (IsClientInGame(client) && !IsClientSourceTV(client)) {
 			SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+			SDKHook(client, SDKHook_PostThinkPost, LogHitscanShot);
 		}
 	}
 
@@ -328,6 +334,7 @@ public void OnMapStart() {
 		g_iIgnoreDamageEnt[i] = 0;
 	
 	for (int client = 1; client <= MaxClients; client++) {
+		g_iHitscanWeapon[client] = 0;
 		for (int i = 0; i < MAXSTICKIES; i++)
 			g_iStickyId[client][i] = 0;
 	}
@@ -343,6 +350,8 @@ public void OnClientPutInServer(int client) {
 		return;
 	
 	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+	SDKHook(client, SDKHook_PostThinkPost, LogHitscanShot);
+	g_iHitscanWeapon[client] = 0;
 	lastPostHumousWeaponDamage[client][0] = '\0';
 }
 
@@ -350,6 +359,7 @@ public void OnPluginEnd() {
 	for (int client = 1; client <= MaxClients; client++) {
 		if (IsClientInGame(client) && !IsClientSourceTV(client)) {
 			SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+			SDKUnhook(client, SDKHook_PostThinkPost, LogHitscanShot);
 		}
 	}
 
@@ -872,21 +882,8 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 					}
 				}
 			} else if (inflictor > 0 && inflictor <= MaxClients && IsValidEntity(weapon)) {
-				// Hitscan shot
-				
-				char classname[128];
-				GetEntityClassname(weapon, classname, sizeof(classname));
-				
-				int shotType;
-				if (g_tShotTypes.GetValue(classname, shotType) && shotType >= SHOT_HITSCAN_MIN && shotType < SHOT_HITSCAN_MAX) {
-					float now = GetEngineTime();
-					if ((now - g_fLastHitscanHit[attacker]) > 0.05) {
-						LogHit(attacker, lastWeaponDamage[attacker]);
-						
-						g_fLastHitscanHit[attacker] = now;
-						g_bHitscanHurtEnemy[attacker] = true;
-					}
-				}
+				if (inflictor == attacker && g_iHitscanWeapon[attacker] == weapon && (damagetype & (DMG_BULLET | DMG_BUCKSHOT)))
+					g_bHitscanHurtEnemy[attacker] = true;
 			} else {
 				char attackerName[64];
 				char victimName[64];
@@ -1013,6 +1010,14 @@ public void OnEntityCreated(int entity, const char[] classname) {
 	}
 }
 
+public void Event_PlayerDestroyedPipebomb(Event event, const char[] name, bool dontBroadcast) {
+	// TF2 fires this event while the bullets deal damage, so if a hitscan shot is being tracked, that shot destroyed the sticky.
+	// Melee hits and sentry bullets also fire this event, but never while a hitscan shot is being tracked.
+	int client = GetClientOfUserId(event.GetInt("userid"));
+	if (client != 0 && g_iHitscanWeapon[client] != 0)
+		g_bHitscanDestroyedSticky[client] = true;
+}
+
 public void OnHealArrowTouch(int entity, int other) {
 	if (other > 0 && other <= MaxClients) {
 		TFTeam team = TF2_GetClientTeam(other);
@@ -1119,18 +1124,22 @@ public Action LogRocketShot(Handle timer, any client) {
 	return Plugin_Stop;
 }
 
-public Action LogHitscanShot(Handle timer, any client) {
-	if (!IsRealPlayer(client))
-		return Plugin_Stop;
-	
-	if (g_bHitscanHurtEnemy[client]) {
-		LogToGame("%s", g_sHitscanFiredLogLine[client]);
+public void LogHitscanShot(int client) {
+	if (g_iHitscanWeapon[client] == 0)
+		return;
+
+	g_iHitscanWeapon[client] = 0;
+
+	// PostThinkPost runs after the weapon has fired and all pellets have dealt damage.
+	if (g_bHitscanHurtEnemy[client] || !g_bHitscanDestroyedSticky[client]) {
+		LogShot(client, g_sHitscanWeapon[client]);
+		if (g_bHitscanHurtEnemy[client])
+			LogHit(client, g_sHitscanWeapon[client]);
 	}
-	return Plugin_Stop;
 }
 
 public Action TF2_CalcIsAttackCritical(int attacker, int weapon, char[] weaponname, bool &result) {
-	if (!g_bEnableAccuracy)
+	if (!g_bEnableAccuracy || !g_bWeaponDataInitialized)
 		return Plugin_Continue;
 	
 	if (attacker > 0 && attacker <= MaxClients) {
@@ -1152,23 +1161,11 @@ public Action TF2_CalcIsAttackCritical(int attacker, int weapon, char[] weaponna
 			} else if (shotType == SHOT_PIPE || shotType == SHOT_NEEDLE || shotType == SHOT_HEALINGBOLT) {
 				LogShot(attacker, weap);
 			} else if (shotType == SHOT_HITSCAN) {
-				bool sticky = false;
-				int aiment = GetClientAimTarget(attacker, false);
-				if (aiment >= 0 && IsValidEntity(aiment)) {
-					char aimentstr[64];
-					Entity_GetClassName(aiment, aimentstr, sizeof(aimentstr));
-					if (StrEqual(aimentstr, "tf_projectile_pipe_remote", false)) {
-						sticky = true;
-					}
-				}
-				
-				if (sticky) {
-					FormatShot(attacker, weap, g_sHitscanFiredLogLine[attacker], sizeof(g_sHitscanFiredLogLine[]));
-					g_bHitscanHurtEnemy[attacker] = false;
-					CreateTimer(MAXHITSCANTIME, LogHitscanShot, attacker, TIMER_FLAG_NO_MAPCHANGE);
-				} else {
-					LogShot(attacker, weap);
-				}
+				LogHitscanShot(attacker); // Finish any previous shot before recording another one.
+				g_iHitscanWeapon[attacker] = weapon;
+				g_bHitscanHurtEnemy[attacker] = false;
+				g_bHitscanDestroyedSticky[attacker] = false;
+				strcopy(g_sHitscanWeapon[attacker], sizeof(g_sHitscanWeapon[]), weap);
 			}
 		}
 	}
