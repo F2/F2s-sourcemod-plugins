@@ -1079,6 +1079,8 @@ public void OnEntityDestroyed(int entity) {
 					int defid;
 					bool postHumousDamage;
 					int weapon = GetEntPropEnt(entity, Prop_Send, "m_hLauncher"); // The owner may have died or changed class, so don't look at the owner's current weapon
+					// If the launcher was removed (e.g. the owner switched sticky launcher at resupply), TF2 destroys the launcher one tick before its stickies.
+					// Then weapon is -1 and GetWeaponLogName returns false, so the shots are not logged. This is rare, so we accept it.
 					if (GetWeaponLogName(weap, sizeof(weap), owner, weapon, healing, defid, postHumousDamage, entity)) {
 						if (shot)
 							LogShot(owner, weap);
