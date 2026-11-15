@@ -14,6 +14,10 @@ Release notes:
 - Updated code to be compatible with SourceMod 1.12
 
 
+---- 1.0.3 (15/11/2026) ----
+- Minor bug fix
+
+
 */
 
 #pragma semicolon 1
@@ -27,7 +31,7 @@ Release notes:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION 	"1.0.2"
+#define PLUGIN_VERSION 	"1.0.3"
 #define UPDATE_URL		"https://sourcemod.krus.dk/countdown/update.txt"
 #define REASON_LEN 		256
 
@@ -115,7 +119,8 @@ public Action Command_say(int client, int args) {
 			}
 			return Plugin_Handled;
 		} else if (StrEqual(text, "!stopcountdown", false)) {
-			KillTimer(g_hTimer);
+			if (g_hTimer != null)
+				KillTimer(g_hTimer);
 			g_hTimer = null;
 			PrintHintTextToAll("%s", " ");
 			PrintHintTextToAll("%s", "");
