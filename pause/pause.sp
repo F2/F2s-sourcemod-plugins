@@ -49,6 +49,7 @@ Release notes:
 
 ---- 1.7.0 (13/11/2026) ----
 - Write chat messages during pauses to the log
+- Team chat now works during pauses the same way as normal chat
 - Added a 2 second cooldown to the "repause" command
 - Fixed spies getting unlimited cloak if the plugin was unloaded during a pause with pause_restore_cloak enabled
 - Cut chat text length to 127 characters like the game does
@@ -139,6 +140,7 @@ public void OnPluginStart() {
 	g_cvarRestoreCloak = CreateConVar("pause_restore_cloak", "0", "Restore player cloak when unpausing.", FCVAR_NONE);
 
 	AddCommandListener(Cmd_Say, "say");
+	AddCommandListener(Cmd_Say, "say_team");
 
 	ResetStates();
 
@@ -408,18 +410,35 @@ public Action Cmd_Say(int client, const char[] command, int args) {
 			buffer[len] = '\0';
 
 			if (hasText) {
-				char dead[16] = "";
-				if (TF2_GetClientTeam(client) == TFTeam_Spectator)
-					dead = "*SPEC* ";
-				else if ((TF2_GetClientTeam(client) == TFTeam_Red || TF2_GetClientTeam(client) == TFTeam_Blue) && !IsPlayerAlive(client))
-					dead = "*DEAD* ";
+				TFTeam team = TF2_GetClientTeam(client);
+				bool isPlayerTeam = team == TFTeam_Red || team == TFTeam_Blue;
+				bool isTeamChat = StrEqual(command, "say_team", false);
 
-				CPrintToChatAllEx2(client, "%s{teamcolor}%N{default} :  %s", dead, client, buffer);
+				if (isTeamChat) {
+					char prefix[32] = "(TEAM) ";
+					if (team == TFTeam_Spectator)
+						prefix = "(Spectator) ";
+					else if (isPlayerTeam && !IsPlayerAlive(client))
+						prefix = "*DEAD*(TEAM) ";
+
+					for (int i = 1; i <= MaxClients; i++) {
+						if (IsClientInGame(i) && TF2_GetClientTeam(i) == team)
+							CPrintToChatEx2(i, client, "%s{teamcolor}%N{default} :  %s", prefix, client, buffer);
+					}
+				} else {
+					char dead[16] = "";
+					if (team == TFTeam_Spectator)
+						dead = "*SPEC* ";
+					else if (isPlayerTeam && !IsPlayerAlive(client))
+						dead = "*DEAD* ";
+
+					CPrintToChatAllEx2(client, "%s{teamcolor}%N{default} :  %s", dead, client, buffer);
+				}
 
 				// The game does not log the message, since we block the say command
 				char playerStr[256];
 				GetPlayerLogStr(client, playerStr, sizeof(playerStr));
-				LogToGame("\"%s\" say \"%s\"", playerStr, buffer);
+				LogToGame("\"%s\" %s \"%s\"", playerStr, isTeamChat ? "say_team" : "say", buffer);
 			}
 		}
 
