@@ -143,7 +143,6 @@ TODO:
 
 #define ITEMS_TXT_PATH "scripts/items/items_game.txt"
 #define MAXENTITIES 2048 // Max number of networked entities (edicts)
-#define MAXWEPSLOTS 5
 #define MAXWEPNAMELEN 72
 #define MAXITEMCLASSLEN 64
 
@@ -1445,12 +1444,11 @@ public Action ImportWeaponDefinitionsChunk(Handle timer, int startId) {
 				strcopy(itemname, sizeof(itemname), "vaccinator");
 			} else if (isMedigun) {
 				// It is some other medigun. As of this writing, the only other possibility is a normal medigun (or skin of it). /F2, 21-10-2015
-				GetItemString(g_kvItems, g_kvPrefabs, "name", itemname, sizeof(itemname));
 				strcopy(itemname, sizeof(itemname), "medigun");
 			} else {
 				GetItemString(g_kvItems, g_kvPrefabs, "item_logname", itemname, sizeof(itemname));
 				if (StrEqual(itemname, "")) {
-					if (isStockWeapon || isUpgradableStockWeapon || isMedigun)
+					if (isStockWeapon || isUpgradableStockWeapon)
 						GetItemString(g_kvItems, g_kvPrefabs, "name", itemname, sizeof(itemname));
 					
 					if (!StrEqual(itemname, "")) {
