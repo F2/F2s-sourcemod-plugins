@@ -251,7 +251,9 @@ public Action Cmd_UnpausePause(int client, const char[] command, int args) {
 }
 
 public Action Timer_Repause(Handle timer, int client) {
-	FirePauseCommand(client);
+	// Someone else may have paused the game already
+	if (g_iPauseState == Ignore__Repause2)
+		FirePauseCommand(client);
 	return Plugin_Handled;
 }
 
