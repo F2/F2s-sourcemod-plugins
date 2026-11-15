@@ -203,8 +203,9 @@ public void OnClientPutInServer(int client) {
 }
 
 public void OnClientDisconnect_Post(int client) {
-	if (GetRealPlayerCount() == 0 && g_cvarAllowHibernation.BoolValue) {
-		// If everyone disconnects, the game is unpaused due to hibernation
+	if (!IsAnyHumanConnected() && g_cvarAllowHibernation.BoolValue) {
+		// If everyone disconnects, the game is unpaused due to hibernation.
+		// The server does not hibernate while a human is still connecting, so count those too.
 
 		if (g_hCountdownTimer != null)
 			KillTimer(g_hCountdownTimer);
@@ -446,6 +447,13 @@ public Action Cmd_Say(int client, const char[] command, int args) {
 	}
 
 	return Plugin_Continue;
+}
+
+static bool IsAnyHumanConnected() {
+	for (int client = 1; client <= MaxClients; client++)
+		if (IsClientConnected(client) && !IsFakeClient(client))
+			return true;
+	return false;
 }
 
 // Does the same check as SourceMod: The text must start with a silent chat trigger,
