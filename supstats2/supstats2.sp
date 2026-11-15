@@ -1505,27 +1505,12 @@ void GetItemString(KeyValues kv, KeyValues kvPrefabs, const char[] key, char[] v
 	if (KvizGetString(kv, value, valueLen, "", key))
 		return;
 	
-	char prefabs[128];
+	char prefabs[128], prefab[64];
 	KvizGetString(kv, prefabs, sizeof(prefabs), "", "prefab");
-	if (StrEqual(prefabs, "")) {
-		strcopy(value, valueLen, def);
-		return;
-	}
-	
-	int pos;
-	char prefab[64];
-	do {
-		pos = FindCharInString(prefabs, ' ', true);
-		if (pos == -1) {
-			strcopy(prefab, sizeof(prefab), prefabs);
-		} else {
-			strcopy(prefab, sizeof(prefab), prefabs[pos+1]);
-			prefabs[pos] = '\0';
-		}
-		
+	while (PopPrefab(prefabs, prefab, sizeof(prefab))) {
 		if (GetItemStringFromPrefab(kvPrefabs, prefab, key, value, valueLen))
 			return;
-	} while(pos != -1);
+	}
 	
 	strcopy(value, valueLen, def);
 }
@@ -1534,27 +1519,14 @@ bool GetItemStringFromPrefab(KeyValues kvPrefabs, const char[] prefab, const cha
 	if (KvizGetStringExact(kvPrefabs, value, valueLen, "%s.%s", prefab, key))
 		return true;
 	
-	char prefabs[128];
+	char prefabs[128], nextPrefab[64];
 	KvizGetString(kvPrefabs, prefabs, sizeof(prefabs), "", "%s.prefab", prefab);
-	if (StrEqual(prefabs, ""))
-		return false;
-	
-	int pos;
-	char nextPrefab[64];
-	do {
-		pos = FindCharInString(prefabs, ' ', true);
-		if (pos == -1) {
-			strcopy(nextPrefab, sizeof(nextPrefab), prefabs);
-		} else {
-			strcopy(nextPrefab, sizeof(nextPrefab), prefabs[pos+1]);
-			prefabs[pos] = '\0';
-		}
-		
+	while (PopPrefab(prefabs, nextPrefab, sizeof(nextPrefab))) {
 		if (!StrEqual(nextPrefab, "paintkit_weapon", false)) {
 			if (GetItemStringFromPrefab(kvPrefabs, nextPrefab, key, value, valueLen))
 				return true;
 		}
-	} while(pos != -1);
+	}
 	
 	return false;
 }
@@ -1565,25 +1537,12 @@ bool GetItemTag(KeyValues kv, KeyValues kvPrefabs, const char[] key, bool def = 
 	if (KvizGetNumExact(kv, ret, "tags.%s", key))
 		return ret != 0;
 	
-	char prefabs[128];
+	char prefabs[128], prefab[64];
 	KvizGetString(kv, prefabs, sizeof(prefabs), "", "prefab");
-	if (StrEqual(prefabs, ""))
-		return def;
-	
-	int pos;
-	char prefab[64];
-	do {
-		pos = FindCharInString(prefabs, ' ', true);
-		if (pos == -1) {
-			strcopy(prefab, sizeof(prefab), prefabs);
-		} else {
-			strcopy(prefab, sizeof(prefab), prefabs[pos+1]);
-			prefabs[pos] = '\0';
-		}
-		
+	while (PopPrefab(prefabs, prefab, sizeof(prefab))) {
 		if (KvizGetNumExact(kvPrefabs, ret, "%s.tags.%s", prefab, key))
 			return ret != 0;
-	} while (pos != -1);
+	}
 	
 	return def;
 }
@@ -1592,25 +1551,24 @@ bool GetItemAttribute(KeyValues kv, KeyValues kvPrefabs, const char[] attr, char
 	if (KvizGetStringExact(kv, value, valueLen, "attributes:any-child.attribute_class:has-value(%s):parent.value", attr))
 		return true;
 	
-	char prefabs[128];
+	char prefabs[128], prefab[64];
 	KvizGetString(kv, prefabs, sizeof(prefabs), "", "prefab");
-	if (StrEqual(prefabs, ""))
-		return false;
-	
-	int pos;
-	char prefab[64];
-	do {
-		pos = FindCharInString(prefabs, ' ', true);
-		if (pos == -1) {
-			strcopy(prefab, sizeof(prefab), prefabs);
-		} else {
-			strcopy(prefab, sizeof(prefab), prefabs[pos+1]);
-			prefabs[pos] = '\0';
-		}
-		
+	while (PopPrefab(prefabs, prefab, sizeof(prefab))) {
 		if (KvizGetStringExact(kvPrefabs, value, valueLen, "%s.attributes:any-child.attribute_class:has-value(%s):parent.value", prefab, attr))
 			return true;
-	} while(pos != -1);
+	}
 	
 	return false;
 }
+
+// Removes the last name from the space-separated prefab list and copies it into prefab. Returns false if the list is empty.
+bool PopPrefab(char[] prefabs, char[] prefab, int prefabLen) {
+	if (prefabs[0] == '\0')
+		return false;
+	
+	int pos = FindCharInString(prefabs, ' ', true);
+	strcopy(prefab, prefabLen, prefabs[pos+1]);
+	prefabs[pos == -1 ? 0 : pos] = '\0';
+	return true;
+}
+
