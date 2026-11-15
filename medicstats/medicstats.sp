@@ -494,6 +494,10 @@ public Action Timer_CollectInfo(Handle timer) {
                 !medic[client].MedicIsUbering; // The "!medic[client].MedicIsUbering" should not be necessary, but just to be sure. We never want (HasUber && IsUbering) to be true.
             medic[client].MedicTimeToUber = uberBuildTime * (1 - uberPct);
 
+            // If the full uber was lost without being used (e.g. switching medigun, or the Pomson draining it all), it is no longer the same uber.
+            if (uberPct <= 0.0)
+                medic[client].MedicFullyChargedTime = -1.0;
+
             if (medic[client].MedicStartedBuildTime < 0.0) {
                 // Medic has not started building yet.
 
