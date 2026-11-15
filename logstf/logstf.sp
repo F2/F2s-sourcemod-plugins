@@ -649,12 +649,12 @@ void AddLogLine(const char[] message) {
 	FormatTime(time, sizeof(time), "%m/%d/%Y - %H:%M:%S");
 	int line = g_iNextLogBuffer++;
 	FormatEx(g_sLogBuffer[line], LOG_BUFFERSIZE, "L %s: %s", time, message);
-	ScrubIPs(g_sLogBuffer[line], LOG_BUFFERSIZE);
+	ScrubIPs(g_sLogBuffer[line]);
 	if (g_iNextLogBuffer >= LOG_FLUSHCNT)
 		FlushLog();
 }
 
-void ScrubIPs(char[] line, int maxlen) {
+void ScrubIPs(char[] line) {
 	if (g_hIPRegex == null)
 		return;
 	if (StrContains(line, ".") == -1)
@@ -664,7 +664,8 @@ void ScrubIPs(char[] line, int maxlen) {
 	if (matches <= 0)
 		return;
 
-	for (int m = 0; m < matches; m++) {
+	// Go backwards, so replacing a match doesn't move the offsets of the earlier matches
+	for (int m = matches - 1; m >= 0; m--) {
 		char original[16], octet1[4], octet2[4];
 		if (!g_hIPRegex.GetSubString(0, original, sizeof(original), m))
 			continue;
@@ -675,7 +676,20 @@ void ScrubIPs(char[] line, int maxlen) {
 
 		char redacted[16];
 		FormatEx(redacted, sizeof(redacted), "%s.%s.0.0", octet1, octet2);
-		ReplaceString(line, maxlen, original, redacted);
+
+		// MatchOffset returns the offset of the end of the match
+		int end = g_hIPRegex.MatchOffset(m);
+		int start = end - strlen(original);
+
+		// Replace only this occurrence. The redacted IP is never longer than the original, so the rest of the line can be moved down in place.
+		int pos = start;
+		for (int i = 0; redacted[i] != '\0'; i++)
+			line[pos++] = redacted[i];
+		for (int i = end; pos != i; i++) {
+			line[pos++] = line[i];
+			if (line[i] == '\0')
+				break;
+		}
 	}
 }
 
