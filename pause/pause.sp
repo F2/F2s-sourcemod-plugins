@@ -52,6 +52,7 @@ Release notes:
 - Added a 2 second cooldown to the "repause" command
 - Fixed spies getting unlimited cloak if the plugin was unloaded during a pause with pause_restore_cloak enabled
 - Cut chat text length to 127 characters like the game does
+- Silent chat commands such as "/psay" are no longer shown to everyone during pauses
 
 
 */
@@ -387,6 +388,10 @@ public Action Cmd_Say(int client, const char[] command, int args) {
 			if (buffer[0] == '"')
 				strcopy(buffer, sizeof(buffer), buffer[1]);
 
+			// SourceMod hides silent chat triggers such as "/psay ...", so let it handle those like when unpaused
+			if (IsSilentChatTrigger(buffer))
+				return Plugin_Continue;
+
 			// Remove control characters, so they cannot be used to color or spoof messages
 			// Also cap the length at 127 like the game does, so the message is not too big to be sent
 			int len = 0;
@@ -420,6 +425,40 @@ public Action Cmd_Say(int client, const char[] command, int args) {
 	}
 
 	return Plugin_Continue;
+}
+
+// Does the same check as SourceMod: The text must start with a silent chat trigger,
+// followed by the name of a SourceMod command, with or without the "sm_" prefix
+static bool IsSilentChatTrigger(const char[] text) {
+	char triggers[16];
+	GetSilentChatTriggers(triggers, sizeof(triggers));
+	if (text[0] == '\0' || FindCharInString(triggers, text[0]) == -1)
+		return false;
+
+	char cmd[64];
+	int len = 0;
+	for (int i = 1; text[i] != '\0' && !IsCharSpace(text[i]) && text[i] != '"' && len < sizeof(cmd) - 1; i++)
+		cmd[len++] = text[i];
+	cmd[len] = '\0';
+	if (len == 0)
+		return false;
+
+	char smCmd[80];
+	Format(smCmd, sizeof(smCmd), "sm_%s", cmd);
+
+	bool found = false;
+	char name[80];
+	CommandIterator iter = new CommandIterator();
+	while (iter.Next()) {
+		iter.GetName(name, sizeof(name));
+		if (StrEqual(name, cmd, false) || StrEqual(name, smCmd, false)) {
+			found = true;
+			break;
+		}
+	}
+	delete iter;
+
+	return found;
 }
 
 static void FirePauseCommand(int client) {
