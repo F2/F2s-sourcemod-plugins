@@ -569,20 +569,6 @@ public Action Event_PlayerHealed(Event event, const char[] name, bool dontBroadc
 
 
 
-char classNames[][] = {
-	"undefined",
-	"scout",
-	"sniper",
-	"soldier",
-	"demoman",
-	"medic",
-	"heavyweapons",
-	"pyro",
-	"spy",
-	"engineer"
-};
-
-
 //public void Event_PlayerHealOnHit(Event event, const string name[], bool dontBroadcast) {
 //	PrintToChatAll("heal on hit - amount(%i) client(%i)", event.GetInt("amount"), event.GetInt("entindex"));
 //}
@@ -603,7 +589,7 @@ public void Event_PlayerSpawned(Event event, const char[] name, bool dontBroadca
 		g_iStickyId[client][i] = 0;
 	
 	GetPlayerLogStr(client, playerStr, sizeof(playerStr));
-	LogToGame("\"%s\" spawned as \"%s\"", playerStr, classNames[clss]);
+	LogToGame("\"%s\" spawned as \"%s\"", playerStr, g_sClassNamesLower[clss]);
 }
 
 

@@ -196,7 +196,6 @@ public Plugin myinfo = {
 
 char g_sPluginVersion[32];
 char g_sDefaultTrigger[8] = "!log";
-char g_sClassNamesLower[][16] = { "undefined", "scout", "sniper", "soldier", "demoman", "medic", "heavyweapons", "pyro", "spy", "engineer" };
 
 char g_sLogBuffer[LOG_BUFFERCNT][LOG_BUFFERSIZE];
 int g_iNextLogBuffer;

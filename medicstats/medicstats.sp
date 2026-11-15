@@ -353,11 +353,9 @@ public Action Event_player_spawn(Event event, const char[] name, bool dontBroadc
     if (uberPct > 0.0)
         return Plugin_Continue; // The medic spawn switched by changing hat.
 
-    if (LastRoundStart >= 0.0) {
-        if (GetGameTime() - LastRoundStart >= 20.0) {
-            // Don't count spawning (or respawning to get a better spawn position) at the start of a round.
-            medic[client].MedicInitialHealSpawnTime = GetGameTime();
-        }
+    if (GetGameTime() - LastRoundStart >= 20.0) {
+        // Don't count spawning (or respawning to get a better spawn position) at the start of a round.
+        medic[client].MedicInitialHealSpawnTime = GetGameTime();
     }
 
     return Plugin_Continue;

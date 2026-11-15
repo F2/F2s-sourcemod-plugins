@@ -30,9 +30,14 @@ char g_sClassNames[TFClassType][16] = {
 	"Unknown", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer"
 };
 
+char g_sClassNamesLower[TFClassType][16] = {
+	"undefined", "scout", "sniper", "soldier", "demoman", "medic", "heavyweapons", "pyro", "spy", "engineer"
+};
+
 stock void F2STOCKS_Dummy() {
 	g_fCapMultipliers[0] = 0.0; // To avoid getting a "not used" warning
 	g_sClassNames[0] = "Unknown";
+	g_sClassNamesLower[0] = "undefined";
 }
 
 
