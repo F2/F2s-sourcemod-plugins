@@ -284,7 +284,7 @@ public void OnPluginStart() {
 	g_hCvarBlueTeamName = FindConVar("mp_tournament_blueteamname");
 	
 	char map[128];
-	GetCurrentMap(map, sizeof(map));
+	F2_GetCurrentMapDisplayName(map, sizeof(map));
 	LogToGame("Loading map \"%s\"", map);
 
 	g_fPauseStartTime = GetEngineTime(); // Just in case it is already paused
@@ -482,7 +482,7 @@ void LogMatchId() {
 
 void LogMapName() {
 	char currentMap[128];
-    GetCurrentMap(currentMap, sizeof(currentMap));
+    F2_GetCurrentMapDisplayName(currentMap, sizeof(currentMap));
     LogToGame("World triggered \"meta_data\" (map \"%s\")", currentMap);
 }
 
