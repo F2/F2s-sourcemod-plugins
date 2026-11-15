@@ -69,6 +69,7 @@ Release notes:
 - Fixed uber stats being wrong when the game is paused during an uber
 - Fixed uber stats being wrong when a team has more than one medic
 - Fixed STV Stats messages being shown in warmup after a match was cancelled
+- Fixed Pomson generating bad logs
 
 
 
@@ -388,7 +389,7 @@ public Action Event_player_chargedeployed(Event event, const char[] name, bool d
     if (team == TFTeam_Unassigned)
         return Plugin_Continue;
 
-    if (medic[client].MedicHasUber == false)
+    if (medic[client].MedicFullyChargedTime < 0.0)
         LogUberReady(client);
 
     medic[client].MedicHasUber = false;
@@ -462,8 +463,9 @@ public Action Timer_CollectInfo(Handle timer) {
             if (medic[client].MedicStartedBuildTime < 0.0) {
                 // Medic has not started building yet.
 
-                if (!(medic[client].MedicHasUber || medic[client].MedicIsUbering)) {
+                if (!(medic[client].MedicHasUber || medic[client].MedicIsUbering) && medic[client].MedicFullyChargedTime < 0.0) {
                     // If the medic does not have the uber and is not ubering, they have now started building uber.
+                    // Unless they had a full uber that was drained (e.g. by the Pomson) - then it is still the same uber.
                     medic[client].MedicStartedBuildTime = gameTime;
                     LogEmptyUber(client);
                 }
