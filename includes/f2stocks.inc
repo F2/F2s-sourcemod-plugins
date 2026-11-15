@@ -74,16 +74,16 @@ stock int FindSTV() {
 	return PrintToSTV_iLastStvClient;
 }
 
-stock float TF2_GetPlayerUberLevel(int client, int &medigunEntity = -1) { // This function won't work if the player is dead, unless the correct medigunEntity is passed.
+stock float TF2_GetPlayerUberLevel(int client, int &medigunRef = INVALID_ENT_REFERENCE) { // This function won't work if the player is dead, unless the correct medigunRef (an entity reference) is passed.
 	int index = GetPlayerWeaponSlot(client, 1);
 	if (index <= 0)
-		index = medigunEntity;
-	medigunEntity = -1;
+		index = EntRefToEntIndex(medigunRef);
+	medigunRef = INVALID_ENT_REFERENCE;
 	if (index > 0) {
 		char classname[64];
 		GetEntityNetClass(index, classname, sizeof(classname));
 		if (StrEqual(classname, "CWeaponMedigun")) {
-			medigunEntity = index;
+			medigunRef = EntIndexToEntRef(index);
 			float value = GetEntPropFloat(index, Prop_Send, "m_flChargeLevel");
 			return value;
 		}

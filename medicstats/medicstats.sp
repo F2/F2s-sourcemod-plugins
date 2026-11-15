@@ -108,7 +108,7 @@ public Plugin myinfo = {
 enum struct MedicInfo {
     // Info about medic's current life
     TFTeam MedicTeam;    // The team the client is a medic on - TFTeam_Unassigned if the client is not a medic
-    int MedicMedigun;    // The client's medigun entity
+    int MedicMedigun;    // An entity reference to the client's medigun
     bool MedicHasUber;   // True if the medic has 100% uber
     bool MedicIsUbering; // True if the medic is currently ubering
     float MedicTimeToUber; // How far away from uber the medic is (the last time it was checked by the CollectInfo timer)
@@ -191,7 +191,7 @@ void ResetMedic(int client) {
 
 // ResetMedicInfo(client) only resets the info that is related to the medic's current life (like HasUber, IsUbering). All stats are kept.
 void ResetMedicInfo(int client) {
-    medic[client].MedicMedigun = -1;
+    medic[client].MedicMedigun = INVALID_ENT_REFERENCE;
 
     medic[client].MedicHasUber = false;
     medic[client].MedicIsUbering = false;
@@ -452,7 +452,7 @@ public Action Timer_CollectInfo(Handle timer) {
             float uberPct = TF2_GetPlayerUberLevel(client, medic[client].MedicMedigun);
             float uberBuildTime = TF2_GetPlayerUberBuildTime(client);
 
-            int medigun = medic[client].MedicMedigun;
+            int medigun = EntRefToEntIndex(medic[client].MedicMedigun);
             medic[client].MedicIsUbering = medigun > 0 && GetEntProp(medigun, Prop_Send, "m_bChargeRelease") != 0;
             medic[client].MedicHasUber =
                 uberPct >= 1.0 &&
