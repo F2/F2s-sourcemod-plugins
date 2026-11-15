@@ -108,6 +108,9 @@ public void OnMapEnd() {
 }
 
 void StartMatch() {
+	// If a forced changelevel failed, g_iStvCountdown is stuck at 1, which would make the next changelevel skip the wait
+	if (g_hCountdownTimer == null)
+		g_iStvCountdown = 0;
 }
 
 void ResetMatch() {
