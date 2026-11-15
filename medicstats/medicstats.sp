@@ -62,7 +62,7 @@ Release notes:
 
 
 ---- 2.0.0 (12/11/2026) ----
-- Changed the way buffs are detected
+- Reworked the way buffs are detected
 - Medic stats are now always logged, also during warmup
 - Don't log buffs to enemy spies
 - Fixed uber stats being wrong when uber is drained (e.g. by the Pomson) or gained during an uber (e.g. by the Ubersaw)
@@ -84,6 +84,7 @@ TODO:
 
 #include <sourcemod>
 #include <tf2_stocks>
+#include <dhooks>
 #include <f2stocks>
 #include <match>
 #undef REQUIRE_PLUGIN
@@ -93,7 +94,7 @@ TODO:
 #define PLUGIN_VERSION "2.0.0"
 #define UPDATE_URL "https://sourcemod.krus.dk/medicstats/update.txt"
 #define TIMER_TICK 0.15
-#define MAX_BEAM_HEAL_PER_FRAME 10 // A medigun adds 1-2 HP per frame (about 5 during a Quick-Fix uber). Kunai, Eyelander heads etc. add 15 or more at once.
+#define MAX_BEAM_HEAL_PER_CALL 10 // A medigun adds 1-2 HP per heal (about 5 during a Quick-Fix uber). Kunai, Eyelander heads etc. add 15 or more at once.
 
 
 
@@ -128,7 +129,9 @@ enum struct TeamInfo {
 }
 
 
-int g_iBeamTarget[MAXPLAYERS + 1]; // [healer] The patient the medic's beam was attached to in the last game frame
+DynamicHook g_hTakeHealth = null; // CBaseEntity::TakeHealth(float flHealth, int bitsDamageType)
+int g_iHealthBeforeHeal[MAXPLAYERS + 1]; // [patient] The patient's health right before the current TakeHealth call
+int g_iBeamTarget[MAXPLAYERS + 1]; // [healer] The patient the medic's beam was attached to when the medic last healed
 int g_iBuffHighest[MAXPLAYERS + 1]; // [patient] The highest health the patient has had since the beam attached or since they last took damage
 int g_iBuffed[MAXPLAYERS + 1]; // [healer] The buff heals not yet logged
 int g_iBuffedPatient[MAXPLAYERS + 1]; // [healer] The patient that g_iBuffed was given to
@@ -159,6 +162,24 @@ public void OnPluginStart() {
     char cvarLogBuffs[16];
     g_hCvarLogBuffs.GetString(cvarLogBuffs, sizeof(cvarLogBuffs));
     Cvar_LogBuffs(g_hCvarLogBuffs, "", cvarLogBuffs);
+
+    // Every heal a player gets goes through CBaseEntity::TakeHealth(). Borrow its offset from SourceMod's own gamedata:
+    // it is declared two virtual functions after CBaseEntity::OnTakeDamage() (with AdjustDamageDirection() in between).
+    GameData gameConf = new GameData("sdkhooks.games");
+    if (gameConf == null)
+        SetFailState("Cannot find sdkhooks.games gamedata");
+    int onTakeDamageOffset = gameConf.GetOffset("OnTakeDamage");
+    delete gameConf;
+    if (onTakeDamageOffset == -1)
+        SetFailState("Cannot find OnTakeDamage offset in sdkhooks.games gamedata");
+
+    g_hTakeHealth = new DynamicHook(onTakeDamageOffset + 2, HookType_Entity, ReturnType_Int, ThisPointer_CBaseEntity);
+    g_hTakeHealth.AddParam(HookParamType_Float);
+    g_hTakeHealth.AddParam(HookParamType_Int);
+    for (int client = 1; client <= MaxClients; client++) {
+        if (IsClientInGame(client))
+            OnClientPutInServer(client);
+    }
 
     HookEvent("player_spawn", Event_player_spawn, EventHookMode_Post);
     HookEvent("player_death", Event_player_death, EventHookMode_Pre);
@@ -306,6 +327,13 @@ public void OnClientConnected(int client) {
     ResetBuffs(client);
 }
 
+public void OnClientPutInServer(int client) {
+    // ==== Buffs ====
+    // The hook is removed automatically when the player entity is deleted.
+    g_hTakeHealth.HookEntity(Hook_Pre, client, Hook_TakeHealth_Pre);
+    g_hTakeHealth.HookEntity(Hook_Post, client, Hook_TakeHealth_Post);
+}
+
 public Action Event_player_spawn(Event event, const char[] name, bool dontBroadcast) {
     int userid = event.GetInt("userid");
     int client = GetClientOfUserId(userid);
@@ -429,6 +457,12 @@ public Action Timer_CollectInfo(Handle timer) {
     // Find the medics
     for (int client = 1; client <= MaxClients; client++)
         UpdateMedicTeam(client);
+
+    // Notice when a medic's beam detaches, so it counts as newly attached if it comes back.
+    for (int healer = 1; healer <= MaxClients; healer++) {
+        if (g_iBeamTarget[healer] != 0 && (!IsRealPlayer(healer) || !IsPlayerAlive(healer) || TF2_GetHealingTarget(healer) != g_iBeamTarget[healer]))
+            g_iBeamTarget[healer] = 0;
+    }
 
     // Log buffs every second.
     if (g_bLogBuffs && gameTime - g_fLastCollectBuffs >= 1.0) {
@@ -574,52 +608,78 @@ void FlushBuffs(int healer) {
     g_iBuffed[healer] = 0;
 }
 
-public void OnGameFrame() {
+public MRESReturn Hook_TakeHealth_Pre(int patient, DHookReturn hReturn, DHookParam hParams) {
+    g_iHealthBeforeHeal[patient] = GetClientHealth(patient);
+    return MRES_Ignored;
+}
+
+public MRESReturn Hook_TakeHealth_Post(int patient, DHookReturn hReturn, DHookParam hParams) {
     if (!g_bLogBuffs)
-        return;
+        return MRES_Ignored;
 
-    // Each game frame we look at each medic's current patient. If the patient got buffed (above max health) higher than
-    // they have been since the beam attached or since they last took damage, record it.
-    // Only counting new highs ignores the decay/re-heal loop at the overheal cap.
+    if (!IsRealPlayer(patient) || !IsPlayerAlive(patient))
+        return MRES_Ignored;
+
+    int oldhealth = g_iHealthBeforeHeal[patient];
+    int newhealth = GetClientHealth(patient);
+    if (newhealth <= oldhealth)
+        return MRES_Ignored;
+
+    // Find the medics whose beam is on the patient.
+    int healers[MAXPLAYERS];
+    int numHealers = 0;
     for (int healer = 1; healer <= MaxClients; healer++) {
-        if (!IsRealPlayer(healer) || !IsPlayerAlive(healer) || TF2_GetPlayerClass(healer) != TFClass_Medic) {
-            g_iBeamTarget[healer] = 0;
+        if (!IsRealPlayer(healer) || !IsPlayerAlive(healer) || TF2_GetPlayerClass(healer) != TFClass_Medic)
             continue;
-        }
-
-        int patient = TF2_GetHealingTarget(healer);
-        if (!IsRealPlayer(patient) || !IsPlayerAlive(patient) || GetClientTeam(patient) != GetClientTeam(healer)) {
-            // Enemy spies can be healed, but the game does not log heals to them, so don't log buffs to them either.
-            g_iBeamTarget[healer] = 0;
+        if (TF2_GetHealingTarget(healer) != patient)
             continue;
-        }
+        if (GetClientTeam(patient) != GetClientTeam(healer))
+            continue; // Enemy spies can be healed, but the game does not log heals to them, so don't log buffs to them either.
 
-        int newhealth = GetClientHealth(patient);
         if (g_iBeamTarget[healer] != patient) {
-            // The beam just attached. The first heal usually lands in the same tick, so start one HP below to count it.
+            // The beam just attached.
             g_iBeamTarget[healer] = patient;
-            g_iBuffHighest[patient] = newhealth - 1;
+            g_iBuffHighest[patient] = oldhealth;
         }
+        healers[numHealers++] = healer;
+    }
+    if (numHealers == 0)
+        return MRES_Ignored;
 
-        int oldhealth = g_iBuffHighest[patient];
-        if (newhealth <= oldhealth)
-            continue;
-        g_iBuffHighest[patient] = newhealth;
-        if (newhealth - oldhealth > MAX_BEAM_HEAL_PER_FRAME)
-            continue; // Too much for a medigun in one frame, so it came from something else
+    // If the patient got buffed (above max health) higher than they have been since the beam attached or since they
+    // last took damage, record it. Only counting new highs ignores the decay/re-heal loop at the overheal cap.
+    int highest = g_iBuffHighest[patient];
+    if (newhealth <= highest)
+        return MRES_Ignored;
+    g_iBuffHighest[patient] = newhealth;
+    if (newhealth - oldhealth > MAX_BEAM_HEAL_PER_CALL)
+        return MRES_Ignored; // Too much for a medigun in one heal, so it came from something else
 
-        int maxHealth = GetMaxHealth(patient);
-        if (maxHealth == -1 || newhealth <= maxHealth)
+    int maxHealth = GetMaxHealth(patient);
+    if (maxHealth == -1 || newhealth <= maxHealth)
+        return MRES_Ignored;
+    int buffStart = oldhealth;
+    if (buffStart < highest)
+        buffStart = highest;
+    if (buffStart < maxHealth)
+        buffStart = maxHealth;
+    int buff = newhealth - buffStart;
+
+    // When several medics heal the same patient, split the buff between them.
+    for (int i = 0; i < numHealers; i++) {
+        int healer = healers[i];
+        int amount = buff / numHealers + (i < buff % numHealers ? 1 : 0);
+        if (amount <= 0)
             continue;
-        if (oldhealth < maxHealth)
-            oldhealth = maxHealth;
         if (g_iBuffedPatient[healer] != patient) {
             // The medic switched patient. Log the buffs given to the previous patient.
             FlushBuffs(healer);
             g_iBuffedPatient[healer] = patient;
         }
-        g_iBuffed[healer] += newhealth - oldhealth;
+        g_iBuffed[healer] += amount;
     }
+
+    return MRES_Ignored;
 }
 
 // -----------------------------------

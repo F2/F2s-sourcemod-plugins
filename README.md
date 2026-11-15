@@ -8,7 +8,7 @@ Download all plugins in a zip file here: <a href="https://sourcemod.krus.dk/f2-s
 
 ### Medic Stats <a href="https://sourcemod.krus.dk/medicstats.zip"><img src="https://img.shields.io/badge/-download-informational" /></a> <a href="./medicstats"><img src="https://img.shields.io/badge/-More%20info-yellowgreen" /></a>
 
-- Logs buff heals (~95% accurate)
+- Logs buff heals
 - Logs average time to build über
 - Logs average time the über lasts
 - Logs number of über advantages lost
