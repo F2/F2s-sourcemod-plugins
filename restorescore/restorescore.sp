@@ -77,10 +77,6 @@ public void OnLibraryAdded(const char[] name) {
 		Updater_AddPlugin(UPDATE_URL);
 }
 
-public void OnPluginEnd() {
-	delete g_tOldScores;
-}
-
 
 
 // Clear the old scores when the match is reset and on mapchange.

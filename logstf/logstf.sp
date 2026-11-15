@@ -327,8 +327,6 @@ public void OnPluginEnd() {
 	char path[PLATFORM_MAX_PATH];
 	GetLogPath(LOG_PATH, path, sizeof(path));
 	DeleteFile(path);
-	delete g_hLogUploaded;
-	delete g_hIPRegex;
 }
 
 
