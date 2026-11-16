@@ -103,8 +103,13 @@ Release notes:
 - Added accuracy logs for alternative scout weapons - by s-maurice
 
 
----- 2.7.0 (12/11/2026) ----
+---- 3.0.0 (12/11/2026) ----
+- Correctly logs deflected projectiles now
+- Correctly logs taunt damage now
 - Fixed crossbow heals logging the potential heal amount instead of the actual heal amount
+- Fixed cannonball accuracy logs
+- Fixed telefrags being logged as taunts
+- Fixed bleed damage logs
 - Fixed Black Box healing being estimated imprecisely
 - Fixed bug where medic airshot could wrongly be logged on a heal event
 - Fixed bug where lit huntsman headshots counted as multiple headshots on the following burn ticks
@@ -112,9 +117,8 @@ Release notes:
 - Fixed rare bug where a sentry rocket from a destroyed sentry was logged incorrectly
 - Fixed rare bug where a rocket jump could be counted as a missed shot
 - Fixed pauses not being logged when using setpause/unpause, or when the player left right after pausing
-- Fixed telefrags being logged as taunts
+- Fixed detection of giger counter
 - Improved detection of shooting/clearing stickies
-- Removed limit of 2048 weapon definitions
 
 
 TODO:
@@ -138,7 +142,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "2.7.0"
+#define PLUGIN_VERSION "3.0.0"
 #define UPDATE_URL		"https://sourcemod.krus.dk/supstats2/update.txt"
 
 #define ITEMS_TXT_PATH "scripts/items/items_game.txt"
@@ -174,7 +178,6 @@ int lastHealArrowPatientHealth[MAXPLAYERS+1]; // [medic] The patient's health be
 int g_iPlayerTakenDirectHitRef[MAXPLAYERS+1]; // Entity reference of the projectile that last touched the player (0 if none)
 int medpackHealAmount[MAXPLAYERS+1];
 float g_fPauseStartTime;
-char g_sTauntNames[][] = { "", "taunt_scout", "taunt_sniper", "taunt_soldier", "taunt_demoman", "taunt_medic", "taunt_heavy", "taunt_pyro", "taunt_spy", "taunt_engineer" };
 
 // Healing from rocket launcher explosions (e.g. Black Box)
 enum struct RadiusHealingInfo {
@@ -246,6 +249,7 @@ public void OnPluginStart() {
 	g_tShotTypes.SetValue("tf_projectile_energy_ball", SHOT_ROCKET);
 	
 	g_tShotTypes.SetValue("tf_weapon_grenadelauncher", SHOT_PIPE);
+	g_tShotTypes.SetValue("tf_weapon_cannon", SHOT_PIPE);
 	g_tShotTypes.SetValue("tf_projectile_pipe", SHOT_PIPE);
 	//g_tShotTypes.SetValue("tf_weapon_pipebomblauncher", SHOT_STICKY); // Should NOT be added.. causes a bug in OnEntityDestroyed
 	g_tShotTypes.SetValue("tf_projectile_pipe_remote", SHOT_STICKY);
@@ -747,13 +751,16 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 	
 	if (damagecustom == TF_CUSTOM_TELEFRAG) {
 		strcopy(lastWeaponDamage[attacker], MAXWEPNAMELEN, "telefrag");
-	} else if ((damagetype & DMG_CRIT) != DMG_CRIT && ((damage >= 500.0 && (damagetype & (1 << 27)) != (1 << 27) /* not a backstab */) || (damage >= 300.0 && (damagetype & DMG_BLAST) == DMG_BLAST /* soldier equalizer taunt, perhaps others */))) {
-		strcopy(lastWeaponDamage[attacker], MAXWEPNAMELEN, g_sTauntNames[attackerClass]);
+	} else if (GetTauntLogName(lastWeaponDamage[attacker], MAXWEPNAMELEN, damagecustom)) {
+		// Taunt kill
 	} else {
 		int healing; 
 		int defid;
 		bool postHumousDamage;
 		if (!GetWeaponLogName(lastWeaponDamage[attacker], MAXWEPNAMELEN, attacker, weapon, healing, defid, postHumousDamage, inflictor)) {
+			if (GetDamageCustomLogName(lastWeaponDamage[attacker], MAXWEPNAMELEN, attacker, damagecustom))
+				return Plugin_Continue; // E.g. a Thermal Thruster stomp (it has no weapon), or bleeding after the weapon was removed
+
 			float now = GetEngineTime();
 			if (lastPostHumousWeaponDamageTime[attacker] >= now - 15.0) {
 				strcopy(lastWeaponDamage[attacker], MAXWEPNAMELEN, lastPostHumousWeaponDamage[attacker]);
@@ -861,6 +868,11 @@ public Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 			}
 		}
 		// ---- ACCURACY ----
+
+		// Done last, so the code above still sees the weapon's name. E.g. a deflected Black Box rocket heals the pyro, and a Loose Cannon impact can be an airshot.
+		// The kind of damage takes priority over deflects, like in TF2 (e.g. a deflected Sandman ball is still "ball").
+		if (!GetDamageCustomLogName(lastWeaponDamage[attacker], MAXWEPNAMELEN, attacker, damagecustom))
+			GetDeflectedLogName(lastWeaponDamage[attacker], MAXWEPNAMELEN, inflictor, damagecustom);
 	}
 	
 	return Plugin_Continue;
@@ -1218,28 +1230,23 @@ bool GetWeaponLogName(char[] logname, int lognameLen, int attacker, int weapon, 
 			int sentry = inflictor;
 			GetEntityClassname(sentry, logname, lognameLen);
 			if (StrEqual(logname, "tf_projectile_sentryrocket")) {
-				// A sentry rocket hurt the victim. Find the sentry entity, and consider that the inflictor.
-				sentry = GetEntPropEnt(sentry, Prop_Send, "m_hOwnerEntity");
-				if (sentry == -1) {
-					// The sentry was destroyed before the rocket landed. Only level 3 sentries fire rockets.
-					strcopy(logname, lognameLen, "obj_sentrygun3");
-					return true;
-				}
-				GetEntityClassname(sentry, logname, lognameLen);
+				// Only level 3 sentries fire rockets. TF2 names rockets "obj_sentrygun3" even when the sentry is wrangled, since only the bullets count as wrangled.
+				strcopy(logname, lognameLen, "obj_sentrygun3");
+				return true;
 			}
-			
+
 			if (StrEqual(logname, "obj_sentrygun")) {
 				// Match the "killed" logs
 				// - Level 1: obj_sentrygun
 				// - Level 2: obj_sentrygun2
 				// - Level 3: obj_sentrygun3
 				// - Minisentry: obj_minisentry
-				// - Wrangler: wrangler_kill
-				
+				// - Wrangler: wrangler_kill (or giger_counter)
+
 				int shield = GetEntProp(sentry, Prop_Send, "m_nShieldLevel");
 				if (shield != 0) {
 					// Wrangler is used (valid for sentries of all levels, and mini sentries)
-					strcopy(logname, lognameLen, "wrangler_kill");
+					strcopy(logname, lognameLen, IsGigerCounter(GetPlayerWeaponSlot(attacker, 1)) ? "giger_counter" : "wrangler_kill");
 				} else if (GetEntProp(sentry, Prop_Send, "m_bMiniBuilding", 1)) {
 					// It is a mini non-wrangled sentry
 					strcopy(logname, lognameLen, "obj_minisentry");
@@ -1285,8 +1292,8 @@ bool GetWeaponLogName(char[] logname, int lognameLen, int attacker, int weapon, 
 		}
 		
 		return res;
-	} else if ((defid <= 30 /*standard weapons*/ || defid == 56 /*huntsman*/ || (defid >= 190 && defid <= 212 /*named standard weapons*/)) && inflictor > MaxClients && IsValidEntity(inflictor)) {
-		// Projectiles from standard weapons + huntsman. These are named after the projectile.
+	} else if ((defid <= 30 /*standard weapons*/ || (defid >= 190 && defid <= 212 /*named standard weapons*/)) && inflictor > MaxClients && IsValidEntity(inflictor)) {
+		// Projectiles from standard weapons. These are named after the projectile.
 		GetEntityClassname(inflictor, logname, lognameLen);
 		
 		if (StrContains(logname, "tf_weapon_") == 0)
@@ -1295,10 +1302,114 @@ bool GetWeaponLogName(char[] logname, int lognameLen, int attacker, int weapon, 
 		return true;
 	} else {
 		// Projectiles from non-standard weapons. These are named after the weapon.
-		return WeaponFromDefid(defid, logname, lognameLen, healing, postHumousDamage);
+		bool res = WeaponFromDefid(defid, logname, lognameLen, healing, postHumousDamage);
+
+		if (res && StrEqual(logname, "compound_bow") && inflictor > MaxClients && IsValidEntity(inflictor)) {
+			// Huntsmen without an item_logname (the Huntsman, Festive Huntsman and Fortified Compound) are named after the arrow, like standard weapons
+			GetEntityClassname(inflictor, logname, lognameLen);
+		}
+
+		return res;
 	}
 	
 	return false;
+}
+
+// TF2 names some kinds of damage after the kind of damage instead of the weapon (see CTFGameRules::GetKillingWeaponName).
+// Returns false and leaves logname unchanged for other kinds of damage.
+bool GetDamageCustomLogName(char[] logname, int lognameLen, int attacker, int damagecustom) {
+	if (damagecustom == TF_CUSTOM_BLEEDING) {
+		strcopy(logname, lognameLen, "bleed_kill");
+	} else if (damagecustom == TF_CUSTOM_BASEBALL) {
+		strcopy(logname, lognameLen, "ball"); // Sandman and Wrap Assassin
+	} else if (damagecustom == TF_CUSTOM_STICKBOMB_EXPLOSION) {
+		strcopy(logname, lognameLen, "ullapool_caber_explosion");
+	} else if (damagecustom == TF_CUSTOM_COMBO_PUNCH) {
+		strcopy(logname, lognameLen, "robot_arm_combo_kill");
+	} else if (damagecustom == TF_CUSTOM_CANNONBALL_PUSH) {
+		strcopy(logname, lognameLen, "loose_cannon_impact");
+	} else if (damagecustom == TF_CUSTOM_DRAGONS_FURY_BONUS_BURNING) {
+		strcopy(logname, lognameLen, "dragons_fury_bonus");
+	} else if (damagecustom == TF_CUSTOM_BOOTS_STOMP) {
+		strcopy(logname, lognameLen, TF2_IsPlayerInCondition(attacker, TFCond_RocketPack) ? "rocketpack_stomp" : "mantreads");
+	} else {
+		return false;
+	}
+
+	return true;
+}
+
+// TF2 names taunt kills after the taunt instead of the weapon (see CTFGameRules::GetKillingWeaponName).
+// Returns false and leaves logname unchanged if the damage is not from a taunt.
+bool GetTauntLogName(char[] logname, int lognameLen, int damagecustom) {
+	if (damagecustom == TF_CUSTOM_TAUNT_HADOUKEN) {
+		strcopy(logname, lognameLen, "taunt_pyro");
+	} else if (damagecustom == TF_CUSTOM_TAUNT_HIGH_NOON) {
+		strcopy(logname, lognameLen, "taunt_heavy");
+	} else if (damagecustom == TF_CUSTOM_TAUNT_GRAND_SLAM) {
+		strcopy(logname, lognameLen, "taunt_scout");
+	} else if (damagecustom == TF_CUSTOM_TAUNT_BARBARIAN_SWING) {
+		strcopy(logname, lognameLen, "taunt_demoman");
+	} else if (damagecustom == TF_CUSTOM_TAUNT_UBERSLICE) {
+		strcopy(logname, lognameLen, "taunt_medic");
+	} else if (damagecustom == TF_CUSTOM_TAUNT_FENCING) {
+		strcopy(logname, lognameLen, "taunt_spy");
+	} else if (damagecustom == TF_CUSTOM_TAUNT_ARROW_STAB) {
+		strcopy(logname, lognameLen, "taunt_sniper");
+	} else if (damagecustom == TF_CUSTOM_TAUNT_GRENADE) {
+		strcopy(logname, lognameLen, "taunt_soldier"); // TF2 uses "taunt_soldier_lumbricus" if the soldier wears the Worms Gear. We ignore that.
+	} else if (damagecustom == TF_CUSTOM_TAUNT_ENGINEER_SMASH) {
+		strcopy(logname, lognameLen, "taunt_guitar_kill"); // Frontier Justice
+	} else if (damagecustom == TF_CUSTOM_TAUNT_ENGINEER_ARM) {
+		strcopy(logname, lognameLen, "robot_arm_blender_kill"); // Gunslinger
+	} else if (damagecustom == TF_CUSTOM_TAUNT_ARMAGEDDON) {
+		strcopy(logname, lognameLen, "armageddon"); // Rainblower
+	} else if (damagecustom == TF_CUSTOM_TAUNT_ALLCLASS_GUITAR_RIFF) {
+		strcopy(logname, lognameLen, "taunt_guitar_riff_kill");
+	} else if (damagecustom == TF_CUSTOM_TAUNTATK_GASBLAST) {
+		strcopy(logname, lognameLen, "gas_blast");
+	} else if (damagecustom == TF_CUSTOM_TAUNTATK_TRICKSHOT) {
+		strcopy(logname, lognameLen, "taunt_trickshot");
+	} else {
+		return false;
+	}
+
+	return true;
+}
+
+const int TF_GL_MODE_CANNONBALL = 3;
+
+// TF2 names deflected projectiles after the projectile instead of the weapon (see CTFGameRules::GetKillingWeaponName).
+// Returns false and leaves logname unchanged if the inflictor is not a deflected projectile.
+// Deflected stickies are not handled, since they stay owned by the demoman, and are only named "deflect_sticky" for a few seconds.
+bool GetDeflectedLogName(char[] logname, int lognameLen, int inflictor, int damagecustom) {
+	if (inflictor <= MaxClients || !IsValidEntity(inflictor))
+		return false;
+
+	// Only rockets (incl. flares and arrows) and grenades can be deflected
+	if (!HasEntProp(inflictor, Prop_Send, "m_iDeflected") || GetEntProp(inflictor, Prop_Send, "m_iDeflected") == 0)
+		return false;
+
+	char classname[64];
+	GetEntityClassname(inflictor, classname, sizeof(classname));
+
+	if (StrEqual(classname, "tf_projectile_rocket") || StrEqual(classname, "tf_projectile_sentryrocket")) {
+		strcopy(logname, lognameLen, "deflect_rocket");
+	} else if (StrEqual(classname, "tf_projectile_flare")) {
+		strcopy(logname, lognameLen, damagecustom == TF_CUSTOM_FLARE_EXPLOSION ? "deflect_flare_detonator" : "deflect_flare");
+	} else if (StrEqual(classname, "tf_projectile_arrow")) {
+		strcopy(logname, lognameLen, GetEntProp(inflictor, Prop_Send, "m_bArrowAlight") ? "deflect_huntsman_flyingburn" : "deflect_arrow");
+	} else if (StrEqual(classname, "tf_projectile_pipe")) {
+		strcopy(logname, lognameLen, GetEntProp(inflictor, Prop_Send, "m_iType") == TF_GL_MODE_CANNONBALL ? "loose_cannon_reflect" : "deflect_promode");
+	} else if (StrEqual(classname, "tf_projectile_healing_bolt")) {
+		strcopy(logname, lognameLen, "crusaders_crossbow");
+	} else if (StrEqual(classname, "tf_projectile_energy_ball")) {
+		strcopy(logname, lognameLen, classname);
+	} else {
+		return false;
+	}
+
+	return true;
 }
 
 // F2's Weapon Info Importer
@@ -1309,6 +1420,7 @@ ArrayList g_hAllWeaponsName = null; // names of all weapons saved in an Array
 ArrayList g_hAllWeaponsHealingOnHit = null;
 ArrayList g_hAllWeaponsPostHumousDamage = null;
 int g_iAllWeaponsCount = 0;
+int g_iGigerCounterDefid = -1; // The weapon that makes TF2 name wrangled sentry kills "giger_counter" instead of "wrangler_kill"
 
 const int MAXDEFID = 65535;
 int g_iWeaponIndexFromDefid[MAXDEFID+1]; // translates defid -> index in the g_*AllWeapons* arrays (-1 if not a weapon)
@@ -1327,11 +1439,20 @@ bool WeaponFromDefid(int defid, char[] name, int maxlen, int &healing, bool &pos
 	return true;
 }
 
+// Returns true if the weapon makes TF2 name wrangled sentry kills "giger_counter" instead of "wrangler_kill"
+bool IsGigerCounter(int weapon) {
+	if (!IsValidEntity(weapon))
+		return false;
+
+	return g_iGigerCounterDefid != -1 && GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex") == g_iGigerCounterDefid;
+}
+
 void ImportWeaponDefinitions() {
 	g_hAllWeaponsName = new ArrayList(MAXWEPNAMELEN);
 	g_hAllWeaponsHealingOnHit = new ArrayList();
 	g_hAllWeaponsPostHumousDamage = new ArrayList();
 	g_iAllWeaponsCount = 0;
+	g_iGigerCounterDefid = -1;
 	Array_Fill(g_iWeaponIndexFromDefid, sizeof(g_iWeaponIndexFromDefid), -1);
 	if (!FileExists(ITEMS_TXT_PATH, true))
 		SetFailState("Could not find items_game.txt: %s", ITEMS_TXT_PATH);
@@ -1473,6 +1594,13 @@ public Action ImportWeaponDefinitionsChunk(Handle timer, int startId) {
 			}
 			g_hAllWeaponsHealingOnHit.Push(healingOnHit);
 			g_hAllWeaponsPostHumousDamage.Push(GetItemTag(g_kvItems, g_kvPrefabs, "can_deal_posthumous_damage", false));
+			GetItemString(g_kvItems, g_kvPrefabs, "static_attrs.is giger counter", attr, sizeof(attr), "0");
+			if (StringToInt(attr) > 0) {
+				if (g_iGigerCounterDefid == -1)
+					g_iGigerCounterDefid = defid;
+				else
+					LogError("items_game.txt: More than one Giger Counter found (%i and %i). Only %i is detected.", g_iGigerCounterDefid, defid, g_iGigerCounterDefid);
+			}
 			if (defid < 0 || defid > MAXDEFID)
 				LogError("Weapon defid is out of range: %i (%s)", defid, itemname);
 			else if (g_iWeaponIndexFromDefid[defid] == -1)
