@@ -119,6 +119,7 @@ Release notes:
 - Fixed pauses not being logged when using setpause/unpause, or when the player left right after pausing
 - Fixed detection of giger counter
 - Improved detection of shooting/clearing stickies
+- Now logs plugin version meta data
 
 
 TODO:
@@ -462,6 +463,7 @@ void LogMetaData(Handle timer) {
     LogMatchId();
 	LogMapName();
 	LogTitle();
+	LogPluginVersions();
 }
 
 void LogMatchId() {
@@ -511,6 +513,54 @@ void LogTitle() {
 	ReplaceString(title, sizeof(title), "\\", "", false);
 
 	LogToGame("World triggered \"meta_data\" (title \"%s\")", title);
+}
+
+void LogPluginVersions() {
+	char properties[512] = "";
+	AppendPluginVersion(properties, sizeof(properties), "supstats2", PLUGIN_VERSION);
+	AppendOtherPluginVersion(properties, sizeof(properties), "medicstats", "medicstats.smx");
+
+	LogToGame("World triggered \"meta_data\"%s", properties);
+}
+
+void AppendOtherPluginVersion(char[] properties, int maxlength, const char[] pluginName, const char[] fileName) {
+	Handle plugin = FindRunningPluginByBaseFilename(fileName);
+	if (plugin == null)
+		return;
+
+	char version[32];
+	if (!GetPluginInfo(plugin, PlInfo_Version, version, sizeof(version)))
+		return;
+
+	AppendPluginVersion(properties, maxlength, pluginName, version);
+}
+
+// Like FindPluginByFile, but also finds the plugin if it is placed in a subfolder of the plugins folder.
+Handle FindRunningPluginByBaseFilename(const char[] fileName) {
+	Handle result = null;
+	Handle iter = GetPluginIterator();
+	while (MorePlugins(iter)) {
+		Handle plugin = ReadPlugin(iter);
+		if (GetPluginStatus(plugin) != Plugin_Running)
+			continue;
+
+		char path[PLATFORM_MAX_PATH];
+		GetPluginFilename(plugin, path, sizeof(path));
+		int slashPos = FindCharInString(path, '/', true);
+		int backslashPos = FindCharInString(path, '\\', true);
+		int startPos = (slashPos > backslashPos ? slashPos : backslashPos) + 1;
+
+		if (StrEqual(path[startPos], fileName, false)) {
+			result = plugin;
+			break;
+		}
+	}
+	delete iter;
+	return result;
+}
+
+void AppendPluginVersion(char[] properties, int maxlength, const char[] pluginName, const char[] version) {
+	Format(properties, maxlength, "%s (plugin_version_%s \"%s\")", properties, pluginName, version);
 }
 
 public Action Event_PlayerHealed(Event event, const char[] name, bool dontBroadcast) {
