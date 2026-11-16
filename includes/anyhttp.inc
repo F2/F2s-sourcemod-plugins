@@ -47,7 +47,7 @@ TODO:
 #include <anyhttp_stringbuilder>
 #include <anyhttp_multipart>
 
-#define ANYHTTP_VERSION		     "3.0.1"
+#define ANYHTTP_VERSION		     "4.0.0"
 #define SimultaneousConnections  16
 #define USERAGENT                "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36"
 

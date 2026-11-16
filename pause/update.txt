@@ -4,11 +4,16 @@
 	{
 		"Version"
 		{
-			"Latest"	"1.6.3"
+			"Latest"	"1.7.0"
 		}
 		
-		"Notes"	"Changes in 1.6.3:"
-		"Notes"	"- Updated code to be compatible with SourceMod 1.12"
+		"Notes"	"Changes in 1.7.0:"
+		"Notes"	"- Write chat messages during pauses to the log"
+		"Notes"	"- Team chat now works during pauses the same way as normal chat"
+		"Notes"	"- Added a 2 second cooldown to the 'repause' command"
+		"Notes"	"- Fixed spies getting unlimited cloak if the plugin was unloaded during a pause with pause_restore_cloak enabled"
+		"Notes"	"- Cut chat text length to 127 characters like the game does"
+		"Notes"	"- Silent chat commands such as '/psay' are no longer shown to everyone during pauses"
 	}
 	
 	"Files"

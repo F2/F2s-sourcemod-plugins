@@ -4,11 +4,18 @@
 	{
 		"Version"
 		{
-			"Latest"	"1.4.2"
+			"Latest"	"2.0.0"
 		}
 		
-		"Notes"	"Changes in 1.4.2:"
-		"Notes"	"- Updated code to be compatible with SourceMod 1.12"
+		"Notes"	"Changes in 2.0.0:"
+		"Notes"	"- Reworked the way buffs are detected"
+		"Notes"	"- Medic stats are now always logged, also during warmup"
+		"Notes"	"- Don't log buffs to enemy spies"
+		"Notes"	"- Fixed uber stats being wrong when uber is drained (e.g. by the Pomson) or gained during an uber (e.g. by the Ubersaw)"
+		"Notes"	"- Fixed uber stats being wrong when the game is paused during an uber"
+		"Notes"	"- Fixed uber stats being wrong when a team has more than one medic"
+		"Notes"	"- Fixed STV Stats messages being shown in warmup after a match was cancelled"
+		"Notes"	"- Fixed Pomson generating bad logs"
 	}
 	
 	"Files"

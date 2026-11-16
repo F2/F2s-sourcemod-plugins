@@ -29,7 +29,7 @@ Release notes:
 - Treat matches lasting more than one minute as completed instead of reset
 
 
----- 1.3.0 (13/11/2026) ----
+---- 1.3.0 (16/11/2026) ----
 - Fixed some cases where we did not tell other plugins that the player was no longer AFK
 - Fixed rendering names with percentage signs in them incorrectly
 - Fixed rare bug where you could be instantly marked as AFK after a match ended

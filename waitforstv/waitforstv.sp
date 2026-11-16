@@ -32,7 +32,7 @@ Release notes:
 - Fixed unnecessary tournament restart when server is almost empty
 
 
----- 1.2.0 (13/11/2026) ----
+---- 1.2.0 (16/11/2026) ----
 - Minor fixes
 
 

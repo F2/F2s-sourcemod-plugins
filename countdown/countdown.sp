@@ -14,7 +14,7 @@ Release notes:
 - Updated code to be compatible with SourceMod 1.12
 
 
----- 1.0.3 (15/11/2026) ----
+---- 1.0.3 (16/11/2026) ----
 - Minor bug fix
 
 

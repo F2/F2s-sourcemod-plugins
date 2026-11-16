@@ -4,11 +4,12 @@
 	{
 		"Version"
 		{
-			"Latest"	"1.1.3"
+			"Latest"	"1.1.4"
 		}
 		
-		"Notes"	"Changes in 1.1.3:"
-		"Notes"	"- Updated code to be compatible with SourceMod 1.12"
+		"Notes"	"Changes in 1.1.4:"
+		"Notes"	"- Fixed bug where stored scores were not reset on servers with SourceTV"
+		"Notes"	"- Fixed rare bug where the plugin could stop working on mapchange"
 	}
 	
 	"Files"

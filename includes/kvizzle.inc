@@ -67,7 +67,7 @@ TODO:
 #endif
 #define _kvizzle_included
 
-#define KVIZZLE_VERSION     "1.1.0"
+#define KVIZZLE_VERSION     "1.2.0"
 
 // Customizable settings
 const int Kviz_iMaxContexts = 4; // Max number of simultaneously open Kvizzles. You can still use more, but the performance will degrade. However, if you set the number too high, then the performance will degrade when you have few Kvizzles opened simultaneously.

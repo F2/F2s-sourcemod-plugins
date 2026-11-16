@@ -47,7 +47,7 @@ Release notes:
 - Updated code to be compatible with SourceMod 1.12
 
 
----- 1.7.0 (13/11/2026) ----
+---- 1.7.0 (16/11/2026) ----
 - Write chat messages during pauses to the log
 - Team chat now works during pauses the same way as normal chat
 - Added a 2 second cooldown to the "repause" command

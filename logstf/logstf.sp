@@ -146,13 +146,13 @@ Release notes:
 - Treat matches lasting more than one minute as completed instead of reset
 
 
----- 3.1.0 (12/11/2026) ----
+---- 3.1.0 (16/11/2026) ----
 - Added support for more than 32 players
+- Reduced disk usage during mid-round log upload
+- Improved performance during upload of large logs
 - Improved error handling when clearing the log file
 - Improved error handling when retrying log upload
 - Added validation of logs.tf responses
-- Reduced disk usage during mid-round log upload
-- Improved performance during upload of large logs
 
 
 TODO:
