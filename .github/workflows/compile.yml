@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup SourcePawn Compiler
         uses: rumblefrog/setup-sp@v1.3.1
         with:
@@ -47,11 +47,9 @@ jobs:
           # Destination path
           path: ftp/
       - name: Set up node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
-          node-version: 24
-      - name: Install npm packages
-        run: npm install fs path
+          node-version: 26
       - name: Create release
         uses: actions/github-script@v9
         with:
