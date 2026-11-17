@@ -138,7 +138,6 @@ void CreateDefaultConfigs() {
 }
 
 public Action Cmd_Exec(int client, const char[] command, int argc) {
-	// Players can send "exec" from their console (e.g. "cmd exec etf2l_9v9"), which also reaches this listener. Only react when the server executes a config.
 	if (client != 0)
 		return Plugin_Continue;
 
