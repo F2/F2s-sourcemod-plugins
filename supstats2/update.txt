@@ -10,6 +10,8 @@
 		"Notes"	"Changes in 3.0.0:"
 		"Notes"	"- Correctly logs deflected projectiles now"
 		"Notes"	"- Correctly logs taunt damage now"
+		"Notes"	"- Now logs when a medic picks up a medigun"
+		"Notes"	"- Now logs plugin version meta data"
 		"Notes"	"- Fixed crossbow heals logging the potential heal amount instead of the actual heal amount"
 		"Notes"	"- Fixed cannonball accuracy logs"
 		"Notes"	"- Fixed telefrags being logged as taunts"
@@ -23,7 +25,6 @@
 		"Notes"	"- Fixed pauses not being logged when using setpause/unpause, or when the player left right after pausing"
 		"Notes"	"- Fixed detection of giger counter"
 		"Notes"	"- Improved detection of shooting/clearing stickies"
-		"Notes"	"- Now logs plugin version meta data"
 	}
 	
 	"Files"

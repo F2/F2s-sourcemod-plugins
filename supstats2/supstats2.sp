@@ -106,6 +106,8 @@ Release notes:
 ---- 3.0.0 (16/11/2026) ----
 - Correctly logs deflected projectiles now
 - Correctly logs taunt damage now
+- Now logs when a medic picks up a medigun
+- Now logs plugin version meta data
 - Fixed crossbow heals logging the potential heal amount instead of the actual heal amount
 - Fixed cannonball accuracy logs
 - Fixed telefrags being logged as taunts
@@ -119,7 +121,6 @@ Release notes:
 - Fixed pauses not being logged when using setpause/unpause, or when the player left right after pausing
 - Fixed detection of giger counter
 - Improved detection of shooting/clearing stickies
-- Now logs plugin version meta data
 
 
 TODO:
@@ -178,6 +179,9 @@ int lastHealArrowPatient[MAXPLAYERS+1]; // [medic] The teammate the medic's heal
 int lastHealArrowPatientHealth[MAXPLAYERS+1]; // [medic] The patient's health before the healing arrow healed them
 int g_iPlayerTakenDirectHitRef[MAXPLAYERS+1]; // Entity reference of the projectile that last touched the player (0 if none)
 int medpackHealAmount[MAXPLAYERS+1];
+int g_iMedigunBeforePickup[MAXPLAYERS+1] = {INVALID_ENT_REFERENCE, ...}; // [medic] The medic's medigun when they pressed the key to pick up a weapon (INVALID_ENT_REFERENCE if it is not a medic trying to pick up a weapon)
+float g_fUberBeforePickup[MAXPLAYERS+1]; // [medic] The medic's uber level when they pressed the key to pick up a weapon
+char g_sMedigunBeforePickup[MAXPLAYERS+1][64]; // [medic] The name of the medic's medigun when they pressed the key to pick up a weapon
 float g_fPauseStartTime;
 
 // Healing from rocket launcher explosions (e.g. Black Box)
@@ -682,6 +686,59 @@ void GetMedigunName(int client, char[] medigun, int medigunLen) {
 	} else {
 		strcopy(medigun, medigunLen, "");
 	}
+}
+
+// The key for using the action item also picks up the weapon the player is looking at (e.g. a medigun dropped by a dead medic).
+// The client sends it as a KeyValues command ("+use_action_slot_item_server"), and TF2 does the pickup while handling it.
+// We do not read the KeyValues, since that crashes TF2 servers running SourceMod builds from before October 2026 (https://github.com/alliedmodders/sourcemod/issues/2587).
+// Instead we check all KeyValues commands, as they are rare and only the pickup changes the medic's medigun.
+public Action OnClientCommandKeyValues(int client, KeyValues kv) {
+	g_iMedigunBeforePickup[client] = INVALID_ENT_REFERENCE;
+
+	if (!g_bWeaponDataInitialized)
+		return Plugin_Continue;
+
+	if (!IsRealPlayer(client) || !IsPlayerAlive(client) || TF2_GetPlayerClass(client) != TFClass_Medic)
+		return Plugin_Continue;
+
+	int medigunRef = INVALID_ENT_REFERENCE;
+	float uberPct = TF2_GetPlayerUberLevel(client, medigunRef);
+	if (medigunRef == INVALID_ENT_REFERENCE)
+		return Plugin_Continue;
+
+	g_iMedigunBeforePickup[client] = medigunRef;
+	g_fUberBeforePickup[client] = uberPct;
+	GetMedigunName(client, g_sMedigunBeforePickup[client], sizeof(g_sMedigunBeforePickup[]));
+
+	return Plugin_Continue;
+}
+
+public void OnClientCommandKeyValues_Post(int client, KeyValues kv) {
+	int medigunBefore = g_iMedigunBeforePickup[client];
+	g_iMedigunBeforePickup[client] = INVALID_ENT_REFERENCE;
+
+	if (medigunBefore == INVALID_ENT_REFERENCE)
+		return;
+
+	if (!IsPlayerAlive(client))
+		return;
+
+	int medigunRef = INVALID_ENT_REFERENCE;
+	float uberPct = TF2_GetPlayerUberLevel(client, medigunRef);
+	if (medigunRef == INVALID_ENT_REFERENCE || medigunRef == medigunBefore)
+		return; // The medic did not pick up a medigun
+
+	char playerStr[256];
+	char medigun[64];
+	GetPlayerLogStr(client, playerStr, sizeof(playerStr));
+	GetMedigunName(client, medigun, sizeof(medigun));
+
+	LogToGame("\"%s\" triggered \"medigun_pickup\" (medigun \"%s\") (uberpct \"%i\") (previous_medigun \"%s\") (previous_uberpct \"%i\")",
+		playerStr,
+		medigun,
+		RoundToFloor(uberPct * 100.0),
+		g_sMedigunBeforePickup[client],
+		RoundToFloor(g_fUberBeforePickup[client] * 100.0));
 }
 
 

@@ -16,6 +16,8 @@
 		"Notes"	"- Fixed uber stats being wrong when a team has more than one medic"
 		"Notes"	"- Fixed STV Stats messages being shown in warmup after a match was cancelled"
 		"Notes"	"- Fixed Pomson generating bad logs"
+		"Notes"	"- Fixed empty_uber being logged when the uber is not empty (e.g. after picking up a medigun during an uber, or using part of a Vaccinator charge)"
+		"Notes"	"- Fixed wrong first heal time after picking up a charged medigun before healing"
 	}
 	
 	"Files"

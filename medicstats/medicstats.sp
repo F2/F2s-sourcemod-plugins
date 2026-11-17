@@ -70,6 +70,8 @@ Release notes:
 - Fixed uber stats being wrong when a team has more than one medic
 - Fixed STV Stats messages being shown in warmup after a match was cancelled
 - Fixed Pomson generating bad logs
+- Fixed empty_uber being logged when the uber is not empty (e.g. after picking up a medigun during an uber)
+- Fixed wrong first heal time after picking up a charged medigun before healing
 
 
 
@@ -95,6 +97,7 @@ TODO:
 #define UPDATE_URL "https://sourcemod.krus.dk/medicstats/update.txt"
 #define TIMER_TICK 0.15
 #define MAX_BEAM_HEAL_PER_CALL 10 // A medigun adds 1-2 HP per heal (about 5 during a Quick-Fix uber). Kunai, Eyelander heads etc. add 15 or more at once.
+#define EMPTY_UBER_THRESHOLD 0.05 // Uber builds 2.5% per second normally, and at most a few percent per timer tick (e.g. during setup), so it is still below 5% at the first tick after being empty.
 
 
 
@@ -482,7 +485,9 @@ public Action Timer_CollectInfo(Handle timer) {
             continue;
 
         if (IsPlayerAlive(client)) {
+            int previousMedigun = medic[client].MedicMedigun;
             float uberPct = TF2_GetPlayerUberLevel(client, medic[client].MedicMedigun);
+            bool medigunChanged = previousMedigun != INVALID_ENT_REFERENCE && previousMedigun != medic[client].MedicMedigun; // E.g. picking up a medigun from the ground
             float uberBuildTime = TF2_GetPlayerUberBuildTime(client);
 
             int medigun = EntRefToEntIndex(medic[client].MedicMedigun);
@@ -503,7 +508,10 @@ public Action Timer_CollectInfo(Handle timer) {
                     // If the medic does not have the uber and is not ubering, they have now started building uber.
                     // Unless they had a full uber that was drained (e.g. by the Pomson) - then it is still the same uber.
                     medic[client].MedicStartedBuildTime = gameTime;
-                    LogEmptyUber(client);
+                    // Only log it if the uber is (nearly) empty. It is not, e.g. if the medic picked up a charged medigun during an uber.
+                    // The uber has usually grown a little since it was empty, as it builds every frame while healing.
+                    if (uberPct < EMPTY_UBER_THRESHOLD)
+                        LogEmptyUber(client);
                 }
             } else {
                 // Medic has started building uber.
@@ -518,6 +526,10 @@ public Action Timer_CollectInfo(Handle timer) {
                         LogUberReady(client);
                 }
             }
+
+            // If the medic got a charged medigun before healing, we cannot tell when they start healing.
+            if (medigunChanged && uberPct > 0.0)
+                medic[client].MedicInitialHealSpawnTime = -1.0;
 
             if (medic[client].MedicInitialHealSpawnTime >= 0.0 && uberPct > 0.0) {
                 // Medic has spawned, and just started healing.

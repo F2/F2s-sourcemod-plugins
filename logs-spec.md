@@ -89,6 +89,14 @@ The \<medigun-name\> can be:
 - `"vaccinator"`
 - `"unknown"` — it could not be detected
 
+## Medigun pickups
+
+When a medic picks up a medigun from the ground (e.g. dropped by a dead medic):
+
+    <medic> triggered "medigun_pickup" (medigun <medigun-name>) (uberpct "%i") (previous_medigun <medigun-name>) (previous_uberpct "%i")
+
+    "F2<3><[U:1:1234]><Red>" triggered "medigun_pickup" (medigun "kritzkrieg") (uberpct "63") (previous_medigun "medigun") (previous_uberpct "40")
+
 ## Item Pickup
 
 When a player picks up an item:
@@ -203,6 +211,8 @@ When a medic's charge changes to zero, typically upon spawning or after using th
     <medic> triggered "empty_uber"
 
     "F2<3><[U:1:1234]><Red>" triggered "empty_uber"
+
+It is not logged if the medic starts building a new uber without being empty (e.g. after picking up a charged medigun during an uber, or using part of a Vaccinator charge). The next "chargeready" is still logged, but without an "empty_uber" before it, so it should not be used to calculate a build time.
 
 ## Charge ended
 
