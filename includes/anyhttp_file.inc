@@ -76,7 +76,10 @@ static void AnyHttp_CopyFile_Process(DataPack pack) {
 
     int bytesRead;
     char buff[100 * 1024];
-    bytesRead = data.source.ReadString(buff, sizeof(buff));
+    bytesRead = data.source.ReadString(buff, sizeof(buff), sizeof(buff) - 1);
+    if (bytesRead != -1) {
+        buff[bytesRead] = '\0';
+    }
     if (bytesRead == -1 || !data.target.WriteString(buff, false)) {
         data.source.Close();
         data.target.Close();

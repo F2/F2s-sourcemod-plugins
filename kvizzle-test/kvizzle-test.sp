@@ -47,6 +47,7 @@ stock void RunUnitTest() {
 		UTDeepJump(kv);
 		UTDelete();
 		UTContextSwitch();
+		UTRename();
 		UTOtherStuff(kv); // KvizExists, KvizRewind
 
 		// TODO: Check the deepnes of traversal stack, etc. Go to the edge! (Kviz_iMaxTraversalStack)
@@ -367,6 +368,7 @@ void UTContextSwitch() {
 
 	KeyValues kv1 = KvizCreate("Test1");
 	KvizSetString(kv1, "test1", path);
+	KvizSetString(kv1, "test1b", "x\\.y.z"); // Leaves kv1 positioned in a top-level section with a dot in its name, which must survive being archived.
 
 	KeyValues kv2 = KvizCreate("Test2");
 	KeyValues kv3 = KvizCreate("Test3");
@@ -380,6 +382,8 @@ void UTContextSwitch() {
 		UTError(kv1, "Error reading %s: %s", path, strvalue);
 	if (!KvizGetStringExact(kv6, strvalue, sizeof(strvalue), path) || !StrEqual(strvalue, "test6"))
 		UTError(kv6, "Error reading %s: %s", path, strvalue);
+	if (!KvizGetStringExact(kv1, strvalue, sizeof(strvalue), "x\\.y.z") || !StrEqual(strvalue, "test1b"))
+		UTError(kv1, "Error reading x\\.y.z: %s", strvalue);
 
 	KvizClose(kv1);
 	KvizClose(kv2);
@@ -387,6 +391,21 @@ void UTContextSwitch() {
 	KvizClose(kv4);
 	KvizClose(kv5);
 	KvizClose(kv6);
+}
+
+void UTRename() {
+	PrintToServer("UTRename...");
+
+	KeyValues kv = KvizCreate("Test");
+	KvizSetNum(kv, 1, "a.x");
+	KvizSetString(kv, "b", "a:section-name");
+
+	if (KvizExists(kv, "a.x"))
+		UTError(kv, "Error renaming: old name still exists");
+	if (KvizGetNum(kv, 0, "b.x") != 1)
+		UTError(kv, "Error renaming: new name not found");
+
+	KvizClose(kv);
 }
 
 void UTOtherStuff(KeyValues kv) {

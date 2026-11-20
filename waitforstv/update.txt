@@ -4,11 +4,12 @@
 	{
 		"Version"
 		{
-			"Latest"	"1.1.3"
+			"Latest"	"2.0.0"
 		}
 		
-		"Notes"	"Changes in 1.1.3:"
-		"Notes"	"- Fixed unnecessary tournament restart when server is almost empty"
+		"Notes"	"Changes in 2.0.0:"
+		"Notes"	"- Changes map immediately if no one is watching SourceTV"
+		"Notes"	"- Uses SourceTV Manager if it is installed, otherwise checks tv_status every minute"
 	}
 	
 	"Files"

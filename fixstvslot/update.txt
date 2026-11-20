@@ -4,12 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.0.1"
+			"Latest"	"2.0.2"
 		}
 		
-		"Notes"	"Changes in 2.0.1:"
-		"Notes"	"- Updated code to be compatible with SourceMod 1.12"
-		"Notes"	"- Only change map if the server is empty"
+		"Notes"	"Changes in 2.0.2:"
+		"Notes"	"- Minor fixes"
 	}
 	
 	"Files"

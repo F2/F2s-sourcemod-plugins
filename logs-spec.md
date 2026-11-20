@@ -89,6 +89,14 @@ The \<medigun-name\> can be:
 - `"vaccinator"`
 - `"unknown"` — it could not be detected
 
+## Medigun pickups
+
+When a medic picks up a medigun from the ground (e.g. dropped by a dead medic):
+
+    <medic> triggered "medigun_pickup" (medigun <medigun-name>) (uberpct "%i") (previous_medigun <medigun-name>) (previous_uberpct "%i")
+
+    "F2<3><[U:1:1234]><Red>" triggered "medigun_pickup" (medigun "kritzkrieg") (uberpct "63") (previous_medigun "medigun") (previous_uberpct "40")
+
 ## Item Pickup
 
 When a player picks up an item:
@@ -156,7 +164,9 @@ $$\text{Accuracy} = \frac{\text{count(shot\\_hit)}}{\text{count(shot\\_fired)}} 
 
 For Crusader's Crossbow, friendly hits will be logged as `shot_hit`.
 
-Destroying a sticky with a hitscan weapon will be logged as `shot_hit` (although it might not always be accurately detected).
+A hitscan shot that destroys a sticky without hitting an enemy player is not logged. If the same shot also hits an enemy player, it is logged as one shot and one hit.
+
+You cannot assume that the accuracy events are logged in any particular order. For example, it is completely valid that a shot first logs "damage", then "shot_hit", and then "shot_fired".
 
 # Medic Stats
 
@@ -201,6 +211,8 @@ When a medic's charge changes to zero, typically upon spawning or after using th
     <medic> triggered "empty_uber"
 
     "F2<3><[U:1:1234]><Red>" triggered "empty_uber"
+
+It is not logged if the medic starts building a new uber without being empty (e.g. after picking up a charged medigun during an uber, or using part of a Vaccinator charge). The next "chargeready" is still logged, but without an "empty_uber" before it, so it should not be used to calculate a build time.
 
 ## Charge ended
 
@@ -259,9 +271,13 @@ It can have the following properties:
   This can be used to detect duplicate logs from the same match.
 - `map`: The current map
 - `title`: A title for the match (similar to the one sent to logs.tf)
+- `plugin_version_<plugin>`: The version of a plugin that is loaded on the server, e.g. `plugin_version_supstats2`.  
+  Currently, `<plugin>` can be `supstats2` or `medicstats`, but more plugins may be added in the future.  
+  If not present: The plugin is not loaded (or it is an older version of supstats2 that did not log this).
 
 There can be multiple of these log lines in a match, so for example you might see this:
 
     World triggered "meta_data" (matchid "abc123")
     World triggered "meta_data" (map "cp_badlands")
     World triggered "meta_data" (title "serveme.tf #1337")
+    World triggered "meta_data" (plugin_version_supstats2 "3.0.0") (plugin_version_medicstats "2.0.0")

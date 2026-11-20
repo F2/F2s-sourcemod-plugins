@@ -26,6 +26,10 @@ Release notes:
 ---- 1.2.0 (13/07/2026) ----
 - Treat matches lasting more than one minute as completed instead of reset
 
+
+---- 1.2.1 (20/11/2026) ----
+- Minor bug fix
+
 */
 
 #pragma semicolon 1
@@ -40,7 +44,7 @@ Release notes:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "1.2.0"
+#define PLUGIN_VERSION "1.2.1"
 #define UPDATE_URL		"https://sourcemod.krus.dk/classwarning/update.txt"
 
 
@@ -134,6 +138,9 @@ void CreateDefaultConfigs() {
 }
 
 public Action Cmd_Exec(int client, const char[] command, int argc) {
+	if (client != 0)
+		return Plugin_Continue;
+
 	if (argc < 1)
 		return Plugin_Continue;
 

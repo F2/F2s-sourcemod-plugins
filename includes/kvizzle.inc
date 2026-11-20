@@ -67,7 +67,7 @@ TODO:
 #endif
 #define _kvizzle_included
 
-#define KVIZZLE_VERSION     "1.1.0"
+#define KVIZZLE_VERSION     "1.2.0"
 
 // Customizable settings
 const int Kviz_iMaxContexts = 4; // Max number of simultaneously open Kvizzles. You can still use more, but the performance will degrade. However, if you set the number too high, then the performance will degrade when you have few Kvizzles opened simultaneously.
@@ -134,11 +134,11 @@ stock void KvizEscape(char[] dest, int destLen, const char[] src) {
     int srcPos = 0;
     int destPos = 0;
     while (destPos + 1 < destLen && src[srcPos] != '\0') {
-        if (src[srcPos] == ':' || src[srcPos] == '.') {
-            buffer[destPos++] = '\\';
-            if (destPos == destLen) {
+        if (src[srcPos] == ':' || src[srcPos] == '.' || src[srcPos] == '\\') {
+            if (destPos + 2 >= destLen) {
                 break;
             }
+            buffer[destPos++] = '\\';
         }
         buffer[destPos++] = src[srcPos++];
     }
@@ -362,7 +362,7 @@ stock bool KvizSetString(KeyValues kv, const char[] value, const char[] path, an
             kv.SetString(NULL_STRING, value);
             return true;
         } else if (action == KVIZ_ACTION_SECTIONNAME) {
-            kv.SetSectionName(value);
+            KvizSetSectionName(kv, value);
             return true;
         } else {
             LogError("Kvizzle - KvizSetString does not support action %i (in %s)", action, path);
@@ -482,7 +482,7 @@ stock bool KvizSetNum(KeyValues kv, int value, const char[] path, any ...) {
         } else if (action == KVIZ_ACTION_SECTIONNAME) {
             char strvalue[64];
             IntToString(value, strvalue, sizeof(strvalue));
-            kv.SetSectionName(strvalue);
+            KvizSetSectionName(kv, strvalue);
             return true;
         } else {
             LogError("Kvizzle - KvizSetNum does not support action %i (in %s)", action, path);
@@ -702,7 +702,7 @@ stock bool KvizSetColor(KeyValues kv, int r, int g, int b, int a, const char[] p
         } else if (action == KVIZ_ACTION_SECTIONNAME) {
             char strvalue[64];
             FormatEx(strvalue, sizeof(strvalue), "%i %i %i %i", r, g, b, a);
-            kv.SetSectionName(strvalue);
+            KvizSetSectionName(kv, strvalue);
             return true;
         } else {
             LogError("Kvizzle - KvizSetColor does not support action %i (in %s)", action, path);
@@ -815,7 +815,7 @@ stock bool KvizSetFloat(KeyValues kv, float value, const char[] path, any ...) {
         } else if (action == KVIZ_ACTION_SECTIONNAME) {
             char strvalue[64];
             FloatToString(value, strvalue, sizeof(strvalue));
-            kv.SetSectionName(strvalue);
+            KvizSetSectionName(kv, strvalue);
             return true;
         } else {
             LogError("Kvizzle - KvizSetFloat does not support action %i (in %s)", action, path);
@@ -930,7 +930,7 @@ stock bool KvizSetVector(KeyValues kv, float vec[3], const char[] path, any ...)
         } else if (action == KVIZ_ACTION_SECTIONNAME) {
             char strvalue[Kviz_iMaxSectionLen];
             Format(strvalue, sizeof(strvalue), "%f %f %f", vec[0], vec[1], vec[2]);
-            kv.SetSectionName(strvalue);
+            KvizSetSectionName(kv, strvalue);
             return true;
         } else {
             LogError("Kvizzle - KvizSetVector does not support action %i (in %s)", action, path);
@@ -999,6 +999,11 @@ stock bool KvizJumpToKey(KeyValues kv, bool create, const char[] path, any ...) 
 
     char path2[256];
     VFormat(path2, sizeof(path2), path, 4);
+
+    if (Kviz[Kviz_iCurrentContext].Kviz_iTraversalStackLen >= Kviz_iMaxTraversalStack) {
+        LogError("Kvizzle - Traversal stack is full (%s)", path2);
+        return false;
+    }
 
     int action;
     if (!KvizGoto(kv, path2, create, action, true) || action != KVIZ_ACTION_NONE) {
@@ -1143,6 +1148,11 @@ stock bool KvizGoto2(KeyValues kv, const char[] path, bool create, int &action, 
     int endPos = 0;
     int destPos = 0;
     while (path[endPos] != '.' && path[endPos] != '\0' && !(path[endPos] == ':' && endPos != 0)) {
+        if (destPos + 1 >= sizeof(key)) {
+            LogError("Kvizzle - Path component is too long (%s)", path);
+            return false;
+        }
+
         if (path[endPos] == '\\') {
             if (path[endPos+1] == '\0') {
                 key[destPos++] = path[endPos++];
@@ -1274,6 +1284,11 @@ stock bool KvizGoto2(KeyValues kv, const char[] path, bool create, int &action, 
     }
 
     if (!alreadyInPosition) {
+        if (depth >= Kviz_iMaxPathDepth) {
+            LogError("Kvizzle - Path is too deep (%s)", path);
+            return false;
+        }
+
         if (isPseudoClass) {
             switch (pseudoClass) {
                 case KVIZ_PSEUDO_LASTCHILD: {
@@ -1412,6 +1427,15 @@ stock bool KvizGoto2(KeyValues kv, const char[] path, bool create, int &action, 
     return true;
 }
 
+stock void KvizSetSectionName(KeyValues kv, const char[] name) {
+    kv.SetSectionName(name);
+    int count = Kviz[Kviz_iCurrentContext].Kviz_iPositionPathCount;
+    if (count > 0) {
+        // Keep the cached position path in sync, otherwise the old name would still match it.
+        kv.GetSectionName(Kviz_sPositionPath[Kviz_iCurrentContext][count - 1], sizeof(Kviz_sPositionPath[][]));
+    }
+}
+
 stock void KvizRollBack(KeyValues kv, int destPos) {
     while (Kviz[Kviz_iCurrentContext].Kviz_iPositionPathCount > destPos+1) {
         //PrintToServer("GoBack");
@@ -1500,7 +1524,7 @@ stock bool KvizSwitchFromArchive(KeyValues kv) {
             if (pathPos > 0) {
                 // TODO: Can be optimized a lot, because StrCat is getting strlen all the time
                 pathPos--;
-                strcopy(kvizPos, sizeof(kvizPos), path[pathPos]);
+                KvizEscape(kvizPos, sizeof(kvizPos), path[pathPos]);
                 for (pathPos--; pathPos >= 0; pathPos--) {
                     StrCat(kvizPos, sizeof(kvizPos), ".");
                     KvizEscape(path[pathPos], sizeof(path[]), path[pathPos]);

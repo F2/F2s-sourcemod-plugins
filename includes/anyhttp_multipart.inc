@@ -9,7 +9,6 @@ By F2
 #define _anyhttp_multipart_included
 
 #include <anyhttp_stringbuilder>
-#include <kvizzle>
 #include <f2stocks>
 
 
@@ -19,8 +18,17 @@ typeset AnyHttp_Multipart_Result {
     function void (bool success, AnyHttpStringBuilder sb, any metadata);
 };
 
+enum struct AnyHttpField {
+    char name[1024];
+    bool isFile;
+    char value[1024]; // The string contents, or the path of the file to upload
+    char originalPath[PLATFORM_MAX_PATH]; // Files only: The path the file was copied from
+    bool ready; // Files only: Whether the file has finished copying
+    bool cleanup; // Files only: Whether the file should be deleted afterwards
+}
+
 enum struct AnyHttpMultipartData {
-    KeyValues fields;
+    ArrayList fields; // AnyHttpField
     AnyHttpStringBuilder sb;
     Function callback;
     any metadata;
@@ -54,14 +62,14 @@ enum struct AnyHttpMultipartData {
     }
 }
 
-stock void AnyHttp_CreateMultipartRequest(KeyValues fields, AnyHttp_Multipart_Result callback, any metadata = 0) {
+stock void AnyHttp_CreateMultipartRequest(ArrayList fields, AnyHttp_Multipart_Result callback, any metadata = 0) {
     AnyHttpMultipartData data;
     data.fields = fields;
     data.sb.Init();
     data.callback = callback;
     data.metadata = metadata;
     data.success = false;
-    data.currentField = 1;
+    data.currentField = 0;
     
     RequestFrame(AnyHttp_CreateMultipartRequest_Process, data.Export());
 }
@@ -70,32 +78,26 @@ static void AnyHttp_CreateMultipartRequest_Process(DataPack pack) {
     AnyHttpMultipartData data;
     data.Import(pack);
 
-    char type[64];
-    if (!KvizGetStringExact(data.fields, type, sizeof(type), "%i.type", data.currentField)) {
+    if (data.currentField >= data.fields.Length) {
         data.success = true;
         RequestFrame(AnyHttp_CreateMultipartRequest_Finish, data.Export());
         return;
     }
 
-    if (StrEqual(type, "string")) {
-        char name[1024];
-        KvizGetStringExact(data.fields, name, sizeof(name), "%i.name", data.currentField);
-        char contents[1024];
-        KvizGetStringExact(data.fields, contents, sizeof(contents), "%i.value", data.currentField);
-        AppendMultipartString(data.sb, name, contents);
+    AnyHttpField field;
+    data.fields.GetArray(data.currentField, field);
+
+    if (!field.isFile) {
+        AppendMultipartString(data.sb, field.name, field.value);
 
         data.currentField++;
-    } else if (StrEqual(type, "file")) {
+    } else {
         if (data.currentFile == null) {
-            char name[1024];
-            KvizGetStringExact(data.fields, name, sizeof(name), "%i.name", data.currentField);
-            char filepath[1024];
-            KvizGetStringExact(data.fields, filepath, sizeof(filepath), "%i.value", data.currentField);
-            AppendMultipartFile_Init(data.sb, name, filepath);
-            
-            File filehandle = OpenFile(filepath, "r");
+            AppendMultipartFile_Init(data.sb, field.name, field.value);
+
+            File filehandle = OpenFile(field.value, "r");
             if (filehandle == null) {
-                LogError("AppendMultipartFile: Could not open file for reading %s", filepath);
+                LogError("AppendMultipartFile: Could not open file for reading %s", field.value);
                 RequestFrame(AnyHttp_CreateMultipartRequest_Finish, data.Export());
                 return;
             }
@@ -116,8 +118,6 @@ static void AnyHttp_CreateMultipartRequest_Process(DataPack pack) {
                 }
             }
         }
-    } else {
-        ThrowError("Unknown type");
     }
 
     RequestFrame(AnyHttp_CreateMultipartRequest_Process, data.Export());
@@ -168,10 +168,12 @@ static void AppendMultipartFile_Init(AnyHttpStringBuilder sb, const char[] name,
 
 static bool AppendMultipartFile_Process(AnyHttpMultipartData data) {
     char buffer[100 * 1024];
-    if (data.currentFile.ReadString(buffer, sizeof(buffer)) == -1) {
+    int bytesRead = data.currentFile.ReadString(buffer, sizeof(buffer), sizeof(buffer) - 1);
+    if (bytesRead == -1) {
         return false;
     }
-    
+    buffer[bytesRead] = '\0';
+
     data.sb.Append(buffer);
     return true;
 }

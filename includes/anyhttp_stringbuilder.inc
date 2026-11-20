@@ -36,9 +36,10 @@ enum struct AnyHttpStringBuilder {
         this.pack.Reset();
         str[0] = '\0';
 
+        int len = 0;
         while (this.pack.IsReadable()) {
-            int len = strlen(str);
             this.pack.ReadString(str[len], maxLength - len);
+            len += strlen(str[len]);
         }
 
         return true;

@@ -47,6 +47,15 @@ Release notes:
 - Updated code to be compatible with SourceMod 1.12
 
 
+---- 1.7.0 (20/11/2026) ----
+- Write chat messages during pauses to the log
+- Team chat now works during pauses the same way as normal chat
+- Added a 2 second cooldown to the "repause" command
+- Fixed spies getting unlimited cloak if the plugin was unloaded during a pause with pause_restore_cloak enabled
+- Cut chat text length to 127 characters like the game does
+- Silent chat commands such as "/psay" are no longer shown to everyone during pauses
+
+
 */
 
 #pragma semicolon 1
@@ -61,10 +70,11 @@ Release notes:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.6.3"
+#define PLUGIN_VERSION "1.7.0"
 #define UPDATE_URL		"https://sourcemod.krus.dk/pause/update.txt"
 
 #define PAUSE_UNPAUSE_TIME 2.0
+#define REPAUSE_COOLDOWN_TIME 2.0
 #define UNPAUSE_WAIT_TIME 5
 
 enum PauseState {
@@ -86,6 +96,7 @@ ConVar g_cvarRestoreCloak = null;
 
 PauseState g_iPauseState;
 float g_fLastPause;
+float g_fLastRepause;
 int g_iClientUnpausing;
 int g_iCountdown;
 int g_iPauseTimeMinutes;
@@ -129,6 +140,7 @@ public void OnPluginStart() {
 	g_cvarRestoreCloak = CreateConVar("pause_restore_cloak", "0", "Restore player cloak when unpausing.", FCVAR_NONE);
 
 	AddCommandListener(Cmd_Say, "say");
+	AddCommandListener(Cmd_Say, "say_team");
 
 	ResetStates();
 
@@ -155,6 +167,13 @@ public void OnPluginStart() {
 		Updater_AddPlugin(UPDATE_URL);
 }
 
+public void OnPluginEnd() {
+	// If the game is paused, the spies' cloak meters are set to a very large number.
+	// Restore them, so spies do not get unlimited cloak if the plugin is unloaded during a pause.
+	// Also restore the other values, so they are stored correctly if the plugin is reloaded during the pause.
+	RestoreState();
+}
+
 public void OnLibraryAdded(const char[] name) {
 	// Set up auto updater
 	if (StrEqual(name, "updater"))
@@ -165,6 +184,7 @@ public void OnMapEnd() {
 	// The game is automatically unpaused during a map change
 	g_iPauseState = Unpaused;
 	g_fLastPause = -10.0;
+	g_fLastRepause = -10.0;
 	g_hCountdownTimer = null;
 	g_hPauseTimeTimer = null;
 
@@ -183,8 +203,9 @@ public void OnClientPutInServer(int client) {
 }
 
 public void OnClientDisconnect_Post(int client) {
-	if (GetRealPlayerCount() == 0 && g_cvarAllowHibernation.BoolValue) {
-		// If everyone disconnects, the game is unpaused due to hibernation
+	if (!IsAnyHumanConnected() && g_cvarAllowHibernation.BoolValue) {
+		// If everyone disconnects, the game is unpaused due to hibernation.
+		// The server does not hibernate while a human is still connecting, so count those too.
 
 		if (g_hCountdownTimer != null)
 			KillTimer(g_hCountdownTimer);
@@ -216,6 +237,14 @@ public Action Cmd_UnpausePause(int client, const char[] command, int args) {
 	if (g_iPauseState != Paused)
 		return Plugin_Handled;
 
+	float timeSinceLastRepause = GetTickedTime() - g_fLastRepause;
+	if (timeSinceLastRepause < REPAUSE_COOLDOWN_TIME) {
+		float waitTime = REPAUSE_COOLDOWN_TIME - timeSinceLastRepause;
+		CPrintToChat2(client, "{lightgreen}[Pause] {default}You have to wait %.1f second%s before repausing again.", waitTime, (waitTime >= 0.95 && waitTime < 1.05) ? "" : "s");
+		return Plugin_Handled;
+	}
+	g_fLastRepause = GetTickedTime();
+
 	g_iPauseState = Ignore__Repause1;
 	FirePauseCommand(client);
 	CPrintToChatAllEx2(client, "{lightgreen}[Pause] {default}Game was repaused by {teamcolor}%N", client);
@@ -225,7 +254,9 @@ public Action Cmd_UnpausePause(int client, const char[] command, int args) {
 }
 
 public Action Timer_Repause(Handle timer, int client) {
-	FirePauseCommand(client);
+	// Someone else may have paused the game already
+	if (g_iPauseState == Ignore__Repause2)
+		FirePauseCommand(client);
 	return Plugin_Handled;
 }
 
@@ -362,19 +393,101 @@ public Action Cmd_Say(int client, const char[] command, int args) {
 			if (buffer[0] == '"')
 				strcopy(buffer, sizeof(buffer), buffer[1]);
 
-			char dead[16] = "";
-			if (TF2_GetClientTeam(client) == TFTeam_Spectator)
-				dead = "*SPEC* ";
-			else if ((TF2_GetClientTeam(client) == TFTeam_Red || TF2_GetClientTeam(client) == TFTeam_Blue) && !IsPlayerAlive(client))
-				dead = "*DEAD* ";
+			// SourceMod hides silent chat triggers such as "/psay ...", so let it handle those like when unpaused
+			if (IsSilentChatTrigger(buffer))
+				return Plugin_Continue;
 
-			CPrintToChatAllEx2(client, "%s{teamcolor}%N{default} :  %s", dead, client, buffer);
+			// Remove control characters, so they cannot be used to color or spoof messages
+			// Also cap the length at 127 like the game does, so the message is not too big to be sent
+			int len = 0;
+			bool hasText = false;
+			for (int i = 0; buffer[i] != '\0' && len < 127; i++) {
+				if ((buffer[i] & 0xFF) < ' ')
+					continue;
+				if (buffer[i] != ' ')
+					hasText = true;
+				buffer[len++] = buffer[i];
+			}
+			buffer[len] = '\0';
+
+			if (hasText) {
+				TFTeam team = TF2_GetClientTeam(client);
+				bool isPlayerTeam = team == TFTeam_Red || team == TFTeam_Blue;
+				bool isTeamChat = StrEqual(command, "say_team", false);
+
+				if (isTeamChat) {
+					char prefix[32] = "(TEAM) ";
+					if (team == TFTeam_Spectator)
+						prefix = "(Spectator) ";
+					else if (isPlayerTeam && !IsPlayerAlive(client))
+						prefix = "*DEAD*(TEAM) ";
+
+					for (int i = 1; i <= MaxClients; i++) {
+						if (IsClientInGame(i) && TF2_GetClientTeam(i) == team)
+							CPrintToChatEx2(i, client, "%s{teamcolor}%N{default} :  %s", prefix, client, buffer);
+					}
+				} else {
+					char dead[16] = "";
+					if (team == TFTeam_Spectator)
+						dead = "*SPEC* ";
+					else if (isPlayerTeam && !IsPlayerAlive(client))
+						dead = "*DEAD* ";
+
+					CPrintToChatAllEx2(client, "%s{teamcolor}%N{default} :  %s", dead, client, buffer);
+				}
+
+				// The game does not log the message, since we block the say command
+				char playerStr[256];
+				GetPlayerLogStr(client, playerStr, sizeof(playerStr));
+				LogToGame("\"%s\" %s \"%s\"", playerStr, isTeamChat ? "say_team" : "say", buffer);
+			}
 		}
 
 		return Plugin_Handled;
 	}
 
 	return Plugin_Continue;
+}
+
+static bool IsAnyHumanConnected() {
+	for (int client = 1; client <= MaxClients; client++)
+		if (IsClientConnected(client) && !IsFakeClient(client))
+			return true;
+	return false;
+}
+
+// Does the same check as SourceMod: The text must start with a silent chat trigger,
+// followed by the name of a SourceMod command, with or without the "sm_" prefix
+static bool IsSilentChatTrigger(const char[] text) {
+	char triggers[16];
+	GetSilentChatTriggers(triggers, sizeof(triggers));
+	if (text[0] == '\0' || FindCharInString(triggers, text[0]) == -1)
+		return false;
+
+	char cmd[64];
+	int len = 0;
+	for (int i = 1; text[i] != '\0' && !IsCharSpace(text[i]) && text[i] != '"' && len < sizeof(cmd) - 1; i++)
+		cmd[len++] = text[i];
+	cmd[len] = '\0';
+	if (len == 0)
+		return false;
+
+	char smCmd[80];
+	Format(smCmd, sizeof(smCmd), "sm_%s", cmd);
+
+	bool found = false;
+	char name[80];
+	CommandIterator iter = new CommandIterator();
+	while (iter.Next()) {
+		iter.GetName(name, sizeof(name));
+		if (StrEqual(name, cmd, false) || StrEqual(name, smCmd, false)) {
+			found = true;
+			break;
+		}
+	}
+	delete iter;
+
+	return found;
 }
 
 static void FirePauseCommand(int client) {

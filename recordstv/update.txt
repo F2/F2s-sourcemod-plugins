@@ -4,11 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"1.2.0"
+			"Latest"	"1.2.1"
 		}
 		
-		"Notes"	"Changes in 1.2.0:"
-		"Notes"	"- Treat matches lasting more than one minute as completed instead of reset"
+		"Notes"	"Changes in 1.2.1:"
+		"Notes"	"- Better handling of workshop maps"
 	}
 	
 	"Files"

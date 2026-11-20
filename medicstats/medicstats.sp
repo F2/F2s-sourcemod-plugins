@@ -61,14 +61,24 @@ Release notes:
 - Updated code to be compatible with SourceMod 1.12
 
 
+---- 2.0.0 (20/11/2026) ----
+- Reworked the way buffs are detected
+- Medic stats are now always logged, also during warmup
+- Don't log buffs to enemy spies
+- Fixed uber stats being wrong when uber is drained (e.g. by the Pomson) or gained during an uber (e.g. by the Ubersaw)
+- Fixed uber stats being wrong when the game is paused during an uber
+- Fixed uber stats being wrong when a team has more than one medic
+- Fixed STV Stats messages being shown in warmup after a match was cancelled
+- Fixed Pomson generating bad logs
+- Fixed empty_uber being logged when the uber is not empty (e.g. after picking up a medigun during an uber)
+- Fixed wrong first heal time after picking up a charged medigun before healing
+
+
 
 TODO:
 - The log lines should include which medigun is wielded
 - cvar to enable logging medics' self-heal (should be disabled by default)
-
-Known Bugs:
-- When there are more than one medic on a team, the heals are likely to be credited to the wrong medic. [No easy/well-performing fix]
-- If a person is buffed by other means than the medic (for example Conniver's Kunai), then the medic will get the credit for the heals. [No easy/well-performing fix]
+- Vaccinator ubers are not detected properly (m_bChargeRelease is never true for it), so they are logged with a duration of 0 followed by an empty_uber
 */
 
 #pragma semicolon 1
@@ -76,15 +86,18 @@ Known Bugs:
 
 #include <sourcemod>
 #include <tf2_stocks>
+#include <dhooks>
 #include <f2stocks>
-#include <smlib/arrays>
+#include <match>
 #undef REQUIRE_PLUGIN
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.4.2"
+#define PLUGIN_VERSION "2.0.0"
 #define UPDATE_URL "https://sourcemod.krus.dk/medicstats/update.txt"
 #define TIMER_TICK 0.15
+#define MAX_BEAM_HEAL_PER_CALL 10 // A medigun adds 1-2 HP per heal (about 5 during a Quick-Fix uber). Kunai, Eyelander heads etc. add 15 or more at once.
+#define EMPTY_UBER_THRESHOLD 0.05 // Uber builds 2.5% per second normally, and at most a few percent per timer tick (e.g. during setup), so it is still below 5% at the first tick after being empty.
 
 
 
@@ -99,35 +112,37 @@ public Plugin myinfo = {
 
 enum struct MedicInfo {
     // Info about medic's current life
-    int MedicClient;     // The client id of the medic
-    int MedicMedigun;    // The client's medigun entity
+    TFTeam MedicTeam;    // The team the client is a medic on - TFTeam_Unassigned if the client is not a medic
+    int MedicMedigun;    // An entity reference to the client's medigun
     bool MedicHasUber;   // True if the medic has 100% uber
     bool MedicIsUbering; // True if the medic is currently ubering
     float MedicTimeToUber; // How far away from uber the medic is (the last time it was checked by the CollectInfo timer)
-    float MedicLastUberPct; // The percentage of uber the medic has (the last time it was checked by the CollectInfo timer)
     float MedicStartedBuildTime; // The GameTime of when the medic had 0% - when the medic has 100%, or is ubering, it is set to -1.0
     float MedicInitialHealSpawnTime; // The GameTime of when the medic spawned (the beginning of a round doesn't count) - when the medic starts to heal, it is set to -1.0
     float MedicFullyChargedTime; // The GameTime of when the uber is fully charged - when the uber is used, it is set to -1.0
     float MedicUberStartTime; // The GameTime of when the medic started using his uber (IsUbering = true) - when the uber is over, it is set to -1.0
     float MedicLastUberTime; // The GameTime of last uber
     float MedicLastDeath;    // The GameTime of last death
+}
 
-    bool MedicHasHadAdvantage; // True if the medic has 100% uber and they got it significantly earlier than the opposing medic
-    float MedicCurrentBiggestAdvantage; // If MedicHasHadAdvantage is true, this value indicates how big the uber advantage was (in seconds)
+enum struct TeamInfo {
+    // Each team is represented by its medic closest to having uber
+    int TeamAdvantageMedic; // The medic that got the team a significant uber advantage over the opposing team - 0 if the team has no advantage
+    float TeamBiggestAdvantage; // If TeamAdvantageMedic is set, this value indicates how big the uber advantage was (in seconds)
 }
 
 
-int g_iMaxHealth[MAXPLAYERS + 1];
-int g_iLastHealth[MAXPLAYERS + 1];
-int g_iHealedBy[MAXPLAYERS + 1];
-int g_iBuffed[MAXPLAYERS + 1];
+DynamicHook g_hTakeHealth = null; // CBaseEntity::TakeHealth(float flHealth, int bitsDamageType)
+int g_iHealthBeforeHeal[MAXPLAYERS + 1]; // [patient] The patient's health right before the current TakeHealth call
+int g_iBeamTarget[MAXPLAYERS + 1]; // [healer] The patient the medic's beam was attached to when the medic last healed
+int g_iBuffHighest[MAXPLAYERS + 1]; // [patient] The highest health the patient has had since the beam attached or since they last took damage
+int g_iBuffed[MAXPLAYERS + 1]; // [healer] The buff heals not yet logged
+int g_iBuffedPatient[MAXPLAYERS + 1]; // [healer] The patient that g_iBuffed was given to
 float g_fLastCollectBuffs;
 
-MedicInfo medic[TFTeam];
+MedicInfo medic[MAXPLAYERS + 1];
+TeamInfo teams[TFTeam];
 
-bool CountdownStarted;
-bool IsInMatch;
-bool IsBonusRoundTime;
 float LastRoundStart;
 //float LastCollectInfoTime;
 
@@ -151,17 +166,33 @@ public void OnPluginStart() {
     g_hCvarLogBuffs.GetString(cvarLogBuffs, sizeof(cvarLogBuffs));
     Cvar_LogBuffs(g_hCvarLogBuffs, "", cvarLogBuffs);
 
-    HookEvent("player_connect", Event_player_connect, EventHookMode_Post);
+    // Every heal a player gets goes through CBaseEntity::TakeHealth(). Borrow its offset from SourceMod's own gamedata:
+    // it is declared two virtual functions after CBaseEntity::OnTakeDamage() (with AdjustDamageDirection() in between).
+    GameData gameConf = new GameData("sdkhooks.games");
+    if (gameConf == null)
+        SetFailState("Cannot find sdkhooks.games gamedata");
+    int onTakeDamageOffset = gameConf.GetOffset("OnTakeDamage");
+    delete gameConf;
+    if (onTakeDamageOffset == -1)
+        SetFailState("Cannot find OnTakeDamage offset in sdkhooks.games gamedata");
+
+    g_hTakeHealth = new DynamicHook(onTakeDamageOffset + 2, HookType_Entity, ReturnType_Int, ThisPointer_CBaseEntity);
+    g_hTakeHealth.AddParam(HookParamType_Float);
+    g_hTakeHealth.AddParam(HookParamType_Int);
+    for (int client = 1; client <= MaxClients; client++) {
+        if (IsClientInGame(client))
+            OnClientPutInServer(client);
+    }
+
     HookEvent("player_spawn", Event_player_spawn, EventHookMode_Post);
     HookEvent("player_death", Event_player_death, EventHookMode_Pre);
+    HookEvent("player_hurt", Event_player_hurt, EventHookMode_Post);
     HookEvent("player_chargedeployed", Event_player_chargedeployed, EventHookMode_Pre);
-    HookEvent("player_healed", Event_player_healed, EventHookMode_Post);
 
-    HookEvent("teamplay_round_win", Event_round_win, EventHookMode_PostNoCopy);
-    HookEvent("teamplay_round_restart_seconds", Event_round_restart_seconds, EventHookMode_PostNoCopy);
     HookEvent("teamplay_round_start", Event_teamplay_round_start, EventHookMode_PostNoCopy);
-    HookEvent("tf_game_over", Event_game_over, EventHookMode_Pre);
-    HookEvent("teamplay_game_over", Event_game_over, EventHookMode_Pre);
+
+    // Match.inc
+    Match_OnPluginStart();
 
     //LastCollectInfoTime = GetGameTime();
     CreateTimer(TIMER_TICK, Timer_CollectInfo, _, TIMER_REPEAT);
@@ -175,97 +206,159 @@ public void OnLibraryAdded(const char[] name) {
         Updater_AddPlugin(UPDATE_URL);
 }
 
-// ResetMedic(team) resets all information about team's medic, including the client id.
-void ResetMedic(TFTeam team) {
-    medic[team].MedicClient = -1;
-    medic[team].MedicLastDeath = -1.0;
+// ResetMedic(client) resets all information about the medic, including which team they are a medic on.
+void ResetMedic(int client) {
+    medic[client].MedicTeam = TFTeam_Unassigned;
+    medic[client].MedicLastDeath = -1.0;
 
-    ResetMedicInfo(team);
+    ResetMedicInfo(client);
 }
 
-// ResetMedicInfo(team) only resets the info that is related to the medic's current life (like HasUber, IsUbering). All stats are kept.
-void ResetMedicInfo(TFTeam team) {
-    medic[team].MedicMedigun = -1;
+// ResetMedicInfo(client) only resets the info that is related to the medic's current life (like HasUber, IsUbering). All stats are kept.
+void ResetMedicInfo(int client) {
+    medic[client].MedicMedigun = INVALID_ENT_REFERENCE;
 
-    medic[team].MedicHasUber = false;
-    medic[team].MedicIsUbering = false;
-    medic[team].MedicTimeToUber = TF2_GetPlayerUberBuildTime(medic[team].MedicClient);
-    medic[team].MedicLastUberPct = 0.0;
-    medic[team].MedicStartedBuildTime = -1.0;
-    medic[team].MedicInitialHealSpawnTime = -1.0;
-    medic[team].MedicFullyChargedTime = -1.0;
-    medic[team].MedicUberStartTime = -1.0;
-    medic[team].MedicLastUberTime = -1.0;
+    medic[client].MedicHasUber = false;
+    medic[client].MedicIsUbering = false;
+    medic[client].MedicTimeToUber = TF2_GetPlayerUberBuildTime(client);
+    medic[client].MedicStartedBuildTime = -1.0;
+    medic[client].MedicInitialHealSpawnTime = -1.0;
+    medic[client].MedicFullyChargedTime = -1.0;
+    medic[client].MedicUberStartTime = -1.0;
+    medic[client].MedicLastUberTime = -1.0;
 
-    medic[team].MedicCurrentBiggestAdvantage = 0.0;
-    medic[team].MedicHasHadAdvantage = false;
+    ResetAdvantage(client);
+}
+
+// ResetAdvantage(client) forgets the uber advantage that the medic got their team.
+void ResetAdvantage(int client) {
+    for (TFTeam team = TFTeam_Red; team <= TFTeam_Blue; team++) {
+        if (teams[team].TeamAdvantageMedic == client) {
+            teams[team].TeamAdvantageMedic = 0;
+            teams[team].TeamBiggestAdvantage = 0.0;
+        }
+    }
+}
+
+// UpdateMedicTeam(client) starts or stops tracking the client as a medic, if they have changed class or team.
+void UpdateMedicTeam(int client) {
+    TFTeam team = TFTeam_Unassigned;
+    if (IsRealPlayer(client) && TF2_GetPlayerClass(client) == TFClass_Medic) {
+        team = TF2_GetClientTeam(client);
+        if (team != TFTeam_Red && team != TFTeam_Blue)
+            team = TFTeam_Unassigned;
+    }
+
+    if (medic[client].MedicTeam != team) {
+        ResetMedic(client);
+        medic[client].MedicTeam = team;
+    }
+}
+
+// GetBestMedic(team) returns the team's medic closest to having uber - or 0 if the team has no medic.
+int GetBestMedic(TFTeam team) {
+    int best = 0;
+    for (int client = 1; client <= MaxClients; client++) {
+        if (medic[client].MedicTeam != team)
+            continue;
+        if (best == 0 || medic[client].MedicTimeToUber < medic[best].MedicTimeToUber)
+            best = client;
+    }
+    return best;
+}
+
+// TeamHasUber(team) returns true if any of the team's medics has 100% uber.
+bool TeamHasUber(TFTeam team) {
+    for (int client = 1; client <= MaxClients; client++) {
+        if (medic[client].MedicTeam == team && medic[client].MedicHasUber)
+            return true;
+    }
+    return false;
 }
 
 public void OnMapStart() {
-    ResetMedic(TFTeam_Red);
-    ResetMedic(TFTeam_Blue);
+    for (int client = 1; client <= MaxClients; client++)
+        ResetMedic(client);
 
-    CountdownStarted = false;
-    IsInMatch = false;
-    IsBonusRoundTime = false;
     LastRoundStart = 0.0;
     g_fLastCollectBuffs = 0.0;
     //LastCollectInfoTime = GetGameTime();
+
+    Match_OnMapStart();
+}
+
+public void OnMapEnd() {
+    Match_OnMapEnd();
+}
+
+void StartMatch() {
+}
+
+void ResetMatch() {
+}
+
+void EndMatch(bool endedMidgame) {
+}
+
+// ShouldPrintToSTV() returns true if STV Stats messages should be shown - i.e. not in warmup.
+bool ShouldPrintToSTV() {
+    return g_bInMatch && g_bFirstRoundStarted;
 }
 
 public void Cvar_LogBuffs(Handle cvar, const char[] oldValue, const char[] newValue) {
     g_bLogBuffs = StringToInt(newValue) == 1;
 
-    Array_Fill(g_iLastHealth, sizeof(g_iLastHealth), 0);
-    Array_Fill(g_iHealedBy, sizeof(g_iHealedBy), 0);
-    Array_Fill(g_iBuffed, sizeof(g_iBuffed), 0);
+    for (int client = 1; client <= MaxClients; client++)
+        ResetBuffs(client);
 }
 
-public Action Event_player_connect(Event event, const char[] name, bool dontBroadcast) {
-    int userid = event.GetInt("userid");
-    int client = GetClientOfUserId(userid);
-
-    // ==== Buffs ====
+void ResetBuffs(int client) {
+    g_iBeamTarget[client] = 0;
+    g_iBuffHighest[client] = 0;
     g_iBuffed[client] = 0;
-    g_iHealedBy[client] = 0;
-    return Plugin_Continue;
+    g_iBuffedPatient[client] = 0;
+
+    // Drop unlogged buffs given to this client
+    for (int healer = 1; healer <= MaxClients; healer++) {
+        if (g_iBuffedPatient[healer] == client)
+            g_iBuffed[healer] = 0;
+    }
+}
+
+public void OnClientConnected(int client) {
+    // ==== Buffs ====
+    ResetBuffs(client);
+}
+
+public void OnClientPutInServer(int client) {
+    // ==== Buffs ====
+    // The hook is removed automatically when the player entity is deleted.
+    g_hTakeHealth.HookEntity(Hook_Pre, client, Hook_TakeHealth_Pre);
+    g_hTakeHealth.HookEntity(Hook_Post, client, Hook_TakeHealth_Post);
 }
 
 public Action Event_player_spawn(Event event, const char[] name, bool dontBroadcast) {
     int userid = event.GetInt("userid");
     int client = GetClientOfUserId(userid);
 
-    // ==== Buffs ====
-    g_iMaxHealth[client] = GetClientHealth(client);
-    g_iLastHealth[client] = g_iMaxHealth[client];
-    g_iBuffed[client] = 0;
-
     // ==== Medic stats ====
-    if (!IsInMatch || IsBonusRoundTime)
+    if (g_bIsBonusRoundTime)
         return Plugin_Continue;
 
     if (!IsRealPlayer(client))
         return Plugin_Continue;
 
-    for (TFTeam team = TFTeam_Red; team <= TFTeam_Blue; team++) {
-        if (medic[team].MedicClient != client)
-            continue;
+    UpdateMedicTeam(client);
+    if (medic[client].MedicTeam == TFTeam_Unassigned)
+        return Plugin_Continue;
 
-        if (TF2_GetClientTeam(client) != team || TF2_GetPlayerClass(client) != TFClass_Medic) {
-            ResetMedic(team);
-            continue;
-        }
+    float uberPct = TF2_GetPlayerUberLevel(client, medic[client].MedicMedigun);
+    if (uberPct > 0.0)
+        return Plugin_Continue; // The medic spawn switched by changing hat.
 
-        float uberPct = TF2_GetPlayerUberLevel(client, medic[team].MedicMedigun);
-        if (uberPct > 0.0)
-            continue; // The medic spawn switched by changing hat.
-
-        if (LastRoundStart >= 0.0) {
-            if (GetGameTime() - LastRoundStart >= 20.0) {
-                // Don't count spawning (or respawning to get a better spawn position) at the start of a round.
-                medic[team].MedicInitialHealSpawnTime = GetGameTime();
-            }
-        }
+    if (GetGameTime() - LastRoundStart >= 20.0) {
+        // Don't count spawning (or respawning to get a better spawn position) at the start of a round.
+        medic[client].MedicInitialHealSpawnTime = GetGameTime();
     }
 
     return Plugin_Continue;
@@ -275,33 +368,44 @@ public Action Event_player_death(Event event, const char[] name, bool dontBroadc
     int userid = event.GetInt("userid");
     int client = GetClientOfUserId(userid);
 
-    // ==== Buffs ====
-    g_iLastHealth[client] = 0;
-
     // ==== Medic stats ====
-    if (!IsInMatch || IsBonusRoundTime)
+    if (g_bIsBonusRoundTime)
         return Plugin_Continue;
 
-    for (TFTeam team = TFTeam_Red; team <= TFTeam_Blue; team++) {
-        if (medic[team].MedicClient != client || !IsRealPlayer(client) || TF2_GetPlayerClass(client) != TFClass_Medic)
-            continue;
+    if (!IsRealPlayer(client))
+        return Plugin_Continue;
 
-        float uberPct = TF2_GetPlayerUberLevel(client, medic[team].MedicMedigun);
+    TFTeam team = medic[client].MedicTeam;
+    if (team == TFTeam_Unassigned || TF2_GetPlayerClass(client) != TFClass_Medic)
+        return Plugin_Continue;
 
+    float uberPct = TF2_GetPlayerUberLevel(client, medic[client].MedicMedigun);
+
+    if (ShouldPrintToSTV()) {
         if (uberPct == 1) {
-            CPrintToSTV("{default}[STV Stats] %s{default}'s medic DROPPED!", 
+            CPrintToSTV("{default}[STV Stats] %s{default}'s medic DROPPED!",
                         team == TFTeam_Red ? "{red}RED" : "{blue}BLU");
         } else if (uberPct >= 0.95) {
-            CPrintToSTV("{default}[STV Stats] %s{default}'s medic died with %s%i%%{default} uber", 
-                        team == TFTeam_Red ? "{red}RED" : "{blue}BLU", 
-                        team == TFTeam_Red ? "{red}" : "{blue}", 
+            CPrintToSTV("{default}[STV Stats] %s{default}'s medic died with %s%i%%{default} uber",
+                        team == TFTeam_Red ? "{red}RED" : "{blue}BLU",
+                        team == TFTeam_Red ? "{red}" : "{blue}",
                         RoundToFloor(uberPct * 100.0));
         }
-        medic[team].MedicLastDeath = GetGameTime();
-
-        LogMedicDeath(client, RoundToFloor(uberPct * 100.0));
     }
+    medic[client].MedicLastDeath = GetGameTime();
 
+    LogMedicDeath(client, RoundToFloor(uberPct * 100.0));
+
+    return Plugin_Continue;
+}
+
+public Action Event_player_hurt(Event event, const char[] name, bool dontBroadcast) {
+    int userid = event.GetInt("userid");
+    int client = GetClientOfUserId(userid);
+
+    // ==== Buffs ====
+    // Heals that restore health lost to damage count as buffs again, even if the patient was buffed that high before.
+    g_iBuffHighest[client] = event.GetInt("health");
     return Plugin_Continue;
 }
 
@@ -310,103 +414,40 @@ public Action Event_player_chargedeployed(Event event, const char[] name, bool d
     int client = GetClientOfUserId(userid);
 
     // ==== Medic stats ====
-    for (TFTeam team = TFTeam_Red; team <= TFTeam_Blue; team++) {
-        if (medic[team].MedicClient != client)
-            continue;
+    TFTeam team = medic[client].MedicTeam;
+    if (team == TFTeam_Unassigned)
+        return Plugin_Continue;
 
-        if (medic[team].MedicHasUber == false)
-            LogUberReady(client);
+    if (medic[client].MedicFullyChargedTime < 0.0)
+        LogUberReady(client);
 
-        medic[team].MedicLastUberPct = 1.0;
-        medic[team].MedicHasUber = false;
-        medic[team].MedicHasHadAdvantage = false;
-        medic[team].MedicIsUbering = true;
-        medic[team].MedicUberStartTime = GetGameTime();
-        medic[team].MedicLastUberTime = GetGameTime();
+    medic[client].MedicHasUber = false;
+    ResetAdvantage(client);
+    medic[client].MedicIsUbering = true;
+    medic[client].MedicUberStartTime = GetGameTime();
+    medic[client].MedicLastUberTime = GetGameTime();
 
-        float waitTime;
-        if (medic[team].MedicFullyChargedTime < 0.0) {
-            waitTime = TIMER_TICK / 2;
-        } else {
-            waitTime = GetGameTime() - medic[team].MedicFullyChargedTime;
-            medic[team].MedicFullyChargedTime = -1.0;
-        }
+    float waitTime;
+    if (medic[client].MedicFullyChargedTime < 0.0) {
+        waitTime = TIMER_TICK / 2;
+    } else {
+        waitTime = GetGameTime() - medic[client].MedicFullyChargedTime;
+        medic[client].MedicFullyChargedTime = -1.0;
+    }
 
-        if (waitTime >= 30.0) {
-            CPrintToSTV("{default}[STV Stats] %s{default} had uber for %s%i seconds{default} before using it",
-                         team == TFTeam_Red ? "{red}RED" : "{blue}BLU", team == TFTeam_Red ? "{red}" : "{blue}",
-                         RoundToNearest(waitTime));
-        }
+    if (waitTime >= 30.0 && ShouldPrintToSTV()) {
+        CPrintToSTV("{default}[STV Stats] %s{default} had uber for %s%i seconds{default} before using it",
+                     team == TFTeam_Red ? "{red}RED" : "{blue}BLU", team == TFTeam_Red ? "{red}" : "{blue}",
+                     RoundToNearest(waitTime));
     }
     return Plugin_Continue;
-}
-
-public Action Event_player_healed(Event event, const char[] name, bool dontBroadcast) {
-    int patientId = event.GetInt("patient");
-    int healerId = event.GetInt("healer");
-    int patient = GetClientOfUserId(patientId);
-    int healer = GetClientOfUserId(healerId);
-    //int amount = event.GetInt("amount");
-    if (healer == 0) {
-        // Caused by medpacks
-        return Plugin_Continue;
-    } else if (healer == 0 || patient == 0) {
-        // This has been observed to happen by http://www.teamfortress.tv/post/631052/medicstats-sourcemod-plugin
-        LogMessage("Wrong player-healed event detected: patient=%i/%i, healer=%i/%i", patientId, patient, healerId, healer);
-        return Plugin_Continue;
-    }
-
-    if (TF2_GetPlayerClass(healer) != TFClass_Medic) {
-        // This will ignore other heal events, like an Engineer's dispenser
-        return Plugin_Continue;
-    }
-
-    TFTeam healerTeam = TF2_GetClientTeam(healer);
-
-    // ==== Buffs ====
-    g_iHealedBy[patient] = healer;
-
-    // ==== Medic stats ====
-    if (medic[healerTeam].MedicClient != healer) {
-        ResetMedicInfo(healerTeam);
-        medic[healerTeam].MedicClient = healer;
-    }
-    return Plugin_Continue;
-}
-
-public void Event_round_win(Event event, const char[] name, bool dontBroadcast) {
-    IsBonusRoundTime = true;
-}
-
-public void Event_round_restart_seconds(Event event, const char[] name, bool dontBroadcast) {
-    CountdownStarted = true;
-    IsInMatch = false;
 }
 
 public void Event_teamplay_round_start(Event event, const char[] name, bool dontBroadcast) {
-    if (CountdownStarted) {
-        CountdownStarted = false;
+    for (int client = 1; client <= MaxClients; client++)
+        ResetMedicInfo(client);
 
-        ResetMedic(TFTeam_Red);
-        ResetMedic(TFTeam_Blue);
-
-        IsInMatch = true;
-    } else if (IsInMatch) {
-        ResetMedicInfo(TFTeam_Red);
-        ResetMedicInfo(TFTeam_Blue);
-    }
-    IsBonusRoundTime = false;
     LastRoundStart = GetGameTime();
-}
-
-public Action Event_game_over(Event event, const char[] name, bool dontBroadcast) {
-    if (!IsInMatch)
-        return Plugin_Continue;
-
-    IsInMatch = false;
-    IsBonusRoundTime = false;
-
-    return Plugin_Continue;
 }
 
 public Action Timer_CollectInfo(Handle timer) {
@@ -414,27 +455,14 @@ public Action Timer_CollectInfo(Handle timer) {
     //new Float:timeSinceLastTick = max(0.0, gameTime - LastCollectInfoTime);
     //LastCollectInfoTime = gameTime;
 
-    for (TFTeam team = TFTeam_Red; team <= TFTeam_Blue; team++) {
-        int client = medic[team].MedicClient;
-        if (!IsRealPlayer(client) || TF2_GetClientTeam(client) != team || TF2_GetPlayerClass(client) != TFClass_Medic) {
-            medic[team].MedicClient = -1;
-        } else {
-            int target = TF2_GetHealingTarget(client);
-            if (IsRealPlayer(target))
-                g_iHealedBy[target] = client;
-        }
-    }
+    // Find the medics
+    for (int client = 1; client <= MaxClients; client++)
+        UpdateMedicTeam(client);
 
-    // Find the medics, if need be.
-    if (medic[TFTeam_Red].MedicClient == -1 || medic[TFTeam_Blue].MedicClient == -1) {
-        for (int client = 1; client <= MaxClients; client++) {
-            if (!IsRealPlayer(client))
-                continue;
-            if (TF2_GetPlayerClass(client) != TFClass_Medic)
-                continue;
-            if (medic[GetClientTeam(client)].MedicClient == -1)
-                medic[GetClientTeam(client)].MedicClient = client;
-        }
+    // Notice when a medic's beam detaches, so it counts as newly attached if it comes back.
+    for (int healer = 1; healer <= MaxClients; healer++) {
+        if (g_iBeamTarget[healer] != 0 && (!IsRealPlayer(healer) || !IsPlayerAlive(healer) || TF2_GetHealingTarget(healer) != g_iBeamTarget[healer]))
+            g_iBeamTarget[healer] = 0;
     }
 
     // Log buffs every second.
@@ -442,60 +470,74 @@ public Action Timer_CollectInfo(Handle timer) {
         CollectBuffs();
     }
 
-    // Don't calculate medic statas in warmup
-    if (!IsInMatch || IsBonusRoundTime)
+    // Don't calculate medic stats after a round has been won
+    if (g_bIsBonusRoundTime)
+        return Plugin_Continue;
+
+    // Don't count time while the game is paused
+    if (!IsServerProcessing())
         return Plugin_Continue;
 
     // Get info about each medic
-    for (TFTeam team = TFTeam_Red; team <= TFTeam_Blue; team++) {
-        int client = medic[team].MedicClient;
-        if (client == -1)
+    for (int client = 1; client <= MaxClients; client++) {
+        TFTeam team = medic[client].MedicTeam;
+        if (team == TFTeam_Unassigned)
             continue;
 
         if (IsPlayerAlive(client)) {
-            float uberPct = TF2_GetPlayerUberLevel(client, medic[team].MedicMedigun);
+            int previousMedigun = medic[client].MedicMedigun;
+            float uberPct = TF2_GetPlayerUberLevel(client, medic[client].MedicMedigun);
+            bool medigunChanged = previousMedigun != INVALID_ENT_REFERENCE && previousMedigun != medic[client].MedicMedigun; // E.g. picking up a medigun from the ground
             float uberBuildTime = TF2_GetPlayerUberBuildTime(client);
 
-            medic[team].MedicIsUbering = uberPct < medic[team].MedicLastUberPct && uberPct != 0.0;
-            medic[team].MedicHasUber =
+            int medigun = EntRefToEntIndex(medic[client].MedicMedigun);
+            medic[client].MedicIsUbering = medigun > 0 && GetEntProp(medigun, Prop_Send, "m_bChargeRelease") != 0;
+            medic[client].MedicHasUber =
                 uberPct >= 1.0 &&
-                !medic[team].MedicIsUbering; // The "!medic[team].MedicIsUbering" should not be necessary, but just to be sure. We never want (HasUber && IsUbering) to be true.
-            medic[team].MedicTimeToUber = uberBuildTime * (1 - uberPct);
-            medic[team].MedicLastUberPct = uberPct;
+                !medic[client].MedicIsUbering; // The "!medic[client].MedicIsUbering" should not be necessary, but just to be sure. We never want (HasUber && IsUbering) to be true.
+            medic[client].MedicTimeToUber = uberBuildTime * (1 - uberPct);
 
-            if (medic[team].MedicStartedBuildTime < 0.0) {
+            // If the full uber was lost without being used (e.g. switching medigun, or the Pomson draining it all), it is no longer the same uber.
+            if (uberPct <= 0.0)
+                medic[client].MedicFullyChargedTime = -1.0;
+
+            if (medic[client].MedicStartedBuildTime < 0.0) {
                 // Medic has not started building yet.
 
-                if (!(medic[team].MedicHasUber || medic[team].MedicIsUbering)) {
+                if (!(medic[client].MedicHasUber || medic[client].MedicIsUbering) && medic[client].MedicFullyChargedTime < 0.0) {
                     // If the medic does not have the uber and is not ubering, they have now started building uber.
-                    medic[team].MedicStartedBuildTime = gameTime;
-                    LogEmptyUber(client);
+                    // Unless they had a full uber that was drained (e.g. by the Pomson) - then it is still the same uber.
+                    medic[client].MedicStartedBuildTime = gameTime;
+                    // Only log it if the uber is (nearly) empty. It is not, e.g. if the medic picked up a charged medigun during an uber.
+                    // The uber has usually grown a little since it was empty, as it builds every frame while healing.
+                    if (uberPct < EMPTY_UBER_THRESHOLD)
+                        LogEmptyUber(client);
                 }
             } else {
                 // Medic has started building uber.
 
-                if (medic[team].MedicHasUber || medic[team].MedicIsUbering) {
-                    // Uber is fully built. Calculate some stats.
-                    float buildtime = gameTime - medic[team].MedicStartedBuildTime - TIMER_TICK / 2;
-                    buildtime = max(buildtime, uberBuildTime);
-                    medic[team].MedicStartedBuildTime = -1.0;
+                if (medic[client].MedicHasUber || medic[client].MedicIsUbering) {
+                    // Uber is fully built.
+                    medic[client].MedicStartedBuildTime = -1.0;
 
                     // Notice that sometimes the medic manages to get 100% and use the uber between two ticks.
                     // In that case, LogUberReady has already been called from the 'chargedeployed' event.
-                    if (medic[team].MedicHasUber)
+                    if (medic[client].MedicHasUber)
                         LogUberReady(client);
-
-                    //PrintToSTV("[STV Stats] %s built uber in %.0f seconds", team == TFTeam_Red ? "RED" : "BLU", buildtime);
                 }
             }
 
-            if (medic[team].MedicInitialHealSpawnTime >= 0.0 && uberPct > 0.0) {
+            // If the medic got a charged medigun before healing, we cannot tell when they start healing.
+            if (medigunChanged && uberPct > 0.0)
+                medic[client].MedicInitialHealSpawnTime = -1.0;
+
+            if (medic[client].MedicInitialHealSpawnTime >= 0.0 && uberPct > 0.0) {
                 // Medic has spawned, and just started healing.
 
-                float timeBeforeHealing = gameTime - medic[team].MedicInitialHealSpawnTime;
-                medic[team].MedicInitialHealSpawnTime = -1.0;
+                float timeBeforeHealing = gameTime - medic[client].MedicInitialHealSpawnTime;
+                medic[client].MedicInitialHealSpawnTime = -1.0;
 
-                if (timeBeforeHealing >= 5.0) {
+                if (timeBeforeHealing >= 5.0 && ShouldPrintToSTV()) {
                     CPrintToSTV(
                         "{default}[STV Stats] %s{default} spent %s%.1f seconds{default} after spawning before healing",
                         team == TFTeam_Red ? "{red}RED" : "{blue}BLU", 
@@ -506,51 +548,56 @@ public Action Timer_CollectInfo(Handle timer) {
             }
 
             // Remember when the medic had 100%
-            if (medic[team].MedicHasUber && medic[team].MedicFullyChargedTime < 0.0)
-                medic[team].MedicFullyChargedTime = gameTime - TIMER_TICK / 2;
+            if (medic[client].MedicHasUber && medic[client].MedicFullyChargedTime < 0.0)
+                medic[client].MedicFullyChargedTime = gameTime - TIMER_TICK / 2;
 
-            if (medic[team].MedicUberStartTime >= 0.0 && medic[team].MedicIsUbering == false) {
+            if (medic[client].MedicUberStartTime >= 0.0 && medic[client].MedicIsUbering == false) {
                 // If the medic ubered and the uber faded, remember how long it lasted.
 
-                float uberTime = gameTime - medic[team].MedicUberStartTime - TIMER_TICK / 2;
+                float uberTime = fmax(0.0, gameTime - medic[client].MedicUberStartTime - TIMER_TICK / 2); // Vaccinator ubers end immediately
                 //PrintToSTV("[STV Stats] %s's uber lasted %.1f seonds", team == TFTeam_Red ? "RED" : "BLU", uberTime);
                 LogUberLength(client, uberTime);
-                medic[team].MedicUberStartTime = -1.0;
+                medic[client].MedicUberStartTime = -1.0;
             }
         } else {
             // If the medic is dead, reset his "current life info".
-            ResetMedicInfo(team);
+            ResetMedicInfo(client);
         }
     }
 
-    // Find stats about the medics compared to each other
-    if (medic[TFTeam_Red].MedicClient != -1 && medic[TFTeam_Blue].MedicClient != -1) {
+    // Find stats about the teams compared to each other. Each team is represented by its medic closest to having uber.
+    int bestMedic[TFTeam];
+    bestMedic[TFTeam_Red] = GetBestMedic(TFTeam_Red);
+    bestMedic[TFTeam_Blue] = GetBestMedic(TFTeam_Blue);
+    if (bestMedic[TFTeam_Red] != 0 && bestMedic[TFTeam_Blue] != 0) {
         for (TFTeam team = TFTeam_Red; team <= TFTeam_Blue; team++) {
             TFTeam oppteam = team == TFTeam_Red ? TFTeam_Blue : TFTeam_Red;
-            int client = medic[team].MedicClient; //, oppclient = medic[oppteam][MedicClient];
+            int client = bestMedic[team], oppclient = bestMedic[oppteam];
 
-            if (medic[team].MedicIsUbering == false &&
-                medic[team].MedicTimeToUber <= medic[oppteam].MedicTimeToUber - 10.0) {
-                // If the medic currently has 10+ seconds uber advantage, remember it.
+            if (medic[client].MedicIsUbering == false &&
+                medic[client].MedicTimeToUber <= medic[oppclient].MedicTimeToUber - 10.0) {
+                // If the team currently has 10+ seconds uber advantage, remember it.
 
-                if (medic[team].MedicHasHadAdvantage == false)
-                    medic[team].MedicCurrentBiggestAdvantage = 0.0;
-                medic[team].MedicHasHadAdvantage = true;
-                medic[team].MedicCurrentBiggestAdvantage =
-                    max(medic[team].MedicCurrentBiggestAdvantage,
-                        medic[oppteam].MedicTimeToUber - medic[team].MedicTimeToUber);
+                if (teams[team].TeamAdvantageMedic == 0)
+                    teams[team].TeamBiggestAdvantage = 0.0;
+                teams[team].TeamAdvantageMedic = client;
+                teams[team].TeamBiggestAdvantage =
+                    fmax(teams[team].TeamBiggestAdvantage,
+                        medic[oppclient].MedicTimeToUber - medic[client].MedicTimeToUber);
             }
 
-            if (medic[oppteam].MedicHasUber && medic[team].MedicHasHadAdvantage) {
-                // If the medic has had an uber advantage, and the opposing medic has gotten uber in the meantime, remember the uber advantage loss.
+            if (TeamHasUber(oppteam) && teams[team].TeamAdvantageMedic != 0) {
+                // If the team has had an uber advantage, and the opposing team has gotten uber in the meantime, remember the uber advantage loss.
 
-                medic[team].MedicHasHadAdvantage = false;
+                LogLostUberAdvantage(teams[team].TeamAdvantageMedic, teams[team].TeamBiggestAdvantage);
+                if (ShouldPrintToSTV()) {
+                    CPrintToSTV("{default}[STV Stats] %s{default} lost their uber advantage of %s%.0f seconds{default}",
+                                 team == TFTeam_Red ? "{red}RED" : "{blue}BLU",
+                                 team == TFTeam_Red ? "{red}" : "{blue}",
+                                 teams[team].TeamBiggestAdvantage);
+                }
 
-                LogLostUberAdvantage(client, medic[team].MedicCurrentBiggestAdvantage);
-                CPrintToSTV("{default}[STV Stats] %s{default} lost their uber advantage of %s%.0f seconds{default}",
-                             team == TFTeam_Red ? "{red}RED" : "{blue}BLU", 
-                             team == TFTeam_Red ? "{red}" : "{blue}",
-                             medic[team].MedicCurrentBiggestAdvantage);
+                ResetAdvantage(teams[team].TeamAdvantageMedic);
             }
         }
     }
@@ -561,198 +608,147 @@ public Action Timer_CollectInfo(Handle timer) {
 void CollectBuffs() {
     g_fLastCollectBuffs = GetGameTime();
 
-    // Check who each medic is currently healing.
-    for (TFTeam team = TFTeam_Red; team <= TFTeam_Blue; team++) {
-        int client = medic[team].MedicClient;
-        if (!IsRealPlayer(client))
-            continue;
-        if (!IsPlayerAlive(client))
-            continue;
-        int target = TF2_GetHealingTarget(client);
-        if (IsRealPlayer(target))
-            g_iHealedBy[target] = client;
-    }
-
     // Log the recorded buffs.
-    for (int client = 1; client <= MaxClients; client++) {
-        if (g_iBuffed[client] <= 0)
-            continue;
-        if (!IsRealPlayer2(client)) {
-            g_iBuffed[client] = 0;
-            continue;
-        }
-
-        if (!IsRealPlayer(g_iHealedBy[client]) || TF2_GetPlayerClass(g_iHealedBy[client]) != TFClass_Medic) {
-            TFTeam clientTeam = TF2_GetClientTeam(client);
-            g_iHealedBy[client] = medic[clientTeam].MedicClient;
-        }
-
-        if (IsRealPlayer(g_iHealedBy[client])) {
-            LogHealed(client, g_iHealedBy[client], g_iBuffed[client]);
-        }
-        g_iBuffed[client] = 0;
-    }
+    for (int healer = 1; healer <= MaxClients; healer++)
+        FlushBuffs(healer);
 }
 
-public void OnGameFrame() {
-    if (!g_bLogBuffs)
+void FlushBuffs(int healer) {
+    if (g_iBuffed[healer] <= 0)
         return;
+    int patient = g_iBuffedPatient[healer];
+    if (IsRealPlayer2(healer) && IsRealPlayer(patient))
+        LogHealed(patient, healer, g_iBuffed[healer]);
+    g_iBuffed[healer] = 0;
+}
 
-    // Each game frame we compare all players' current health with their health in the last game frame. If someone got buffed (above 100% health), record it.
-    for (int client = 1; client <= MaxClients; client++) {
-        if (g_iLastHealth[client] <= 0)
+public MRESReturn Hook_TakeHealth_Pre(int patient, DHookReturn hReturn, DHookParam hParams) {
+    g_iHealthBeforeHeal[patient] = GetClientHealth(patient);
+    return MRES_Ignored;
+}
+
+public MRESReturn Hook_TakeHealth_Post(int patient, DHookReturn hReturn, DHookParam hParams) {
+    if (!g_bLogBuffs)
+        return MRES_Ignored;
+
+    if (!IsRealPlayer(patient) || !IsPlayerAlive(patient))
+        return MRES_Ignored;
+
+    int oldhealth = g_iHealthBeforeHeal[patient];
+    int newhealth = GetClientHealth(patient);
+    if (newhealth <= oldhealth)
+        return MRES_Ignored;
+
+    // Find the medics whose beam is on the patient.
+    int healers[MAXPLAYERS];
+    int numHealers = 0;
+    for (int healer = 1; healer <= MaxClients; healer++) {
+        if (!IsRealPlayer(healer) || !IsPlayerAlive(healer) || TF2_GetPlayerClass(healer) != TFClass_Medic)
             continue;
-        if (!IsRealPlayer2(client)) {
-            g_iLastHealth[client] = 0;
+        if (TF2_GetHealingTarget(healer) != patient)
             continue;
+        if (GetClientTeam(patient) != GetClientTeam(healer))
+            continue; // Enemy spies can be healed, but the game does not log heals to them, so don't log buffs to them either.
+
+        if (g_iBeamTarget[healer] != patient) {
+            // The beam just attached.
+            g_iBeamTarget[healer] = patient;
+            g_iBuffHighest[patient] = oldhealth;
         }
-
-        if (!IsPlayerAlive(client))
-            continue;
-
-        int newhealth = GetClientHealth(client);
-        int oldhealth = g_iLastHealth[client];
-        g_iLastHealth[client] = newhealth;
-        if (newhealth <= g_iMaxHealth[client])
-            continue;
-        if (newhealth <= oldhealth)
-            continue;
-        if (oldhealth < g_iMaxHealth[client])
-            oldhealth = g_iMaxHealth[client];
-        g_iBuffed[client] += newhealth - oldhealth;
+        healers[numHealers++] = healer;
     }
+    if (numHealers == 0)
+        return MRES_Ignored;
+
+    // If the patient got buffed (above max health) higher than they have been since the beam attached or since they
+    // last took damage, record it. Only counting new highs ignores the decay/re-heal loop at the overheal cap.
+    int highest = g_iBuffHighest[patient];
+    if (newhealth <= highest)
+        return MRES_Ignored;
+    g_iBuffHighest[patient] = newhealth;
+    if (newhealth - oldhealth > MAX_BEAM_HEAL_PER_CALL)
+        return MRES_Ignored; // Too much for a medigun in one heal, so it came from something else
+
+    int maxHealth = GetMaxHealth(patient);
+    if (maxHealth == -1 || newhealth <= maxHealth)
+        return MRES_Ignored;
+    int buffStart = oldhealth;
+    if (buffStart < highest)
+        buffStart = highest;
+    if (buffStart < maxHealth)
+        buffStart = maxHealth;
+    int buff = newhealth - buffStart;
+
+    // When several medics heal the same patient, split the buff between them.
+    for (int i = 0; i < numHealers; i++) {
+        int healer = healers[i];
+        int amount = buff / numHealers + (i < buff % numHealers ? 1 : 0);
+        if (amount <= 0)
+            continue;
+        if (g_iBuffedPatient[healer] != patient) {
+            // The medic switched patient. Log the buffs given to the previous patient.
+            FlushBuffs(healer);
+            g_iBuffedPatient[healer] = patient;
+        }
+        g_iBuffed[healer] += amount;
+    }
+
+    return MRES_Ignored;
 }
 
 // -----------------------------------
 // Log functions
 // -----------------------------------
 void LogFirstHeal(int healer, float time) {
-    char healerName[32];
-    char healerSteamId[64];
-    char healerTeam[64];
+    char healerStr[256];
+    GetPlayerLogStr(healer, healerStr, sizeof(healerStr));
 
-    GetClientAuthStringNew(healer, healerSteamId, sizeof(healerSteamId), false);
-    GetClientName(healer, healerName, sizeof(healerName));
-    GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
-
-    LogToGame("\"%s<%d><%s><%s>\" triggered \"first_heal_after_spawn\" (time \"%.1f\")", 
-        healerName,
-        GetClientUserId(healer), 
-        healerSteamId, 
-        healerTeam, 
-        time);
+    LogToGame("\"%s\" triggered \"first_heal_after_spawn\" (time \"%.1f\")", healerStr, time);
 }
 
 void LogUberReady(int healer) {
-    char healerName[32];
-    char healerSteamId[64];
-    char healerTeam[64];
+    char healerStr[256];
+    GetPlayerLogStr(healer, healerStr, sizeof(healerStr));
 
-    GetClientAuthStringNew(healer, healerSteamId, sizeof(healerSteamId), false);
-    GetClientName(healer, healerName, sizeof(healerName));
-    GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
-
-    LogToGame("\"%s<%d><%s><%s>\" triggered \"chargeready\"", 
-        healerName, 
-        GetClientUserId(healer), 
-        healerSteamId,
-        healerTeam);
+    LogToGame("\"%s\" triggered \"chargeready\"", healerStr);
 }
 
 void LogMedicDeath(int healer, int pct) {
-    char healerName[32];
-    char healerSteamId[64];
-    char healerTeam[64];
+    char healerStr[256];
+    GetPlayerLogStr(healer, healerStr, sizeof(healerStr));
 
-    GetClientAuthStringNew(healer, healerSteamId, sizeof(healerSteamId), false);
-    GetClientName(healer, healerName, sizeof(healerName));
-    GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
-
-    LogToGame("\"%s<%d><%s><%s>\" triggered \"medic_death_ex\" (uberpct \"%i\")", 
-        healerName, 
-        GetClientUserId(healer),
-        healerSteamId, 
-        healerTeam, 
-        pct);
+    LogToGame("\"%s\" triggered \"medic_death_ex\" (uberpct \"%i\")", healerStr, pct);
 }
 
 void LogEmptyUber(int healer) {
-    char healerName[32];
-    char healerSteamId[64];
-    char healerTeam[64];
+    char healerStr[256];
+    GetPlayerLogStr(healer, healerStr, sizeof(healerStr));
 
-    GetClientAuthStringNew(healer, healerSteamId, sizeof(healerSteamId), false);
-    GetClientName(healer, healerName, sizeof(healerName));
-    GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
-
-    LogToGame("\"%s<%d><%s><%s>\" triggered \"empty_uber\"", 
-        healerName, 
-        GetClientUserId(healer), 
-        healerSteamId,
-        healerTeam);
+    LogToGame("\"%s\" triggered \"empty_uber\"", healerStr);
 }
 
 void LogUberLength(int healer, float uberLength) {
-    char healerName[32];
-    char healerSteamId[64];
-    char healerTeam[64];
+    char healerStr[256];
+    GetPlayerLogStr(healer, healerStr, sizeof(healerStr));
 
-    GetClientAuthStringNew(healer, healerSteamId, sizeof(healerSteamId), false);
-    GetClientName(healer, healerName, sizeof(healerName));
-    GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
-
-    LogToGame("\"%s<%d><%s><%s>\" triggered \"chargeended\" (duration \"%.1f\")", 
-        healerName, 
-        GetClientUserId(healer),
-        healerSteamId, 
-        healerTeam, 
-        uberLength);
+    LogToGame("\"%s\" triggered \"chargeended\" (duration \"%.1f\")", healerStr, uberLength);
 }
 
 void LogLostUberAdvantage(int healer, float uberAdvSeconds) {
-    char healerName[32];
-    char healerSteamId[64];
-    char healerTeam[64];
+    char healerStr[256];
+    GetPlayerLogStr(healer, healerStr, sizeof(healerStr));
 
-    GetClientAuthStringNew(healer, healerSteamId, sizeof(healerSteamId), false);
-    GetClientName(healer, healerName, sizeof(healerName));
-    GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
-
-    LogToGame("\"%s<%d><%s><%s>\" triggered \"lost_uber_advantage\" (time \"%.0f\")", 
-        healerName,
-        GetClientUserId(healer), 
-        healerSteamId, 
-        healerTeam, 
-        uberAdvSeconds);
+    LogToGame("\"%s\" triggered \"lost_uber_advantage\" (time \"%.0f\")", healerStr, uberAdvSeconds);
 }
 
 
 
 // Borrowed from supstats.sp
 void LogHealed(int patient, int healer, int amount) {
-    char patientName[32];
-    char healerName[32];
-    char patientSteamId[64];
-    char healerSteamId[64];
-    char patientTeam[64];
-    char healerTeam[64];
+    char healerStr[256];
+    char patientStr[256];
+    GetPlayerLogStr(healer, healerStr, sizeof(healerStr));
+    GetPlayerLogStr(patient, patientStr, sizeof(patientStr));
 
-    GetClientAuthStringNew(patient, patientSteamId, sizeof(patientSteamId), false);
-    GetClientName(patient, patientName, sizeof(patientName));
-    GetClientAuthStringNew(healer, healerSteamId, sizeof(healerSteamId), false);
-    GetClientName(healer, healerName, sizeof(healerName));
-
-    GetPlayerTeamStr(GetClientTeam(patient), patientTeam, sizeof(patientTeam));
-    GetPlayerTeamStr(GetClientTeam(healer), healerTeam, sizeof(healerTeam));
-
-    LogToGame("\"%s<%d><%s><%s>\" triggered \"healed\" against \"%s<%d><%s><%s>\" (healing \"%d\")", 
-        healerName,
-        GetClientUserId(healer), 
-        healerSteamId, 
-        healerTeam, 
-        patientName, 
-        GetClientUserId(patient), 
-        patientSteamId,
-        patientTeam, 
-        amount);
+    LogToGame("\"%s\" triggered \"healed\" against \"%s\" (healing \"%d\")", healerStr, patientStr, amount);
 }

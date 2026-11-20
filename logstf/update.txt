@@ -4,11 +4,16 @@
 	{
 		"Version"
 		{
-			"Latest"	"3.0.0"
+			"Latest"	"3.1.0"
 		}
 		
-		"Notes"	"Changes in 3.0.0:"
-		"Notes"	"- Treat matches lasting more than one minute as completed instead of reset"
+		"Notes"	"Changes in 3.1.0:"
+		"Notes"	"- Added support for more than 32 players"
+		"Notes"	"- Reduced disk usage during mid-round log upload"
+		"Notes"	"- Improved performance during upload of large logs"
+		"Notes"	"- Improved error handling when clearing the log file"
+		"Notes"	"- Improved error handling when retrying log upload"
+		"Notes"	"- Added validation of logs.tf responses"
 	}
 	
 	"Files"

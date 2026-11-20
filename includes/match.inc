@@ -42,7 +42,7 @@ TODO:
 #include <f2stocks>
 
 
-ConVar match_hCvarTimelimit, match_hCvarWinlimit, match_hCvarWindiff, match_hCvarMaxRounds, match_hCvarTournament;
+ConVar match_hCvarTimelimit, match_hCvarWinlimit, match_hCvarWindiff, match_hCvarMaxRounds, match_hCvarTournament, match_hCvarAllowNonAdminRestart;
 bool g_bInMatch = false;
 float g_fMatchStartTime = 0.0, g_fLastRoundEnd = 0.0;
 bool g_bIsBonusRoundTime = false;
@@ -87,14 +87,16 @@ void Match_OnPluginStart() {
 	
 	// Hook mp_tournament_restart
 	// Purpose: Call ResetMatch when the tournament mode was reset
-	RegServerCmd("mp_tournament_restart", Match_Cmd_tournament_restart);
-	
-	
+	// Note: A command listener is used because players can issue the command from their own console when mp_tournament_allow_non_admin_restart is 1, and RegServerCmd only sees it when issued by the server.
+	AddCommandListener(Match_Cmd_tournament_restart, "mp_tournament_restart");
+
+
 	match_hCvarTimelimit = FindConVar("mp_timelimit");
 	match_hCvarWinlimit = FindConVar("mp_winlimit");
 	match_hCvarWindiff = FindConVar("mp_windifference");
 	match_hCvarMaxRounds = FindConVar("mp_maxrounds");
 	match_hCvarTournament = FindConVar("mp_tournament");
+	match_hCvarAllowNonAdminRestart = FindConVar("mp_tournament_allow_non_admin_restart");
 	HookConVarChange(match_hCvarTournament, Match_TournamentModeChanged);
 }
 
@@ -132,8 +134,8 @@ public void Match_Event_round_restart_seconds(Event event, const char[] name, bo
 }
 
 public void Match_Event_game_over(Event event, const char[] name, bool dontBroadcast) {
-	char map[64];
-	GetCurrentMap(map, sizeof(map));
+	char map[128];
+	F2_GetCurrentMapDisplayName(map, sizeof(map));
 	if (strncmp(map, "ctf_", 4, false) == 0) {
 		if ((GetEngineTime() - g_fLastRoundEnd) > 7.5)
 			return;
@@ -238,7 +240,11 @@ public void Match_Event_player_disconnect(Event event, const char[] name, bool d
 	}
 }
 
-public Action Match_Cmd_tournament_restart(int args) {
+public Action Match_Cmd_tournament_restart(int client, const char[] command, int argc) {
+	// The game ignores the command from players unless mp_tournament_allow_non_admin_restart is 1
+	if (client != 0 && !match_hCvarAllowNonAdminRestart.BoolValue)
+		return Plugin_Continue;
+
 	Match_ResetMatch();
 	return Plugin_Continue;
 }

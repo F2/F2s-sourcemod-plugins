@@ -4,11 +4,27 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.6.2"
+			"Latest"	"3.0.0"
 		}
 		
-		"Notes"	"Changes in 2.6.2:"
-		"Notes"	"- Added accuracy logs for alternative scout weapons - by s-maurice"
+		"Notes"	"Changes in 3.0.0:"
+		"Notes"	"- Correctly logs deflected projectiles now"
+		"Notes"	"- Correctly logs taunt damage now"
+		"Notes"	"- Now logs when a medic picks up a medigun"
+		"Notes"	"- Now logs plugin version meta data"
+		"Notes"	"- Fixed crossbow heals logging the potential heal amount instead of the actual heal amount"
+		"Notes"	"- Fixed cannonball accuracy logs"
+		"Notes"	"- Fixed telefrags being logged as taunts"
+		"Notes"	"- Fixed bleed damage logs"
+		"Notes"	"- Fixed Black Box healing being estimated imprecisely"
+		"Notes"	"- Fixed bug where medic airshot could wrongly be logged on a heal event"
+		"Notes"	"- Fixed bug where lit huntsman headshots counted as multiple headshots on the following burn ticks"
+		"Notes"	"- Fixed rare bug where an airshot was incorrectly detected after touching a grenade roller"
+		"Notes"	"- Fixed rare bug where a sentry rocket from a destroyed sentry was logged incorrectly"
+		"Notes"	"- Fixed rare bug where a rocket jump could be counted as a missed shot"
+		"Notes"	"- Fixed pauses not being logged when using setpause/unpause, or when the player left right after pausing"
+		"Notes"	"- Fixed detection of giger counter"
+		"Notes"	"- Improved detection of shooting/clearing stickies"
 	}
 	
 	"Files"

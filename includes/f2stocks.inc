@@ -30,9 +30,14 @@ char g_sClassNames[TFClassType][16] = {
 	"Unknown", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer"
 };
 
+char g_sClassNamesLower[TFClassType][16] = {
+	"undefined", "scout", "sniper", "soldier", "demoman", "medic", "heavyweapons", "pyro", "spy", "engineer"
+};
+
 stock void F2STOCKS_Dummy() {
 	g_fCapMultipliers[0] = 0.0; // To avoid getting a "not used" warning
 	g_sClassNames[0] = "Unknown";
+	g_sClassNamesLower[0] = "undefined";
 }
 
 
@@ -74,16 +79,16 @@ stock int FindSTV() {
 	return PrintToSTV_iLastStvClient;
 }
 
-stock float TF2_GetPlayerUberLevel(int client, int &medigunEntity = -1) { // This function won't work if the player is dead, unless the correct medigunEntity is passed.
+stock float TF2_GetPlayerUberLevel(int client, int &medigunRef = INVALID_ENT_REFERENCE) { // This function won't work if the player is dead, unless the correct medigunRef (an entity reference) is passed.
 	int index = GetPlayerWeaponSlot(client, 1);
 	if (index <= 0)
-		index = medigunEntity;
-	medigunEntity = -1;
+		index = EntRefToEntIndex(medigunRef);
+	medigunRef = INVALID_ENT_REFERENCE;
 	if (index > 0) {
 		char classname[64];
 		GetEntityNetClass(index, classname, sizeof(classname));
 		if (StrEqual(classname, "CWeaponMedigun")) {
-			medigunEntity = index;
+			medigunRef = EntIndexToEntRef(index);
 			float value = GetEntPropFloat(index, Prop_Send, "m_flChargeLevel");
 			return value;
 		}
@@ -110,27 +115,6 @@ stock float TF2_GetPlayerUberBuildTime(int client) {
 	return 40.0;
 }
 
-stock void F2_GetMedigunName(int client, char[] medigun, int medigunLen) {
-	int weaponid = GetPlayerWeaponSlot(client, 1);
-	if (weaponid >= 0) {
-		int defid = GetEntProp(weaponid, Prop_Send, "m_iItemDefinitionIndex");
-		switch (defid) {
-			case 29, 211, 663, 796, 805, 885, 894, 903, 912, 961, 970, 15008, 15010, 15025, 15039, 15050, 15078, 15097, 15120, 15121, 15122, 15145, 15146, 16001, 16013, 16024:
-				strcopy(medigun, medigunLen, "medigun");
-			case 35:
-				strcopy(medigun, medigunLen, "kritzkrieg");
-			case 411:
-				strcopy(medigun, medigunLen, "quickfix");
-			case 998:
-				strcopy(medigun, medigunLen, "vaccinator");
-			default:
-				strcopy(medigun, medigunLen, "unknown");
-		}
-	} else {
-		strcopy(medigun, medigunLen, "");
-	}
-}
-
 stock int TF2_GetHealingTarget(int client) {
 	char classname[64];
 	int index = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
@@ -146,19 +130,19 @@ stock int TF2_GetHealingTarget(int client) {
 	return -1;
 }
 
-stock void TF2_GetCurrentWeaponClass(int client, char[] name, int maxlength) {
-	if (client > 0) {
-		int index = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
-		if (index > 0)
-			GetEntityNetClass(index, name, maxlength);
-	}
-}
-
-stock any max(any val1, any val2) {
+stock int max(int val1, int val2) {
 	return val1 > val2 ? val1 : val2;
 }
 
-stock any min(any val1, any val2) {
+stock int min(int val1, int val2) {
+	return val1 < val2 ? val1 : val2;
+}
+
+stock float fmax(float val1, float val2) {
+	return val1 > val2 ? val1 : val2;
+}
+
+stock float fmin(float val1, float val2) {
 	return val1 < val2 ? val1 : val2;
 }
 
@@ -166,16 +150,8 @@ stock bool IsClientValid(int client) {
 	return client > 0 && client <= MaxClients && IsClientConnected(client) && IsClientInGame(client) && !IsClientSourceTV(client);
 }
 
-stock bool IsValidClient(int client) {
-	return IsClientValid(client);
-}
-
 stock bool IsClientValid2(int client) {
 	return IsClientConnected(client) && IsClientInGame(client) && !IsClientSourceTV(client);
-}
-
-stock bool IsValidClient2(int client) {
-	return IsClientValid2(client);
 }
 
 stock bool IsRealPlayer(int client) {
@@ -215,8 +191,9 @@ stock void CPrintToChatEx2(int client, int author, const char[] message, any ...
 	char buffer2[MC_MAX_MESSAGE_LENGTH];
 	SetGlobalTransTarget(client);
 	Format(buffer, sizeof(buffer), "\x01%s", message);
-	MC_ReplaceColorCodes(buffer, author);
+	MC_ReplaceColorCodes(buffer, author, false, sizeof(buffer));
 	VFormat(buffer2, sizeof(buffer2), buffer, 4);
+	ReplaceString(buffer2, sizeof(buffer2), "%", "\xEF\xBC\x85"); // The client cuts off messages at %s, so use a fullwidth percent sign (U+FF05) instead
 	MC_SendMessage(client, buffer2, author);
 }
 
@@ -239,8 +216,9 @@ stock void CPrintToChatAllEx2(int author, const char[] message, any ...) {
 		}
 		SetGlobalTransTarget(i);
 		Format(buffer, sizeof(buffer), "\x01%s", message);
-		MC_ReplaceColorCodes(buffer, author);
+		MC_ReplaceColorCodes(buffer, author, false, sizeof(buffer));
 		VFormat(buffer2, sizeof(buffer2), buffer, 3);
+		ReplaceString(buffer2, sizeof(buffer2), "%", "\xEF\xBC\x85"); // The client cuts off messages at %s, so use a fullwidth percent sign (U+FF05) instead
 		MC_SendMessage(i, buffer2, author);
 	}
 }
@@ -259,8 +237,9 @@ stock void CPrintToChat2(int client, const char[] message, any ...) {
 	char buffer2[MC_MAX_MESSAGE_LENGTH];
 	SetGlobalTransTarget(client);
 	Format(buffer, sizeof(buffer), "\x01%s", message);
-	MC_ReplaceColorCodes(buffer);
+	MC_ReplaceColorCodes(buffer, 0, false, sizeof(buffer));
 	VFormat(buffer2, sizeof(buffer2), buffer, 3);
+	ReplaceString(buffer2, sizeof(buffer2), "%", "\xEF\xBC\x85"); // The client cuts off messages at %s, so use a fullwidth percent sign (U+FF05) instead
 	MC_SendMessage(client, buffer2);
 }
 
@@ -277,23 +256,13 @@ stock void CPrintToChatAll2(const char[] message, any ...) {
 		}
 		SetGlobalTransTarget(i);
 		Format(buffer, sizeof(buffer), "\x01%s", message);
-		MC_ReplaceColorCodes(buffer);
+		MC_ReplaceColorCodes(buffer, 0, false, sizeof(buffer));
 		VFormat(buffer2, sizeof(buffer2), buffer, 2);
+		ReplaceString(buffer2, sizeof(buffer2), "%", "\xEF\xBC\x85"); // The client cuts off messages at %s, so use a fullwidth percent sign (U+FF05) instead
 		MC_SendMessage(i, buffer2);
 	}
 }
 
-
-stock void GetPlayerTeamStr(int team, char[] teamstr, int teamstrLen) {
-	switch (team) {
-		case (view_as<int>(TFTeam_Red)):
-			strcopy(teamstr, teamstrLen, "Red");
-		case view_as<int>(TFTeam_Blue):
-			strcopy(teamstr, teamstrLen, "Blue");
-		default:
-			strcopy(teamstr, teamstrLen, "unknown");
-	}
-}
 
 stock int TF2_GetPlayerScore(int client) {
 	if (!IsClientConnected(client))
@@ -347,9 +316,25 @@ stock bool GetPlayerOutline(int client) {
 
 
 
+// Returns the player's max health, including modifiers from items and player state (e.g. Eyelander heads).
+// The value is read from the player resource entity, which copies the value of the game's GetMaxHealth() roughly every
+// 0.1 seconds. So right after the max health changes, the old value may be returned for a few ticks.
+// Use GetMaxHealth_RealTime() if the current value is needed.
+// Returns -1 if the player resource entity cannot be found.
+stock int GetMaxHealth(int client) {
+	int entity = GetPlayerResourceEntity();
+	if (entity == -1)
+		return -1;
+
+	return GetEntProp(entity, Prop_Send, "m_iMaxHealth", _, client);
+}
+
+// Returns the current max health by calling the game's GetMaxHealth() directly, so unlike GetMaxHealth() there is no delay.
+// This depends on the GetMaxHealth offset in the sdkhooks.games gamedata. If a game update changes the offset before the
+// gamedata is updated, this may return garbage or crash the server. Prefer GetMaxHealth() unless the delay matters.
 // Based on psychonic's post https://forums.alliedmods.net/showpost.php?p=1865459&postcount=3
 Handle fnGetMaxHealth = null;
-stock int GetMaxHealth(int client) {
+stock int GetMaxHealth_RealTime(int client) {
 	if (fnGetMaxHealth == null) {
 		Handle hConf = LoadGameConfigFile("sdkhooks.games");
 		if (hConf == null)
@@ -407,6 +392,15 @@ stock void F2_GetFileName(char[] filename, int maxsize, const char[] filepath) {
 	}
 }
 
+// Gets the current map name without the extra parts that workshop maps have,
+// e.g. "workshop/cp_process_final.ugc12345" becomes "cp_process_final".
+stock void F2_GetCurrentMapDisplayName(char[] map, int maxsize) {
+	char currentMap[PLATFORM_MAX_PATH];
+	GetCurrentMap(currentMap, sizeof(currentMap));
+	if (!GetMapDisplayName(currentMap, map, maxsize))
+		strcopy(map, maxsize, currentMap);
+}
+
 stock bool SteamID_Equal(const char[] id1, const char[] id2) {
 	// Compares two SteamIDs in the form of STEAM_0:X:YYYY, [U:1:ZZZZ] or X:YYYY
 
@@ -450,29 +444,6 @@ stock bool SteamID_Equal(const char[] id1, const char[] id2) {
 	return steam1 == steam2;
 }
 
-stock bool SteamID_ToOldFormat(char[] oldID, int oldIDsize, const char[] newID) {
-	// Converts [U:1:ZZZZ] to STEAM_0:X:YYYY
-
-	int steamidNum;
-	if (StringToIntEx(newID[5], steamidNum) != strlen(newID) - 5 - 1)
-		return false;
-
-	FormatEx(oldID, oldIDsize, "STEAM_0:%i:%i", steamidNum & 1, steamidNum >> 1);
-	return true;
-}
-
-stock bool GetClientAuthStringOld(int client, char[] steamid, int steamidSize, bool validate = true) {
-	if (!GetClientAuthId(client, AuthId_Steam2, steamid, steamidSize, validate)) {
-		strcopy(steamid, steamidSize, "");
-		return false;
-	}
-	if (F2_String_StartsWith(steamid, "STEAM_", false))
-		return true;
-	if (!SteamID_ToOldFormat(steamid, steamidSize, steamid))
-		return false;
-	return true;
-}
-
 stock bool GetClientAuthStringNew(int client, char[] steamid, int steamidSize, bool validate = true) {
 	if (IsFakeClient(client)) {
 		strcopy(steamid, steamidSize, "BOT");
@@ -486,6 +457,15 @@ stock bool GetClientAuthStringNew(int client, char[] steamid, int steamidSize, b
 	}
 	Format(steamid, steamidSize, "[U:1:%i]", accountID);
 	return true;
+}
+
+// Formats a player the same way as the game does in its log lines: name<userid><steamid><team>
+stock void GetPlayerLogStr(int client, char[] str, int strLen) {
+	char steamId[64];
+	char team[64];
+	GetClientAuthStringNew(client, steamId, sizeof(steamId), false);
+	GetTeamName(GetClientTeam(client), team, sizeof(team));
+	FormatEx(str, strLen, "%N<%d><%s><%s>", client, GetClientUserId(client), steamId, team);
 }
 
 stock int GetClientBySteamId(const char[] auth, AuthIdType idtype, bool validate = true) {

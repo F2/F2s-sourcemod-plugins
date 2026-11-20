@@ -19,6 +19,11 @@ Release notes:
 - Updated code to be compatible with SourceMod 1.12
 
 
+---- 1.1.4 (20/11/2026) ----
+- Fixed bug where stored scores were not reset on servers with SourceTV
+- Fixed rare bug where the plugin could stop working on mapchange
+
+
 Known issues:
 - Not compatible with TFTrue.
 */
@@ -34,7 +39,7 @@ Known issues:
 #include <updater>
 
 
-#define PLUGIN_VERSION "1.1.3"
+#define PLUGIN_VERSION "1.1.4"
 #define UPDATE_URL		"https://sourcemod.krus.dk/restorescore/update.txt"
 
 
@@ -46,10 +51,8 @@ public Plugin myinfo = {
 	url = "https://github.com/F2/F2s-sourcemod-plugins"
 };
 
-bool g_bHookActivated = false;
-
 int g_iAddScore[MAXPLAYERS+1]; // The old scores that are currently being added to the clients.
-KeyValues g_kvOldScores = null; // Keys are steamids of players disconnected, and values are their old scores.
+StringMap g_tOldScores = null; // Keys are steamids of players disconnected, and values are their old scores.
 
 
 
@@ -58,7 +61,12 @@ public void OnPluginStart() {
 	HookEvent("player_disconnect", Event_player_disconnect, EventHookMode_Pre);
 	HookEvent("teamplay_restart_round", Event_restart_round, EventHookMode_Post);
 	
-	g_kvOldScores = CreateKeyValues("OldScores");
+	g_tOldScores = new StringMap();
+	
+	// Late load
+	int iIndex = FindEntityByClassname(-1, "tf_player_manager");
+	if (iIndex != -1)
+		SDKHook(iIndex, SDKHook_ThinkPost, Hook_OnThinkPost);
 	
 	if (LibraryExists("updater"))
 		Updater_AddPlugin(UPDATE_URL);
@@ -69,21 +77,12 @@ public void OnLibraryAdded(const char[] name) {
 		Updater_AddPlugin(UPDATE_URL);
 }
 
-public void OnPluginEnd() {
-	StopHook();
-	delete g_kvOldScores;
-}
-
 
 
 // Clear the old scores when the match is reset and on mapchange.
 void ResetOldScores() {
-	// Stop the hook (for performance reasons)
-	StopHook();
-	
 	// Clear the old scores
-	delete g_kvOldScores;
-	g_kvOldScores = CreateKeyValues("OldScores");
+	g_tOldScores.Clear();
 	
 	for (int client = 1; client <= MaxClients; client++)
 		g_iAddScore[client] = 0;
@@ -110,19 +109,12 @@ public void Event_player_activate(Event event, const char[] name, bool dontBroad
 	char steamid[64];
 	if (!GetClientAuthId(client, AuthId_Steam2, steamid, sizeof(steamid), false))
 		return;
-	KvRewind(g_kvOldScores);
-	if (KvJumpToKey(g_kvOldScores, steamid) == false)
+	int oldscore;
+	if (!g_tOldScores.GetValue(steamid, oldscore))
 		return;
-	int oldscore = KvGetNum(g_kvOldScores, "score");
-	KvGoBack(g_kvOldScores);
-	KvDeleteKey(g_kvOldScores, steamid);
+	g_tOldScores.Remove(steamid);
 	
 	g_iAddScore[client] = oldscore;
-	//SetEntProp(client, Prop_Data, "m_iFrags", KvGetNum(g_kvOldScores, "kills"));
-	//SetEntProp(client, Prop_Data, "m_iDeaths", KvGetNum(g_kvOldScores, "deaths"));
-	//SetEntProp(client, Prop_Data, "m_iAssists", KvGetNum(g_kvOldScores, "assists"));
-	
-	StartHook();
 }
 
 // When a player disconnects, remember the score.
@@ -133,7 +125,7 @@ public void Event_player_disconnect(Event event, const char[] name, bool dontBro
 	g_iAddScore[client] = 0;
 	
 	// Clear the old scores if the server is empty
-	if (GetClientCount() == 1) {
+	if (GetRealPlayerCount() == (IsRealPlayer(client) ? 1 : 0)) {
 		ResetOldScores();
 		return;
 	}
@@ -149,40 +141,15 @@ public void Event_player_disconnect(Event event, const char[] name, bool dontBro
 	if (!GetClientAuthId(client, AuthId_Steam2, steamid, sizeof(steamid), false))
 		return;
 	
-	KvRewind(g_kvOldScores);
-	if (KvJumpToKey(g_kvOldScores, steamid, true) == false)
-		return;
-	
-	KvSetNum(g_kvOldScores, "score", score);
-	//KvSetNum(g_kvOldScores, "kills", GetEntProp(client, Prop_Data, "m_iFrags"));
-	//KvSetNum(g_kvOldScores, "deaths", GetEntProp(client, Prop_Data, "m_iDeaths"));
-	//KvSetNum(g_kvOldScores, "assists", GetEntProp(client, Prop_Data, "m_iAssists"));
-	KvGoBack(g_kvOldScores);
+	g_tOldScores.SetValue(steamid, score);
 }
 
 
 
 // --- This is where the magic happens! ---
-void StartHook() {
-	if (g_bHookActivated)
-		return;
-	g_bHookActivated = true;
-	int iIndex = FindEntityByClassname(-1, "tf_player_manager");
-	if (iIndex == -1)
-		SetFailState("Unable to find tf_player_manager entity");
-	
-	SDKHook(iIndex, SDKHook_ThinkPost, Hook_OnThinkPost);
-}
-
-void StopHook() {
-	if (!g_bHookActivated)
-		return;
-	g_bHookActivated = false;
-	int iIndex = FindEntityByClassname(-1, "tf_player_manager");
-	if (iIndex == -1)
-		SetFailState("Unable to find tf_player_manager entity");
-	
-	SDKUnhook(iIndex, SDKHook_ThinkPost, Hook_OnThinkPost);
+public void OnEntityCreated(int entity, const char[] classname) {
+	if (StrEqual(classname, "tf_player_manager"))
+		SDKHook(entity, SDKHook_ThinkPost, Hook_OnThinkPost);
 }
 
 public void Hook_OnThinkPost(int iEnt) {

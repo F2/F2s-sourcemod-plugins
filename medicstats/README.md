@@ -2,7 +2,7 @@
 
 Features:
 
-- Logs buff heals (~95% accurate)
+- Logs buff heals
 - Logs average time to build über
 - Logs average time the über lasts
 - Logs number of über advantages lost

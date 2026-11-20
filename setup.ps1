@@ -32,14 +32,14 @@ else {
     }
 
     if ($IsWindows) {
-        $sourcemodFilename = "sourcemod-1.12.0-git7210-windows.zip"
+        $sourcemodFilename = "sourcemod-1.12.0-git7260-windows.zip"
         $sourcemodUrl = "https://sm.alliedmods.net/smdrop/1.12/" + $sourcemodFilename
         Invoke-WebRequest $sourcemodUrl -OutFile $sourcemodFilename
         Expand-Archive $sourcemodFilename -DestinationPath "sourcemod-binaries"
         Remove-Item $sourcemodFilename
     }
     elseif ($IsLinux) {
-        $sourcemodFilename = "sourcemod-1.12.0-git7210-linux.tar.gz"
+        $sourcemodFilename = "sourcemod-1.12.0-git7260-linux.tar.gz"
         $sourcemodUrl = "https://sm.alliedmods.net/smdrop/1.12/" + $sourcemodFilename
         Invoke-WebRequest $sourcemodUrl -OutFile $sourcemodFilename
         mkdir sourcemod-binaries

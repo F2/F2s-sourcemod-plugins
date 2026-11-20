@@ -8,7 +8,7 @@ Download all plugins in a zip file here: <a href="https://sourcemod.krus.dk/f2-s
 
 ### Medic Stats <a href="https://sourcemod.krus.dk/medicstats.zip"><img src="https://img.shields.io/badge/-download-informational" /></a> <a href="./medicstats"><img src="https://img.shields.io/badge/-More%20info-yellowgreen" /></a>
 
-- Logs buff heals (~95% accurate)
+- Logs buff heals
 - Logs average time to build über
 - Logs average time the über lasts
 - Logs number of über advantages lost
@@ -69,6 +69,7 @@ Download all plugins in a zip file here: <a href="https://sourcemod.krus.dk/f2-s
 
 - Waits up to 90 seconds when changing map
 - Doesn't wait more time than necessary
+- Doesn't wait if no one is watching SourceTV
 
 ### AFK <a href="https://sourcemod.krus.dk/afk.zip"><img src="https://img.shields.io/badge/-download-informational" /></a> <a href="./afk"><img src="https://img.shields.io/badge/-More%20info-yellowgreen" /></a>
 
