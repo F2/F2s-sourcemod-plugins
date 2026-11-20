@@ -32,8 +32,9 @@ Release notes:
 - Fixed unnecessary tournament restart when server is almost empty
 
 
----- 1.2.0 (16/11/2026) ----
-- Minor fixes
+---- 2.0.0 (20/11/2026) ----
+- Changes map immediately if no one is watching SourceTV
+- Uses SourceTV Manager if it is installed, otherwise checks tv_status every minute
 
 
 BUG:
@@ -50,12 +51,18 @@ BUG:
 #include <morecolors>
 #include <f2stocks>
 #include <match>
+#include <regex>
 #undef REQUIRE_PLUGIN
 #include <updater>
+#undef REQUIRE_EXTENSIONS
+#include <sourcetvmanager>
 
 
-#define PLUGIN_VERSION "1.2.0"
+#define PLUGIN_VERSION "2.0.0"
 #define UPDATE_URL     "https://sourcemod.krus.dk/waitforstv/update.txt"
+
+#define TV_STATUS_POLL_INTERVAL 60.0
+#define TV_STATUS_MAX_AGE       150.0 // if the last tv_status result is older than this, assume there are viewers
 
 
 public Plugin myinfo = {
@@ -73,6 +80,12 @@ char g_sStvCountdownNextMap[128]; // which map to switch to after the countdown
 bool g_bMatchPlayed = false;
 Handle g_hCountdownTimer = null;
 ConVar g_cvarDelayMapChange = null;
+ConVar g_cvarTvEnable = null;
+ConVar g_cvarTvDelay = null;
+Regex g_hTvStatusRegex;
+bool g_bTvStatusValid = false; // whether the last tv_status poll could be parsed
+int g_iTvStatusSpectators, g_iTvStatusRelays;
+float g_fTvStatusTime;
 
 
 public void OnPluginStart() {
@@ -82,6 +95,12 @@ public void OnPluginStart() {
 	g_cvarDelayMapChange = FindConVar("tv_delaymapchange_protect");
 	HookConVarChange(g_cvarDelayMapChange, ConVar_DelayMapChange);
 	g_cvarDelayMapChange.IntValue = 0;
+	
+	g_cvarTvEnable = FindConVar("tv_enable");
+	g_cvarTvDelay = FindConVar("tv_delay");
+	
+	g_hTvStatusRegex = new Regex("Local Slots \\d+, Spectators (\\d+), Proxies (\\d+)");
+	CreateTimer(TV_STATUS_POLL_INTERVAL, Timer_PollTvStatus, _, TIMER_REPEAT);
 	
 	Match_OnPluginStart();
 	
@@ -111,6 +130,8 @@ void StartMatch() {
 	// If a forced changelevel failed, g_iStvCountdown is stuck at 1, which would make the next changelevel skip the wait
 	if (g_hCountdownTimer == null)
 		g_iStvCountdown = 0;
+	
+	RequestFrame(Frame_PollTvStatus);
 }
 
 void ResetMatch() {
@@ -119,6 +140,8 @@ void ResetMatch() {
 void EndMatch(bool endedMidgame) {
 	g_bMatchPlayed = true;
 	g_fMatchEndTime = GetEngineTime(); // Remember the match end-time
+	
+	RequestFrame(Frame_PollTvStatus);
 }
 
 
@@ -141,7 +164,7 @@ public Action Cmd_Changelevel(int args) {
 		return Plugin_Continue;
 	
 	// If tv is disabled then just change the map
-	bool tvenabled = FindConVar("tv_enable").BoolValue;
+	bool tvenabled = g_cvarTvEnable.BoolValue;
 	if (tvenabled == false)
 		return Plugin_Continue;
 	
@@ -152,13 +175,19 @@ public Action Cmd_Changelevel(int args) {
 		return Plugin_Continue;
 	
 	// Retrieve the stvdelay
-	float stvdelayf = FindConVar("tv_delay").FloatValue;
+	float stvdelayf = g_cvarTvDelay.FloatValue;
 	int stvdelay = RoundToCeil(stvdelayf);
 	if (stvdelay < 0)
 		stvdelay = 0;
 	
 	// If there is no delay, change the map immediately
 	if (stvdelay == 0)
+		return Plugin_Continue;
+	
+	// If no one is watching SourceTV, change the map immediately
+	int spectators, relays;
+	bool viewersKnown = GetStvViewers(spectators, relays);
+	if (viewersKnown && spectators == 0 && relays == 0)
 		return Plugin_Continue;
 	
 	// If the changelevel command is issued twice then change the map immediately
@@ -185,6 +214,8 @@ public Action Cmd_Changelevel(int args) {
 	
 	// Remember which map we need to change to, and start the countdown trigger
 	strcopy(g_sStvCountdownNextMap, sizeof(g_sStvCountdownNextMap), map);
+	if (viewersKnown)
+		PrintStvViewers(spectators, relays);
 	PrintTimeRemainingUntilMapChange();
 	ReplyToCommand(0, "[Wait for STV] To stop the changelevel, type: rcon stopchangelevel");
 	g_hCountdownTimer = CreateTimer(1.0, StvCountdownTrigger, _, TIMER_FLAG_NO_MAPCHANGE | TIMER_REPEAT);
@@ -201,7 +232,8 @@ public Action Cmd_StopChangelevel(int args) {
 	g_hCountdownTimer = null;
 	g_iStvCountdown = 0;
 	CPrintToChatAll2("{lightgreen}[Wait for STV] {default}Map change cancelled!");
-	
+	ReplyToCommand(0, "[Wait for STV] Map change cancelled!");
+
 	return Plugin_Continue;
 }
 
@@ -230,4 +262,83 @@ public Action StvCountdownTrigger(Handle timer) {
 
 void PrintTimeRemainingUntilMapChange() {
 	CPrintToChatAll2("{lightgreen}[Wait for STV] {default}Changing map to %s in %i second%s...", g_sStvCountdownNextMap, g_iStvCountdown, g_iStvCountdown == 1 ? "" : "s");
+}
+
+void PrintStvViewers(int spectators, int relays) {
+	// Color tags only work in the format string, not in the arguments
+	// Only mention spectators if there are any, since relays may have spectators we cannot see
+	if (spectators > 0 && relays > 0) {
+		CPrintToChatAll2("{lightgreen}[Wait for STV] {default}Map change delayed due to {olive}%i STV spectator%s {default}and {olive}%i STV relay%s", spectators, spectators == 1 ? "" : "s", relays, relays == 1 ? "" : "s");
+		ReplyToCommand(0, "[Wait for STV] Map change delayed due to %i STV spectator%s and %i STV relay%s", spectators, spectators == 1 ? "" : "s", relays, relays == 1 ? "" : "s");
+	} else if (relays > 0) {
+		CPrintToChatAll2("{lightgreen}[Wait for STV] {default}Map change delayed due to {olive}%i STV relay%s", relays, relays == 1 ? "" : "s");
+		ReplyToCommand(0, "[Wait for STV] Map change delayed due to %i STV relay%s", relays, relays == 1 ? "" : "s");
+	} else {
+		CPrintToChatAll2("{lightgreen}[Wait for STV] {default}Map change delayed due to {olive}%i STV spectator%s", spectators, spectators == 1 ? "" : "s");
+		ReplyToCommand(0, "[Wait for STV] Map change delayed due to %i STV spectator%s", spectators, spectators == 1 ? "" : "s");
+	}
+}
+
+// Gets the number of spectators connected directly to SourceTV, and the number of connected SourceTV relays.
+// Relays don't report their viewers to the master, so a connected relay must be treated as a viewer.
+// Returns false if the numbers are unknown, in which case we must assume there are viewers.
+bool GetStvViewers(int &spectators, int &relays) {
+	// SourceTV Manager gives the current numbers. Its spectator count includes the relays.
+	int proxies, slots, specs;
+	if (LibraryExists("sourcetvmanager") && SourceTV_GetLocalStats(proxies, slots, specs)) {
+		spectators = specs - proxies;
+		if (spectators < 0)
+			spectators = 0;
+		relays = proxies;
+		return true;
+	}
+	
+	// Otherwise use the last tv_status poll, unless it is missing or too old
+	if (!g_bTvStatusValid || GetEngineTime() - g_fTvStatusTime > TV_STATUS_MAX_AGE)
+		return false;
+	
+	spectators = g_iTvStatusSpectators;
+	relays = g_iTvStatusRelays;
+	return true;
+}
+
+public Action Timer_PollTvStatus(Handle timer) {
+	PollTvStatus();
+	return Plugin_Continue;
+}
+
+public void Frame_PollTvStatus() {
+	PollTvStatus();
+}
+
+// ServerCommandEx captures nothing when called from inside a server command, so this must not be called from Cmd_Changelevel.
+void PollTvStatus() {
+	// Only poll when GetStvViewers() can be used by Cmd_Changelevel
+	if (g_bMatchPlayed == false && g_bInMatch == false)
+		return;
+	if (g_cvarTvEnable.BoolValue == false || g_cvarTvDelay.FloatValue <= 0.0)
+		return;
+	
+	// SourceTV Manager is used instead, so we don't need to spam the console with tv_status
+	int proxies, slots, specs;
+	if (LibraryExists("sourcetvmanager") && SourceTV_GetLocalStats(proxies, slots, specs))
+		return;
+	
+	char output[2048];
+	ServerCommandEx(output, sizeof(output), "tv_status");
+	
+	if (g_hTvStatusRegex.Match(output) <= 0) {
+		g_bTvStatusValid = false;
+		return;
+	}
+	
+	// The spectator count in tv_status does not include the relays
+	char spectatorsStr[16], proxiesStr[16];
+	g_hTvStatusRegex.GetSubString(1, spectatorsStr, sizeof(spectatorsStr));
+	g_hTvStatusRegex.GetSubString(2, proxiesStr, sizeof(proxiesStr));
+	
+	g_bTvStatusValid = true;
+	g_iTvStatusSpectators = StringToInt(spectatorsStr);
+	g_iTvStatusRelays = StringToInt(proxiesStr);
+	g_fTvStatusTime = GetEngineTime();
 }
