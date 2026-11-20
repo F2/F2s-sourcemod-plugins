@@ -19,7 +19,7 @@ Release notes:
 - Updated code to be compatible with SourceMod 1.12
 
 
----- 1.1.4 (16/11/2026) ----
+---- 1.1.4 (20/11/2026) ----
 - Fixed bug where stored scores were not reset on servers with SourceTV
 - Fixed rare bug where the plugin could stop working on mapchange
 

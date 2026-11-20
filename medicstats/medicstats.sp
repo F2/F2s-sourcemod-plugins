@@ -61,7 +61,7 @@ Release notes:
 - Updated code to be compatible with SourceMod 1.12
 
 
----- 2.0.0 (16/11/2026) ----
+---- 2.0.0 (20/11/2026) ----
 - Reworked the way buffs are detected
 - Medic stats are now always logged, also during warmup
 - Don't log buffs to enemy spies

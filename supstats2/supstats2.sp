@@ -103,7 +103,7 @@ Release notes:
 - Added accuracy logs for alternative scout weapons - by s-maurice
 
 
----- 3.0.0 (16/11/2026) ----
+---- 3.0.0 (20/11/2026) ----
 - Correctly logs deflected projectiles now
 - Correctly logs taunt damage now
 - Now logs when a medic picks up a medigun

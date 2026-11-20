@@ -27,7 +27,7 @@ Release notes:
 - Treat matches lasting more than one minute as completed instead of reset
 
 
----- 1.2.1 (16/11/2026) ----
+---- 1.2.1 (20/11/2026) ----
 - Better handling of workshop maps
 
 

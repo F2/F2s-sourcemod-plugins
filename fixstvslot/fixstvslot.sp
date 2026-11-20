@@ -13,7 +13,7 @@ Release notes:
 - Only change map if the server is empty
 
 
----- 2.0.2 (16/11/2026) ----
+---- 2.0.2 (20/11/2026) ----
 - Minor fixes
 
 
