@@ -640,7 +640,7 @@ public void Event_PlayerSpawned(Event event, const char[] name, bool dontBroadca
 	if (!IsRealPlayer(client))
 		return; // eg. SourceTV
 	
-	if (clss <= 0 || clss >= 10)
+	if (clss <= 0 || clss >= TF_CLASS_COUNT)
 		return; // It has been observed that clss can be 0 and triggered BEFORE "user entered game"
 	
 	for (int i = 0; i < MAXSTICKIES; i++)
