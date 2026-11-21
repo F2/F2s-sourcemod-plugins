@@ -96,4 +96,4 @@ jobs:
       - name: Upload to FTP
         working-directory: ftp
         run: |
-          find . -type f -exec curl -u krus.dk:${{ secrets.FTP_KRUSDK_PASSWORD }} --ftp-create-dirs -T {} ftp://krus.dk/sourcemod/{} \;
+          find . -type f -exec curl --ssl-reqd -u krus.dk:${{ secrets.FTP_KRUSDK_PASSWORD }} --ftp-create-dirs -T {} ftp://ftp.simply.com/sourcemod/{} \;
