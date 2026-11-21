@@ -26,12 +26,14 @@ float g_fCapMultipliers[] = {
 };
 
 
-char g_sClassNames[TFClassType][16] = {
-	"Unknown", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer"
+#define TF_CLASS_COUNT 11
+
+char g_sClassNames[TF_CLASS_COUNT][16] = {
+	"Unknown", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer", "Civilian"
 };
 
-char g_sClassNamesLower[TFClassType][16] = {
-	"undefined", "scout", "sniper", "soldier", "demoman", "medic", "heavyweapons", "pyro", "spy", "engineer"
+char g_sClassNamesLower[TF_CLASS_COUNT][16] = {
+	"undefined", "scout", "sniper", "soldier", "demoman", "medic", "heavyweapons", "pyro", "spy", "engineer", "civilian"
 };
 
 stock void F2STOCKS_Dummy() {
