@@ -123,6 +123,10 @@ Release notes:
 - Improved detection of shooting/clearing stickies
 
 
+---- 3.0.1 (23/11/2026) ----
+- Added support for the civilian class in TF2 Classified - by Xinayder
+
+
 TODO:
 - Use GetGameTime() instead of GetEngineTime()?
 - Write comments in code :D
@@ -144,7 +148,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "3.0.0"
+#define PLUGIN_VERSION "3.0.1"
 #define UPDATE_URL		"https://sourcemod.krus.dk/supstats2/update.txt"
 
 #define ITEMS_TXT_PATH "scripts/items/items_game.txt"
@@ -640,7 +644,7 @@ public void Event_PlayerSpawned(Event event, const char[] name, bool dontBroadca
 	if (!IsRealPlayer(client))
 		return; // eg. SourceTV
 	
-	if (clss <= 0 || clss >= 10)
+	if (clss <= 0 || clss >= sizeof(g_sClassNamesLower))
 		return; // It has been observed that clss can be 0 and triggered BEFORE "user entered game"
 	
 	for (int i = 0; i < MAXSTICKIES; i++)
