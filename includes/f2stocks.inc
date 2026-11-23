@@ -3,13 +3,6 @@
 #endif
 #define _f2stocks_included
 
-/*
-
-TODO:
-- Check if !IsClientSourceTV(client) is necessary in IsRealPlayer()
-
-*/
-
 #include <tf2_stocks>
 #include <morecolors>
 
@@ -26,13 +19,12 @@ float g_fCapMultipliers[] = {
 };
 
 
-#define TF_CLASS_COUNT 11
-
-char g_sClassNames[TF_CLASS_COUNT][16] = {
+// TF2 uses class indices 0-9. Index 10 ("Civilian") is only used by the mod TF2 Classified.
+char g_sClassNames[][16] = {
 	"Unknown", "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer", "Civilian"
 };
 
-char g_sClassNamesLower[TF_CLASS_COUNT][16] = {
+char g_sClassNamesLower[][16] = {
 	"undefined", "scout", "sniper", "soldier", "demoman", "medic", "heavyweapons", "pyro", "spy", "engineer", "civilian"
 };
 

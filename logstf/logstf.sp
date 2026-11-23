@@ -155,6 +155,10 @@ Release notes:
 - Added validation of logs.tf responses
 
 
+---- 3.1.1 (23/11/2026) ----
+- Added support for the civilian class in TF2 Classified - by Xinayder
+
+
 TODO:
 - Some people run multiple instances of the same server (located in the same directory). This is a problem, because they all write to the same logstf.log file. Make the logstf.log file have a dynamic name, and don't forget to clean them up.
 - Sanitize names for < and >, since logs.tf doesn't like those
@@ -177,7 +181,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION	"3.1.0"
+#define PLUGIN_VERSION	"3.1.1"
 #define UPDATE_URL		"https://sourcemod.krus.dk/logstf/update.txt"
 
 #define LOG_PATH  "logstf.log"
