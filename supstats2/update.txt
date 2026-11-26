@@ -4,11 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"3.0.1"
+			"Latest"	"3.1.0"
 		}
 		
-		"Notes"	"Changes in 3.0.1:"
-		"Notes"	"- Added support for the civilian class in TF2 Classified"
+		"Notes"	"Changes in 3.1.0:"
+		"Notes"	"- Log attacker and victim positions on damage events"
 	}
 	
 	"Files"
