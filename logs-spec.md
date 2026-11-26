@@ -121,9 +121,9 @@ The \<item\> can be:
 
 When a player deals damage to another player:
 
-    <attacker> triggered "damage" against <victim> (damage "%i") (realdamage "%i") (weapon "%s") (healing "%i")  (crit "%s") (airshot "1") (height "%i") (headshot "1")
+    <attacker> triggered "damage" against <victim> (damage "%i") (realdamage "%i") (weapon "%s") (healing "%i")  (crit "%s") (airshot "1") (height "%i") (headshot "1") (attacker_position "%d %d %d") (victim_position "%d %d %d")
 
-    "F2<3><[U:1:1234]><Red>" triggered "damage" against "dunc<8><[U:1:420]><Blue>" (damage "69") (realdamage "31") (weapon "quake_rl") (healing "20")  (crit "mini") (airshot "1") (height "33") (headshot "1")
+    "F2<3><[U:1:1234]><Red>" triggered "damage" against "dunc<8><[U:1:420]><Blue>" (damage "69") (realdamage "31") (weapon "quake_rl") (healing "20")  (crit "mini") (airshot "1") (height "33") (headshot "1") (attacker_position "128 -256 64") (victim_position "224 -192 97")
 
 It has the following properties:
 
@@ -141,6 +141,8 @@ It has the following properties:
   If not present: It was not an airshot.
 - `headshot`: _(Optional)_ If it is `1`, it was a headshot.  
   If not present: It was not a headshot.
+- `attacker_position`: The position of the attacker, like in the TF2 kill log
+- `victim_position`: The position of the victim, like in the TF2 kill log
 
 Note, self damage is not logged.
 

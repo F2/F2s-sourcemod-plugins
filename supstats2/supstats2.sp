@@ -127,6 +127,10 @@ Release notes:
 - Added support for the civilian class in TF2 Classified - by Xinayder
 
 
+---- 3.1.0 (26/11/2026) ----
+- Log attacker and victim positions on damage events
+
+
 TODO:
 - Use GetGameTime() instead of GetEngineTime()?
 - Write comments in code :D
@@ -148,7 +152,7 @@ TODO:
 #undef REQUIRE_PLUGIN
 #include <updater>
 
-#define PLUGIN_VERSION "3.0.1"
+#define PLUGIN_VERSION "3.1.0"
 #define UPDATE_URL		"https://sourcemod.krus.dk/supstats2/update.txt"
 
 #define ITEMS_TXT_PATH "scripts/items/items_game.txt"
@@ -1040,8 +1044,11 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
 		}
 
 		// Remember: The attacker can be dead!
-		
-		LogToGame("\"%s\" triggered \"damage\" against \"%s\" (damage \"%d\")%s (weapon \"%s\")%s%s%s%s",
+		float attackerPosition[3], victimPosition[3];
+		GetClientAbsOrigin(attacker, attackerPosition);
+		GetClientAbsOrigin(victim, victimPosition);
+
+		LogToGame("\"%s\" triggered \"damage\" against \"%s\" (damage \"%d\")%s (weapon \"%s\")%s%s%s%s (attacker_position \"%d %d %d\") (victim_position \"%d %d %d\")",
 			attackerStr,
 			victimStr,
 			damage,
@@ -1050,7 +1057,9 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
 			strHealing,
 			strCrit,
 			strAirshot,
-			strHeadshot);
+			strHeadshot,
+			RoundToZero(attackerPosition[0]), RoundToZero(attackerPosition[1]), RoundToZero(attackerPosition[2]),
+			RoundToZero(victimPosition[0]), RoundToZero(victimPosition[1]), RoundToZero(victimPosition[2]));
 	}
 }
 
